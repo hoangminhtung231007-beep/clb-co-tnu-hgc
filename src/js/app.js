@@ -144,18 +144,18 @@ class App {
   updateFirebaseBadge(status, lastSync) {
     const sidebarBadge = document.getElementById('adminFirebaseSidebarBadge');
     if (sidebarBadge) {
-      const lockTag = this.firebaseUnlocked ? '' : ' 🔒';
+      const lockPrefix = this.firebaseUnlocked ? '' : '🔒 ';
       if (status === 'connected') {
-        sidebarBadge.textContent = `ONLINE${lockTag}`;
+        sidebarBadge.textContent = `${lockPrefix}ONLINE`;
         sidebarBadge.className = 'admin-nav-badge badge-emerald active-glow';
       } else if (status === 'connecting') {
-        sidebarBadge.textContent = `CONNECTING${lockTag}`;
+        sidebarBadge.textContent = `${lockPrefix}CONNECTING`;
         sidebarBadge.className = 'admin-nav-badge badge-gold';
       } else if (status === 'error') {
-        sidebarBadge.textContent = `LỖI${lockTag}`;
+        sidebarBadge.textContent = `${lockPrefix}LỖI`;
         sidebarBadge.className = 'admin-nav-badge badge-rose';
       } else {
-        sidebarBadge.textContent = `LOCAL${lockTag}`;
+        sidebarBadge.textContent = `${lockPrefix}LOCAL`;
         sidebarBadge.className = 'admin-nav-badge';
       }
     }
@@ -1544,10 +1544,9 @@ class App {
             <div class="admin-nav-item ${this.adminSubView === 'admin-firebase' ? 'active' : ''}" data-sub="admin-firebase">
               <div class="admin-nav-left">
                 <span>☁️</span> <span>Firebase Cloud</span>
-                ${!this.firebaseUnlocked ? '<span style="font-size: 11px; margin-left: 4px; opacity: 0.8;" title="Yêu cầu mật khẩu để mở khóa">🔒</span>' : ''}
               </div>
               <span class="admin-nav-badge ${firebaseService.status === 'connected' ? 'badge-emerald active-glow' : ''}" id="adminFirebaseSidebarBadge">
-                ${firebaseService.status === 'connected' ? (this.firebaseUnlocked ? 'ONLINE' : 'ONLINE 🔒') : (this.firebaseUnlocked ? 'LOCAL' : 'LOCAL 🔒')}
+                ${!this.firebaseUnlocked ? '🔒 ' : ''}${firebaseService.status === 'connected' ? 'ONLINE' : (firebaseService.status === 'connecting' ? 'CONNECTING' : 'LOCAL')}
               </span>
             </div>
           </aside>

@@ -1,7 +1,7 @@
 // Completely clean database for TNU - HGC Chess Club (Zero sample data)
 export const INITIAL_DATA = {
   currentSession: {
-    role: "admin",
+    role: "guest",
     activeMemberId: null
   },
   clubInfo: {

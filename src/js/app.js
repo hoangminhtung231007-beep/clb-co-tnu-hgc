@@ -166,11 +166,17 @@ class App {
       p.addEventListener('click', () => {
         sound.playClick();
         const role = p.getAttribute('data-role');
-        store.setRole(role);
         if (role === 'admin') {
+          if (store.getState().currentSession?.role !== 'admin') {
+            modalManager.openLoginModal('admin');
+            return;
+          }
           this.adminSubView = 'admin-overview';
           this.navigateTo('admin', 'admin-overview');
-        } else if (role === 'member') {
+          return;
+        }
+        store.setRole(role);
+        if (role === 'member') {
           this.navigateTo('member-pass');
         } else {
           this.navigateTo('home');

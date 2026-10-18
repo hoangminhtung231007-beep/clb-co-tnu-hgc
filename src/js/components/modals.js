@@ -2121,8 +2121,8 @@ export const modalManager = {
           </div>
           <div class="form-group mb-4">
             <label class="form-label">Mật khẩu Quản trị viên:</label>
-            <input type="password" id="loginAdminPass" class="form-input" placeholder="admin123" value="admin123">
-            <small class="text-xs text-muted mt-1" style="display:block;">* Tài khoản demo: <strong>admin</strong> / Mật khẩu: <strong>admin123</strong></small>
+            <input type="password" id="loginAdminPass" class="form-input" placeholder="Nhập mật khẩu quản trị..." value="">
+            <small class="text-xs text-muted mt-1" style="display:block;">* Mật khẩu quản trị hệ thống: <strong>admin123456</strong></small>
           </div>
           <button type="button" class="btn btn-gold btn-md" id="btnSubmitAdminLogin" style="width: 100%; font-weight: 700; padding: 10px;">
             Đăng Nhập Quản Trị Hệ Thống
@@ -2199,7 +2199,8 @@ export const modalManager = {
           sound.playClick();
           const u = modalEl.querySelector('#loginAdminUser').value.trim();
           const p = modalEl.querySelector('#loginAdminPass').value.trim();
-          if (u === 'admin' && p === 'admin123') {
+          const correctPass = localStorage.getItem('TNU_HGC_ADMIN_PASSWORD') || 'admin123456';
+          if ((u === 'admin' || u === 'bch' || u === 'bhd') && p === correctPass) {
             store.setRole('admin');
             this.close();
             modalManager.showAlert('Đăng nhập Quản trị viên (Admin) thành công!');
@@ -2208,7 +2209,7 @@ export const modalManager = {
               window.app.navigateTo('admin', 'admin-overview');
             }
           } else {
-            modalManager.showAlert('Tài khoản hoặc mật khẩu không chính xác! (Gợi ý: admin / admin123)');
+            modalManager.showAlert('Tài khoản hoặc mật khẩu không chính xác! Vui lòng nhập đúng mật khẩu quản trị.');
           }
         };
       }

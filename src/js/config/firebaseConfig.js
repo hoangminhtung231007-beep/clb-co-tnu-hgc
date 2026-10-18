@@ -4,12 +4,13 @@
 const FIREBASE_STORAGE_KEY = 'TNU_HGC_FIREBASE_CONFIG_V1';
 
 export const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyAWKPB-yeRbgMTzkvkWDwXtgZh0f9hs04A",
+  authDomain: "tnu-hgc-chess-club.firebaseapp.com",
+  projectId: "tnu-hgc-chess-club",
+  storageBucket: "tnu-hgc-chess-club.firebasestorage.app",
+  messagingSenderId: "954597639043",
+  appId: "1:954597639043:web:d8f4a52a6d9f7c7b3e2cb6",
+  measurementId: "G-WL7L9NZTNG"
 };
 
 export function getFirebaseConfig() {
@@ -35,6 +36,11 @@ export function getFirebaseConfig() {
       messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
       appId: import.meta.env.VITE_FIREBASE_APP_ID || ""
     };
+  }
+
+  // Return project default config
+  if (DEFAULT_FIREBASE_CONFIG.apiKey && DEFAULT_FIREBASE_CONFIG.projectId) {
+    return DEFAULT_FIREBASE_CONFIG;
   }
 
   return null;

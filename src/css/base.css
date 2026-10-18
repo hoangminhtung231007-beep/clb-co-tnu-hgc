@@ -1,0 +1,186 @@
+/* ==========================================================================
+   TNU - HGC CHESS CLUB DESIGN SYSTEM
+   System Font Stack: Apple (SF), Windows (Segoe UI), Android (Roboto)
+   Aesthetic: Royal Chess, Deep Navy & Polished Gold, Glassmorphism
+   ========================================================================== */
+
+:root {
+  /* System Font Stack as strictly required in proposal */
+  --font-system: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Primary Palette - Royal Navy & Night Slate */
+  --bg-primary: #070d1e;
+  --bg-surface: #0e172e;
+  --bg-surface-elevated: #152244;
+  --bg-card: rgba(18, 30, 60, 0.72);
+  --bg-card-hover: rgba(26, 42, 82, 0.88);
+  --bg-glass: rgba(14, 23, 46, 0.65);
+
+  /* Gold & Accent Tokens */
+  --gold-primary: #d4af37;
+  --gold-light: #f3d57a;
+  --gold-dark: #aa8520;
+  --gold-glow: rgba(212, 175, 55, 0.28);
+  --accent-cyan: #38bdf8;
+  --accent-emerald: #10b981;
+  --accent-rose: #f43f5e;
+  --accent-amber: #f59e0b;
+  --accent-violet: #8b5cf6;
+
+  /* Text Colors */
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --text-gold: #f3d57a;
+
+  /* Borders & Shadows */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-gold: rgba(212, 175, 55, 0.35);
+  --border-gold-bright: rgba(212, 175, 55, 0.7);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --shadow-gold: 0 0 25px rgba(212, 175, 55, 0.2);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-system);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-main);
+  background-color: var(--bg-primary);
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  background: 
+    radial-gradient(circle at 15% 10%, rgba(212, 175, 55, 0.07) 0%, transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(56, 189, 248, 0.05) 0%, transparent 40%),
+    linear-gradient(180deg, #070d1e 0%, #0a1125 100%);
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold-dark);
+}
+
+/* Typography Helpers */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-main);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+a {
+  color: var(--accent-cyan);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+a:hover {
+  color: var(--gold-light);
+}
+
+p {
+  color: var(--text-muted);
+}
+
+.text-gold { color: var(--gold-light) !important; }
+.text-cyan { color: var(--accent-cyan) !important; }
+.text-emerald { color: var(--accent-emerald) !important; }
+.text-rose { color: var(--accent-rose) !important; }
+.text-muted { color: var(--text-muted) !important; }
+.text-dim { color: var(--text-dim) !important; }
+.font-bold { font-weight: 700; }
+.font-semibold { font-weight: 600; }
+.font-mono { font-family: var(--font-mono); }
+.text-xs { font-size: 0.78rem; }
+.text-sm { font-size: 0.88rem; }
+.text-lg { font-size: 1.15rem; }
+.text-xl { font-size: 1.35rem; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.85rem; }
+.mb-4 { margin-bottom: 1.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.85rem; }
+.mt-4 { margin-top: 1.25rem; }
+
+/* Micro-animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes laserScan {
+  0% { top: 8%; opacity: 0.8; }
+  50% { top: 88%; opacity: 1; }
+  100% { top: 8%; opacity: 0.8; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 10px var(--gold-glow); }
+  50% { box-shadow: 0 0 25px rgba(212, 175, 55, 0.55); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+.animate-scaleUp { animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* Flex & Layout Utilities */
+.d-flex { display: flex; }
+.align-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-1 { flex: 1; }
+.gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }

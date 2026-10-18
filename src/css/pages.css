@@ -1,0 +1,726 @@
+/* ==========================================================================
+   PAGE-SPECIFIC STYLES: HOME, LEADERBOARD, ABOUT, ORG, MEMBER PASS, ADMIN
+   ========================================================================== */
+
+/* --- HOME PAGE HERO & SECTIONS --- */
+.hero-section {
+  position: relative;
+  border-radius: var(--radius-xl);
+  background: 
+    radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 10% 80%, rgba(56, 189, 248, 0.12) 0%, transparent 50%),
+    linear-gradient(135deg, #091226 0%, #111e3b 100%);
+  border: 1px solid var(--border-gold);
+  padding: 64px 48px;
+  overflow: hidden;
+  margin-bottom: 36px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 25px rgba(212, 175, 55, 0.15);
+}
+.hero-chess-watermark {
+  position: absolute;
+  right: -20px;
+  bottom: -40px;
+  pointer-events: none;
+  user-select: none;
+}
+.hero-logo-img {
+  width: 320px;
+  height: 320px;
+  aspect-ratio: 1 / 1;
+  opacity: 0.14;
+  filter: drop-shadow(0 0 24px rgba(212, 175, 55, 0.45));
+  pointer-events: none;
+  user-select: none;
+  display: block;
+}
+.hero-content {
+  position: relative;
+  max-width: 720px;
+  z-index: 2;
+}
+.hero-tag-logo {
+  width: 22px;
+  height: 22px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--gold-primary);
+  display: inline-block;
+  vertical-align: middle;
+}
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(212, 175, 55, 0.15);
+  border: 1px solid var(--border-gold);
+  color: var(--gold-light);
+  padding: 4px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+.hero-title {
+  font-size: 2.85rem;
+  font-weight: 900;
+  line-height: 1.15;
+  color: #ffffff;
+  margin-bottom: 16px;
+}
+.hero-title .gradient-text {
+  background: linear-gradient(135deg, #f59e0b 0%, #d4af37 50%, #fef08a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero-description {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #cbd5e1;
+  margin-bottom: 28px;
+}
+.hero-cta-group {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Quick Stats Bar */
+.stats-banner-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  margin-bottom: 36px;
+}
+
+/* Featured Spotlight & Tournament Split */
+.home-split-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  margin-bottom: 36px;
+}
+.spotlight-card {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.spotlight-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 18px;
+  object-fit: cover;
+  border: 2px solid var(--gold-primary);
+  flex-shrink: 0;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+.countdown-box {
+  display: flex;
+  gap: 10px;
+  margin: 16px 0;
+}
+.countdown-item {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  text-align: center;
+  min-width: 54px;
+}
+.countdown-num {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--gold-light);
+}
+.countdown-lbl {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+/* --- LEADERBOARD & PODIUM ("BẢNG PHONG THẦN") --- */
+.podium-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 18px;
+  margin: 32px 0 42px;
+}
+.podium-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 190px;
+}
+.podium-avatar-wrap {
+  position: relative;
+  margin-bottom: 12px;
+}
+.podium-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #64748b;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+.podium-step.rank-1 .podium-avatar {
+  width: 96px;
+  height: 96px;
+  border-color: #f59e0b;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.5);
+}
+.podium-step.rank-2 .podium-avatar {
+  border-color: #cbd5e1;
+}
+.podium-step.rank-3 .podium-avatar {
+  border-color: #cd7f32;
+}
+.podium-crown {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+}
+.podium-rank-badge {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1e293b;
+  border: 2px solid #ffffff;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.podium-step.rank-1 .podium-rank-badge { background: #f59e0b; }
+.podium-step.rank-2 .podium-rank-badge { background: #94a3b8; }
+.podium-step.rank-3 .podium-rank-badge { background: #cd7f32; }
+
+.podium-pedestal {
+  width: 100%;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 14px 10px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-bottom: none;
+}
+.podium-step.rank-1 .podium-pedestal {
+  height: 130px;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.25) 0%, rgba(14, 23, 46, 0.8) 100%);
+  border-color: var(--border-gold);
+}
+.podium-step.rank-2 .podium-pedestal {
+  height: 100px;
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.2) 0%, rgba(14, 23, 46, 0.8) 100%);
+}
+.podium-step.rank-3 .podium-pedestal {
+  height: 80px;
+  background: linear-gradient(180deg, rgba(205, 127, 50, 0.2) 0%, rgba(14, 23, 46, 0.8) 100%);
+}
+.podium-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+.podium-elo {
+  font-size: 0.78rem;
+  color: var(--gold-light);
+  font-weight: 700;
+}
+
+/* Tabs Header */
+.tabs-header {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 24px;
+}
+.tab-btn {
+  background: transparent;
+  border: none;
+  padding: 10px 18px;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  transition: all var(--transition-fast);
+}
+.tab-btn:hover {
+  color: #ffffff;
+}
+.tab-btn.active {
+  color: var(--gold-light);
+}
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gold-primary);
+  border-radius: var(--radius-full);
+}
+
+/* --- ORGANIZATION & MEMBERS DIRECTORY --- */
+.org-board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 22px;
+  margin-bottom: 40px;
+}
+.board-member-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all var(--transition-normal);
+}
+.board-member-card:hover {
+  border-color: var(--border-gold);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+.board-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2.5px solid var(--gold-primary);
+  margin-bottom: 14px;
+}
+.board-title {
+  font-size: 0.82rem;
+  color: var(--gold-light);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.board-quote {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+/* Directory Filter Bar */
+.directory-controls-bar {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 24px;
+}
+
+/* ==========================================================================
+   MOBILE-FIRST CLEAN & SPACIOUS RESPONSIVE SYSTEM
+   Optimized for touch, zero clutter, elegant spacing
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Clean Hero Section on Mobile */
+  .hero-section {
+    padding: 20px 16px;
+    margin-bottom: 14px;
+    border-radius: var(--radius-lg);
+  }
+  .hero-chess-watermark {
+    font-size: 130px;
+    right: -10px;
+    bottom: -20px;
+    opacity: 0.04;
+  }
+  .hero-tag {
+    font-size: 0.68rem;
+    padding: 2px 10px;
+    margin-bottom: 8px;
+  }
+  .hero-title {
+    font-size: 1.45rem;
+    line-height: 1.25;
+    margin-bottom: 8px;
+  }
+  .hero-description {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    margin-bottom: 14px;
+  }
+  .hero-cta-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .hero-cta-group .btn {
+    width: 100%;
+    padding: 9px 14px;
+    font-size: 0.88rem;
+  }
+
+  /* Compact KPI Banner */
+  .stats-banner-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  /* Split Grid */
+  .home-split-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .spotlight-card {
+    gap: 12px;
+  }
+  .spotlight-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+  }
+  .countdown-box {
+    gap: 6px;
+    margin: 10px 0;
+  }
+  .countdown-item {
+    min-width: 42px;
+    padding: 4px 6px;
+  }
+  .countdown-num {
+    font-size: 1.05rem;
+  }
+  .countdown-lbl {
+    font-size: 0.58rem;
+  }
+
+  /* Podium Top 3 Proportional on Mobile */
+  .podium-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 6px;
+    margin: 14px 0 20px;
+  }
+  .podium-step {
+    flex: 1;
+    max-width: 105px;
+    width: auto;
+  }
+  .podium-step.rank-1 {
+    max-width: 120px;
+  }
+  .podium-avatar-wrap {
+    margin-bottom: 6px;
+  }
+  .podium-avatar {
+    width: 48px;
+    height: 48px;
+  }
+  .podium-step.rank-1 .podium-avatar {
+    width: 60px;
+    height: 60px;
+  }
+  .podium-crown {
+    font-size: 18px;
+    top: -14px;
+  }
+  .podium-pedestal {
+    padding: 6px 4px;
+    border-radius: 8px 8px 0 0;
+  }
+  .podium-step.rank-1 .podium-pedestal {
+    height: 80px;
+  }
+  .podium-step.rank-2 .podium-pedestal {
+    height: 62px;
+  }
+  .podium-step.rank-3 .podium-pedestal {
+    height: 48px;
+  }
+  .podium-name {
+    font-size: 0.74rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 95px;
+  }
+  .podium-elo {
+    font-size: 0.7rem;
+  }
+
+  /* Sleek, Clean Native Cards for Leaderboard & Directory */
+  .table-responsive.mobile-card-view {
+    background: transparent;
+    border: none;
+    overflow: visible;
+  }
+  .table-responsive.mobile-card-view .data-table,
+  .table-responsive.mobile-card-view tbody,
+  .table-responsive.mobile-card-view tr {
+    display: block;
+    width: 100%;
+  }
+  .table-responsive.mobile-card-view thead {
+    display: none;
+  }
+  .table-responsive.mobile-card-view tr {
+    margin-bottom: 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  .table-responsive.mobile-card-view td {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: none;
+  }
+  .table-responsive.mobile-card-view td::before {
+    display: none; /* Remove redundant stacked text labels */
+  }
+  .table-responsive.mobile-card-view td[data-label="Hạng"] {
+    order: 1;
+  }
+  .table-responsive.mobile-card-view td[data-label="Kỳ Thủ"] {
+    order: 2;
+    flex: 1;
+    margin-left: 8px;
+    min-width: 0;
+  }
+  .table-responsive.mobile-card-view td[data-label="Kỳ Thủ"] .member-cell {
+    gap: 8px;
+  }
+  .table-responsive.mobile-card-view td[data-label="Kỳ Thủ"] img {
+    width: 32px;
+    height: 32px;
+  }
+  .table-responsive.mobile-card-view td[data-label="Elo"],
+  .table-responsive.mobile-card-view td[data-label="Hệ Số Elo"],
+  .table-responsive.mobile-card-view td[data-label="Elo Cờ Vua"],
+  .table-responsive.mobile-card-view td[data-label="Tổng Điểm"] {
+    order: 3;
+    text-align: right;
+  }
+  .table-responsive.mobile-card-view td[data-label="Đơn Vị"],
+  .table-responsive.mobile-card-view td[data-label="Lớp"] {
+    order: 4;
+    width: 100%;
+    padding-top: 6px;
+    margin-top: 4px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+    justify-content: space-between;
+    font-size: 0.74rem;
+  }
+  .table-responsive.mobile-card-view td[data-label="Tỷ Lệ Thắng"],
+  .table-responsive.mobile-card-view td[data-label="Tỷ Lệ Tích Cực"],
+  .table-responsive.mobile-card-view td[data-label="Huy Hiệu"],
+  .table-responsive.mobile-card-view td[data-label="Bộ Môn"],
+  .table-responsive.mobile-card-view td[data-label="Số Buổi Sinh Hoạt"],
+  .table-responsive.mobile-card-view td[data-label="HC Vàng"],
+  .table-responsive.mobile-card-view td[data-label="HC Bạc"],
+  .table-responsive.mobile-card-view td[data-label="HC Đồng"],
+  .table-responsive.mobile-card-view td[data-label="Chuyên Cần"] {
+    order: 5;
+  }
+  /* Hide verbose repetitive fields on mobile to maximize spaciousness */
+  .table-responsive.mobile-card-view td[data-label="Mã Thẻ"],
+  .table-responsive.mobile-card-view td[data-label="MSSV"],
+  .table-responsive.mobile-card-view td[data-label="Số Trận"],
+  .table-responsive.mobile-card-view td[data-label="Số Giải Tham Gia"],
+  .table-responsive.mobile-card-view td[data-label="Số Hoạt Động Tham Gia"],
+  .table-responsive.mobile-card-view td[data-label="Tỉ Số"],
+  .table-responsive.mobile-card-view td[data-label="Liên Hệ"] {
+    display: none;
+  }
+
+  /* Admin Table Card Actions & Status */
+  .table-responsive.mobile-card-view td[data-label="Thao Tác"] {
+    order: 6;
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 6px;
+    margin-top: 4px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  }
+  .table-responsive.mobile-card-view td[data-label="Trạng Thái"] {
+    order: 3;
+  }
+  .table-responsive.mobile-card-view td[data-label="Thời Gian"] {
+    order: 3;
+    font-size: 0.72rem;
+  }
+  .table-responsive.mobile-card-view td[data-label="Phương Thức"] {
+    order: 4;
+  }
+
+
+  /* Controls & Filters Bar on Mobile */
+  .directory-controls-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .directory-controls-bar .form-input,
+  .directory-controls-bar .form-select,
+  .directory-controls-bar .btn {
+    width: 100%;
+  }
+
+  /* Tabs Header */
+  .tabs-header {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    padding-bottom: 4px;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+  .tab-btn {
+    padding: 6px 12px;
+    font-size: 0.82rem;
+  }
+
+  /* Grid Lists */
+  .news-cards-grid,
+  .events-cards-grid,
+  .org-board-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .article-thumb {
+    height: 140px;
+  }
+  .board-member-card {
+    padding: 14px;
+  }
+  .board-avatar {
+    width: 68px;
+    height: 68px;
+    margin-bottom: 8px;
+  }
+}
+
+
+/* --- NEWS & CMS ARTICLES --- */
+.news-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+.article-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all var(--transition-normal);
+  cursor: pointer;
+}
+.article-card:hover {
+  border-color: var(--border-gold);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+.article-thumb {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+.article-content-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.article-modal-hero-img {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+/* --- EVENTS & TOURNAMENTS --- */
+.events-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 22px;
+}
+.event-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.event-status-badge {
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+}
+.status-ongoing { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.status-upcoming { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+.status-completed { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
+
+/* --- ANALYTICS CHARTS --- */
+.charts-grid-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+@media (max-width: 900px) {
+  .charts-grid-row {
+    grid-template-columns: 1fr;
+  }
+}
+.chart-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+.chart-canvas-wrap {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}

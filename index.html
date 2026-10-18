@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CLB Cờ TNU - HGC | Đại học Thái Nguyên Phân hiệu tại Hà Giang</title>
+  <meta name="description" content="Hệ thống Cổng thông tin và buồng lái quản trị trực tuyến CLB Cờ TNU - HGC, Đại học Thái Nguyên Phân hiệu tại Hà Giang. Tích hợp Thẻ thành viên điện tử Smart QR Key, bảng xếp hạng Elo và điểm danh thông minh.">
+  <meta name="keywords" content="CLB Cờ TNU - HGC, Đại học Thái Nguyên Phân hiệu tại Hà Giang, TNU HGC, Cờ vua, Cờ tướng, Bảng phong thần, Smart QR Key, Điểm danh thông minh">
+  <meta name="author" content="CLB Cờ TNU - HGC, Đại học Thái Nguyên Phân hiệu tại Hà Giang">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/logo.png?v=2">
+  <link rel="shortcut icon" type="image/png" href="/favicon.png?v=2">
+  <link rel="apple-touch-icon" href="/logo.png?v=2">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/src/css/base.css">
+  <link rel="stylesheet" href="/src/css/layout.css">
+  <link rel="stylesheet" href="/src/css/components.css">
+  <link rel="stylesheet" href="/src/css/pages.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top System Switcher Bar (For testing & switching between Guest, Member & Admin seamlessly) -->
+    <header class="system-topbar" id="systemTopbar">
+      <div class="system-topbar-left">
+        <span class="system-badge-live">
+          <span class="pulse-dot"></span> TNU - HGC LIVE CLOUD
+        </span>
+        <span class="text-xs text-dim">Cơ sở dữ liệu tập trung 2 phân hệ (Portal - Admin)</span>
+      </div>
+
+      <div class="role-switcher-group">
+        <span class="role-label text-xs">Chế độ trải nghiệm:</span>
+        <div class="role-btn-group">
+          <button type="button" class="role-pill active" data-role="guest" title="Khách vãng lai">Khách</button>
+          <button type="button" class="role-pill" data-role="member" title="Thành viên có Thẻ QR Key">Thành Viên</button>
+          <button type="button" class="role-pill" data-role="admin" title="Quản trị viên Buồng Lái">Quản Trị Viên (Admin)</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Navigation Bar -->
+    <nav class="main-navbar" id="mainNavbar">
+      <!-- Brand Logo & Title -->
+      <div class="brand-wrapper" id="navBrand">
+        <img src="/logo.png" alt="Logo CLB Cờ TNU - HGC" class="brand-logo-img">
+        <div class="brand-text">
+          <div class="brand-name">
+            CLB CỜ <span class="gold-accent">TNU - HGC</span>
+          </div>
+          <div class="brand-sub">ĐẠI HỌC THÁI NGUYÊN PHÂN HIỆU TẠI HÀ GIANG</div>
+        </div>
+      </div>
+
+      <!-- Navigation Links (Desktop) -->
+      <ul class="nav-menu-links">
+        <li><button class="nav-item-link active" data-view="home"><span class="nav-icon">🏠</span> Trang Chủ</button></li>
+        <li><button class="nav-item-link" data-view="about"><span class="nav-icon">📜</span> Giới Thiệu CLB</button></li>
+        <li><button class="nav-item-link" data-view="org"><span class="nav-icon">👥</span> Nhân Sự</button></li>
+        <li><button class="nav-item-link" data-view="leaderboard"><span class="nav-icon">🏆</span> Bảng Xếp Hạng</button></li>
+        <li><button class="nav-item-link" data-view="events"><span class="nav-icon">📅</span> Hoạt Động</button></li>
+        <li><button class="nav-item-link" data-view="news"><span class="nav-icon">📰</span> Tin Tức</button></li>
+        <li id="navItemMemberPass"><button class="nav-item-link" data-view="member-pass"><span class="nav-icon">💳</span> Thẻ Thành Viên</button></li>
+      </ul>
+
+      <!-- Action Items & User Profile Button -->
+      <div class="nav-actions" id="navActions">
+        <!-- Guest Action Buttons (Shown when role === 'guest') -->
+        <div class="guest-nav-actions" id="guestNavActions" style="display: none;">
+          <button class="btn btn-outline btn-sm" id="btnGuestLogin" style="font-weight: 600; padding: 7px 16px;">
+            Đăng Nhập
+          </button>
+          <button class="btn btn-gold btn-sm" id="btnGuestRegister" style="font-weight: 700; padding: 7px 18px;">
+            Đăng Ký Tham Gia CLB
+          </button>
+        </div>
+
+        <!-- Authenticated Actions (Shown when role !== 'guest') -->
+        <div class="user-nav-actions" id="userNavActions" style="display: flex; align-items: center; gap: 10px;">
+          <button class="btn-admin-portal" id="btnAdminPortal" title="Cập nhật và đồng bộ dữ liệu hệ thống">
+            <span>🔄</span> Cập nhật dữ liệu
+          </button>
+
+          <button class="btn btn-outline btn-sm" id="btnLogout" title="Đăng xuất về chế độ khách" style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.15); color: #cbd5e1;">
+            <span>🚪</span> Đăng xuất
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Dynamic Viewport Container -->
+    <main class="main-viewport" id="mainViewport"></main>
+
+    <!-- Site Footer -->
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <!-- Col 1: Brand Info -->
+        <div>
+          <div class="brand-wrapper mb-3">
+            <img src="/logo.png" alt="Logo CLB Cờ TNU - HGC" class="brand-logo-img" style="width:44px; height:44px;">
+            <div class="brand-text">
+              <div class="brand-name" style="font-size:1.05rem;">
+                CLB CỜ <span class="gold-accent">TNU - HGC</span>
+              </div>
+              <div class="brand-sub">ĐẠI HỌC THÁI NGUYÊN PHÂN HIỆU TẠI HÀ GIANG</div>
+            </div>
+          </div>
+          <p class="text-xs text-muted mb-3" style="line-height:1.6;">
+            Câu lạc bộ Cờ TNU - HGC – Nơi giao thoa của trí tuệ, bản lĩnh và sự điềm tĩnh. Sân chơi trí tuệ kết nối đam mê Cờ Vua và Cờ Tướng cho toàn thể sinh viên tại Đại học Thái Nguyên Phân hiệu tại Hà Giang.
+          </p>
+          <div class="badge badge-gold">
+            Thành lập ngày 18/03/2026
+          </div>
+        </div>
+
+        <!-- Col 2: Navigation Links -->
+        <div>
+          <h4 class="footer-col-title">Chuyên Mục</h4>
+          <ul class="footer-links-list text-xs">
+            <li><a href="#" onclick="window.app.navigateTo('home'); return false;">Trang Chủ</a></li>
+            <li><a href="#" onclick="window.app.navigateTo('about'); return false;">Giới Thiệu CLB</a></li>
+            <li><a href="#" onclick="window.app.navigateTo('org'); return false;">Nhân Sự</a></li>
+            <li><a href="#" onclick="window.app.navigateTo('leaderboard'); return false;">Bảng Xếp Hạng</a></li>
+            <li><a href="#" onclick="window.app.navigateTo('events'); return false;">Hoạt Động CLB</a></li>
+            <li><a href="#" onclick="window.app.navigateTo('news'); return false;">Tin Tức</a></li>
+          </ul>
+        </div>
+
+        <!-- Col 3: Member Services -->
+        <div id="footerMemberCol">
+          <h4 class="footer-col-title">Thành Viên</h4>
+          <ul class="footer-links-list text-xs">
+            <li><a href="#" onclick="window.app.navigateTo('member-pass'); return false;">Thẻ Thành Viên</a></li>
+          </ul>
+        </div>
+
+        <!-- Col 4: Contact & HQ -->
+        <div>
+          <h4 class="footer-col-title">Liên Hệ Trực Tiếp</h4>
+          <p class="text-xs text-muted mb-2">
+            📍 <strong>Địa chỉ:</strong> Đại học Thái Nguyên Phân hiệu tại Hà Giang
+          </p>
+          <p class="text-xs text-muted mb-2">
+            📧 <strong>Gmail:</strong> clbcotnuhgc@gmail.com
+          </p>
+          <p class="text-xs text-muted mb-2">
+            📞 <strong>Hotline/ Zalo:</strong> 0346578422
+          </p>
+          <p class="text-xs text-muted mb-2">
+            🌐 <strong>Fanpage:</strong> CLB Cờ TNU - HGC
+          </p>
+          <p class="text-xs text-gold">
+            💳 <strong>STK (MB BANK):</strong> 80402233445566
+          </p>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar">
+        <span>© 2026 CLB Cờ TNU - HGC (Đại học Thái Nguyên Phân hiệu tại Hà Giang).</span>
+        <span>Ban Điều Hành CLB Cờ TNU - HGC</span>
+      </div>
+    </footer>
+
+    <!-- ======================================================================
+         MOBILE-FIRST BOTTOM NAVIGATION DOCK WITH CENTRAL FLOATING ACTION BUTTON
+         As explicitly required in proposal:
+         "Trên Điện thoại (Mobile-First): Nút 'Quét mã QR' được đặt làm
+         Nút thao tác nhanh (Floating Action Button) nổi bật ngay giữa màn hình"
+         ====================================================================== -->
+    <nav class="mobile-bottom-bar" id="mobileBottomBar">
+      <button class="mobile-nav-btn active" data-view="home">
+        <span class="icon">🏠</span>
+        <span>Trang chủ</span>
+      </button>
+
+      <button class="mobile-nav-btn" data-view="leaderboard">
+        <span class="icon">🏆</span>
+        <span>Xếp hạng</span>
+      </button>
+
+      <!-- Prominent Center Floating Action Button (FAB) for Instant QR Scanner -->
+      <button class="mobile-fab-qr" id="mobileFabQr" title="Quét Mã QR Điểm Danh Ngay">
+        <span class="fab-icon">📷</span>
+        <span class="fab-text">Quét QR</span>
+      </button>
+
+      <button class="mobile-nav-btn" data-view="events">
+        <span class="icon">📅</span>
+        <span>Hoạt động</span>
+      </button>
+
+      <button class="mobile-nav-btn" data-view="member-pass">
+        <span class="icon">💳</span>
+        <span>Thẻ thành viên</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Main JavaScript Module Entry -->
+  <script type="module" src="/src/js/app.js"></script>
+</body>
+</html>

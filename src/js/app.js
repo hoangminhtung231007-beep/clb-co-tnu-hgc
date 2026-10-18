@@ -19,6 +19,7 @@ class App {
     this.memberDisciplineFilter = 'all';
     this.analyticsStartDate = '2026-09-01';
     this.analyticsEndDate = '2027-06-30';
+    this.firebaseUnlocked = false;
 
     this.init();
   }
@@ -143,17 +144,18 @@ class App {
   updateFirebaseBadge(status, lastSync) {
     const sidebarBadge = document.getElementById('adminFirebaseSidebarBadge');
     if (sidebarBadge) {
+      const lockTag = this.firebaseUnlocked ? '' : ' 🔒';
       if (status === 'connected') {
-        sidebarBadge.textContent = 'ONLINE';
+        sidebarBadge.textContent = `ONLINE${lockTag}`;
         sidebarBadge.className = 'admin-nav-badge badge-emerald active-glow';
       } else if (status === 'connecting') {
-        sidebarBadge.textContent = 'CONNECTING';
+        sidebarBadge.textContent = `CONNECTING${lockTag}`;
         sidebarBadge.className = 'admin-nav-badge badge-gold';
       } else if (status === 'error') {
-        sidebarBadge.textContent = 'LỖI';
+        sidebarBadge.textContent = `LỖI${lockTag}`;
         sidebarBadge.className = 'admin-nav-badge badge-rose';
       } else {
-        sidebarBadge.textContent = 'LOCAL';
+        sidebarBadge.textContent = `LOCAL${lockTag}`;
         sidebarBadge.className = 'admin-nav-badge';
       }
     }
@@ -1542,9 +1544,10 @@ class App {
             <div class="admin-nav-item ${this.adminSubView === 'admin-firebase' ? 'active' : ''}" data-sub="admin-firebase">
               <div class="admin-nav-left">
                 <span>☁️</span> <span>Firebase Cloud</span>
+                ${!this.firebaseUnlocked ? '<span style="font-size: 11px; margin-left: 4px; opacity: 0.8;" title="Yêu cầu mật khẩu để mở khóa">🔒</span>' : ''}
               </div>
               <span class="admin-nav-badge ${firebaseService.status === 'connected' ? 'badge-emerald active-glow' : ''}" id="adminFirebaseSidebarBadge">
-                ${firebaseService.status === 'connected' ? 'ONLINE' : (firebaseService.status === 'connecting' ? 'CONNECTING' : (firebaseService.status === 'error' ? 'LỖI' : 'LOCAL'))}
+                ${firebaseService.status === 'connected' ? (this.firebaseUnlocked ? 'ONLINE' : 'ONLINE 🔒') : (this.firebaseUnlocked ? 'LOCAL' : 'LOCAL 🔒')}
               </span>
             </div>
           </aside>
@@ -1560,6 +1563,14 @@ class App {
       item.addEventListener('click', () => {
         sound.playClick();
         const sub = item.getAttribute('data-sub');
+        if (sub === 'admin-firebase' && !this.firebaseUnlocked) {
+          this.promptFirebasePassword(() => {
+            this.firebaseUnlocked = true;
+            this.adminSubView = 'admin-firebase';
+            this.renderAdminDashboard(container);
+          });
+          return;
+        }
         this.adminSubView = sub;
         this.renderAdminDashboard(container);
       });
@@ -1592,7 +1603,12 @@ class App {
         this.renderAdminAnalytics(container);
         break;
       case 'admin-firebase':
-        this.renderAdminFirebase(container);
+        if (!this.firebaseUnlocked) {
+          this.adminSubView = 'admin-overview';
+          this.renderAdminOverview(container);
+        } else {
+          this.renderAdminFirebase(container);
+        }
         break;
       default:
         this.renderAdminOverview(container);
@@ -3102,12 +3118,15 @@ class App {
             <h2 class="text-xl font-bold mt-1 text-white">Cơ Sở Dữ Liệu Đám Mây Firebase Firestore</h2>
             <p class="text-muted text-xs">Đồng bộ dữ liệu thời gian thực giữa máy tính Ban Chủ Nhiệm và toàn thể điện thoại kỳ thủ</p>
           </div>
-          <div class="d-flex gap-2 align-center">
+          <div class="d-flex gap-2 align-center flex-wrap">
             <button id="btnManualPushCloud" class="btn btn-gold btn-sm" ${!isConnected ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} title="Tải toàn bộ dữ liệu trên máy tính này lên Cloud">
               <span>⚡</span> <span>Đẩy Dữ Liệu Lên Cloud</span>
             </button>
             <button id="btnManualPullCloud" class="btn btn-outline btn-sm" ${!isConnected ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} title="Tải dữ liệu mới nhất từ Cloud về máy tính này">
               <span>📥</span> <span>Kéo Dữ Liệu Về Máy</span>
+            </button>
+            <button id="btnLockFirebase" class="btn btn-outline-rose btn-sm" title="Khóa bảo vệ lại mục Firebase Cloud">
+              <span>🔒</span> <span>Khóa Lại</span>
             </button>
           </div>
         </div>
@@ -3340,6 +3359,21 @@ service cloud.firestore {
       });
     });
 
+    // Lock button
+    const btnLock = container.querySelector('#btnLockFirebase');
+    btnLock?.addEventListener('click', () => {
+      sound.playClick();
+      this.firebaseUnlocked = false;
+      this.adminSubView = 'admin-overview';
+      modalManager.showAlert({
+        type: 'info',
+        title: 'Đã khóa bảo vệ',
+        message: 'Mục Firebase Cloud đã được khóa an toàn. Bạn sẽ cần nhập lại mật khẩu khi truy cập lần sau.'
+      });
+      const dashboard = document.getElementById('mainViewport');
+      if (dashboard) this.renderAdminDashboard(dashboard);
+    });
+
     // Copy Rules
     btnCopyRules?.addEventListener('click', () => {
       const rules = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if true;\n    }\n  }\n}`;
@@ -3350,6 +3384,74 @@ service cloud.firestore {
         }, 1500);
       });
     });
+  }
+
+  promptFirebasePassword(onSuccess) {
+    const contentHtml = `
+      <div style="padding: 10px 4px;">
+        <div class="text-center mb-3">
+          <div style="font-size: 2.5rem; margin-bottom: 8px;">🔐</div>
+          <h3 class="text-lg font-bold text-white mb-1">Xác Thực Truy Cập Firebase Cloud</h3>
+          <p class="text-xs text-muted mb-0">
+            Khu vực này chứa cấu hình máy chủ đám mây và đồng bộ cơ sở dữ liệu. Vui lòng nhập mật khẩu quản trị để mở khóa:
+          </p>
+        </div>
+
+        <form id="formUnlockFirebase" onsubmit="return false;" class="app-form">
+          <div class="form-group mb-4">
+            <label class="form-label text-xs font-bold text-dim">MẬT KHẨU QUẢN TRỊ BẢO VỆ:</label>
+            <input type="password" id="inputFirebaseUnlockPass" class="form-input" placeholder="Nhập mật khẩu..." autofocus autocomplete="current-password" required>
+            <div id="firebaseUnlockError" class="text-xs text-rose mt-2" style="display:none; font-weight:600;">⚠️ Mật khẩu không chính xác! Vui lòng thử lại.</div>
+          </div>
+
+          <div class="d-flex gap-2 justify-end">
+            <button type="button" class="btn btn-outline btn-sm" id="btnCancelFirebaseUnlock">Hủy Bỏ</button>
+            <button type="submit" class="btn btn-gold btn-sm" id="btnConfirmFirebaseUnlock" style="font-weight:700; padding:8px 18px;">
+              <span>🔓</span> <span>Mở Khóa Truy Cập</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    modalManager.open('Bảo Mật Cơ Sở Dữ Liệu Cloud', contentHtml, null, null);
+
+    setTimeout(() => {
+      const modalEl = document.getElementById('globalAppModal');
+      if (!modalEl) return;
+      const passInp = modalEl.querySelector('#inputFirebaseUnlockPass');
+      const errEl = modalEl.querySelector('#firebaseUnlockError');
+      const form = modalEl.querySelector('#formUnlockFirebase');
+      const btnCancel = modalEl.querySelector('#btnCancelFirebaseUnlock');
+
+      if (passInp) passInp.focus();
+
+      btnCancel?.addEventListener('click', () => {
+        modalManager.close();
+      });
+
+      const handleUnlock = () => {
+        const entered = (passInp?.value || '').trim();
+        const correctPass = localStorage.getItem('TNU_HGC_ADMIN_PASSWORD') || 'admin123456';
+        if (entered === correctPass) {
+          sound.playSuccess();
+          modalManager.close();
+          onSuccess && onSuccess();
+        } else {
+          sound.playAlert();
+          if (errEl) errEl.style.display = 'block';
+          if (passInp) {
+            passInp.value = '';
+            passInp.focus();
+          }
+        }
+      };
+
+      form?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleUnlock();
+      });
+    }, 50);
   }
 
   parseFirebaseConfigInput(raw) {

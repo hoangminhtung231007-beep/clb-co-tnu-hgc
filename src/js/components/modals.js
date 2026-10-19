@@ -2063,6 +2063,95 @@ export const modalManager = {
     }, '🎓 Xác Nhận Tốt Nghiệp & Tri Ân');
   },
 
+  // Helper verify DOB as password for members
+  verifyMemberDobPassword(inputPass, member) {
+    if (!inputPass || !member) return false;
+    const cleanInput = inputPass.trim().replace(/\s+/g, '');
+    
+    // Custom password override if set
+    if (member.password && cleanInput === String(member.password).trim()) {
+      return true;
+    }
+
+    if (!member.dob) {
+      return true;
+    }
+
+    const rawDob = String(member.dob).trim();
+    let y = '', m = '', d = '';
+
+    if (rawDob.includes('-')) {
+      const parts = rawDob.split('-');
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          y = parts[0];
+          m = parts[1].padStart(2, '0');
+          d = parts[2].padStart(2, '0');
+        } else {
+          d = parts[0].padStart(2, '0');
+          m = parts[1].padStart(2, '0');
+          y = parts[2];
+        }
+      }
+    } else if (rawDob.includes('/')) {
+      const parts = rawDob.split('/');
+      if (parts.length === 3) {
+        if (parts[2].length === 4) {
+          d = parts[0].padStart(2, '0');
+          m = parts[1].padStart(2, '0');
+          y = parts[2];
+        } else {
+          y = parts[0];
+          m = parts[1].padStart(2, '0');
+          d = parts[2].padStart(2, '0');
+        }
+      }
+    } else if (/^\d{8}$/.test(rawDob)) {
+      if (parseInt(rawDob.slice(0, 4), 10) > 1900) {
+        y = rawDob.slice(0, 4);
+        m = rawDob.slice(4, 6);
+        d = rawDob.slice(6, 8);
+      } else {
+        d = rawDob.slice(0, 2);
+        m = rawDob.slice(2, 4);
+        y = rawDob.slice(4, 8);
+      }
+    }
+
+    if (y && m && d) {
+      const dNum = parseInt(d, 10);
+      const mNum = parseInt(m, 10);
+
+      const validList = [
+        `${d}${m}${y}`,              // 23102007
+        `${d}/${m}/${y}`,            // 23/10/2007
+        `${d}-${m}-${y}`,            // 23-10-2007
+        `${d}.${m}.${y}`,            // 23.10.2007
+        `${y}-${m}-${d}`,            // 2007-10-23
+        `${y}/${m}/${d}`,            // 2007/10/23
+        `${y}${m}${d}`,              // 20071023
+        `${dNum}${mNum}${y}`,        // without leading zero
+        `${dNum}/${mNum}/${y}`,
+        `${dNum}-${mNum}-${y}`,
+        `${dNum}.${mNum}.${y}`
+      ];
+
+      if (validList.includes(cleanInput)) return true;
+
+      // Also compare bare digits
+      const inputDigits = cleanInput.replace(/\D/g, '');
+      const dobDigitsDMY = `${d}${m}${y}`;
+      const dobDigitsYMD = `${y}${m}${d}`;
+      if (inputDigits === dobDigitsDMY || inputDigits === dobDigitsYMD) return true;
+    } else {
+      const cleanRaw = rawDob.replace(/\s+/g, '');
+      if (cleanInput === cleanRaw) return true;
+      if (cleanInput.replace(/\D/g, '') === cleanRaw.replace(/\D/g, '')) return true;
+    }
+
+    return false;
+  },
+
   // 9. Login Modal (Member / Admin)
   openLoginModal(defaultTab = 'member') {
     const state = store.getState();
@@ -2075,7 +2164,7 @@ export const modalManager = {
             💳 Thành Viên CLB
           </button>
           <button type="button" class="btn btn-sm ${defaultTab === 'admin' ? 'btn-gold' : 'btn-outline'}" id="tabLoginAdmin" style="flex: 1; font-weight: 600; padding: 8px 12px;">
-            ⚡ Quản Trị Viên (Admin)
+            👑 Quản Trị Viên (Admin)
           </button>
         </div>
 
@@ -2092,14 +2181,17 @@ export const modalManager = {
             </div>
           ` : ''}
           <div class="form-group mb-3">
-            <label class="form-label">${members.length > 0 ? 'Hoặc nhập Mã Thẻ / MSSV:' : 'Nhập Mã Thẻ hoặc MSSV:'}</label>
-            <input type="text" id="loginMemberInput" class="form-input" placeholder="VD: Mã thẻ thành viên hoặc MSSV..." value="${members[0]?.id || ''}">
+            <label class="form-label">${members.length > 0 ? 'Mã Thẻ hoặc MSSV:' : 'Nhập Mã Thẻ hoặc MSSV:'}</label>
+            <input type="text" id="loginMemberInput" class="form-input" placeholder="VD: Mã thẻ hoặc MSSV..." value="${members[0]?.id || ''}">
           </div>
-          <div class="form-group mb-4">
-            <label class="form-label">Mật khẩu thẻ:</label>
-            <input type="password" id="loginMemberPass" class="form-input" placeholder="Nhập mật khẩu thẻ..." value="">
+          <div class="form-group mb-3">
+            <label class="form-label">Mật khẩu (Ngày tháng năm sinh):</label>
+            <input type="password" id="loginMemberPass" class="form-input" placeholder="VD: 23102007 hoặc 23/10/2007..." value="" autocomplete="current-password">
+            <div class="text-xs text-muted mt-1" style="font-size: 0.75rem; color: #94a3b8; line-height: 1.4;">
+              💡 Mật khẩu đăng nhập mặc định là ngày tháng năm sinh của bạn (dạng <code>ddmmyyyy</code> hoặc <code>dd/mm/yyyy</code>).
+            </div>
           </div>
-          <button type="button" class="btn btn-gold btn-md" id="btnSubmitMemberLogin" style="width: 100%; font-weight: 700; padding: 10px;">
+          <button type="button" class="btn btn-gold btn-md" id="btnSubmitMemberLogin" style="width: 100%; font-weight: 700; padding: 10px; margin-top: 4px;">
             Đăng Nhập Thành Viên
           </button>
           <div class="text-center mt-3 text-xs text-muted">
@@ -2137,10 +2229,16 @@ export const modalManager = {
       const secAdmin = modalEl.querySelector('#loginAdminSection');
       const memberSelect = modalEl.querySelector('#loginMemberSelect');
       const memberInput = modalEl.querySelector('#loginMemberInput');
+      const memberPassInput = modalEl.querySelector('#loginMemberPass');
+      const adminPassInput = modalEl.querySelector('#loginAdminPass');
 
       if (memberSelect && memberInput) {
         memberSelect.onchange = () => {
           memberInput.value = memberSelect.value;
+          if (memberPassInput) {
+            memberPassInput.value = '';
+            memberPassInput.focus();
+          }
         };
       }
 
@@ -2175,17 +2273,59 @@ export const modalManager = {
         btnSubMember.onclick = () => {
           sound.playClick();
           const targetId = (memberInput ? memberInput.value : '').trim().toLowerCase();
-          const found = members.find((m) => m.id.toLowerCase() === targetId || m.studentId.toLowerCase() === targetId);
-          const active = found || members[0];
-          if (active) {
-            store.setActiveMember(active.id);
-            store.setRole('member');
-            this.close();
-            modalManager.showAlert(`Đăng nhập thành công! Chào mừng ${active.name} (${active.roleTitle || 'Thành viên'}).`);
-            if (window.app) window.app.navigateTo('member-pass');
+          if (!targetId) {
+            modalManager.showAlert('Vui lòng nhập Mã thẻ hoặc Mã số sinh viên (MSSV)!');
+            return;
           }
+
+          const found = members.find((m) => {
+            const mId = (m.id || '').toLowerCase();
+            const sId = (m.studentId || '').toLowerCase();
+            return mId === targetId || sId === targetId;
+          });
+
+          if (!found) {
+            modalManager.showAlert('Không tìm thấy kỳ thủ với Mã thẻ hoặc MSSV này! Vui lòng kiểm tra lại thông tin.');
+            return;
+          }
+
+          const inputPass = (memberPassInput ? memberPassInput.value : '').trim();
+          if (!inputPass) {
+            modalManager.showAlert('Vui lòng nhập Mật khẩu (Ngày tháng năm sinh của kỳ thủ)!');
+            memberPassInput && memberPassInput.focus();
+            return;
+          }
+
+          if (!this.verifyMemberDobPassword(inputPass, found)) {
+            modalManager.showAlert('Mật khẩu không chính xác! Mật khẩu đăng nhập là Ngày tháng năm sinh của bạn (Ví dụ: 23102007 hoặc 23/10/2007).');
+            memberPassInput && memberPassInput.focus();
+            return;
+          }
+
+          store.setActiveMember(found.id);
+          store.setRole('member');
+          this.close();
+          modalManager.showAlert(`Đăng nhập thành công! Chào mừng ${found.name} (${found.roleTitle || 'Thành viên'}).`);
+          if (window.app) window.app.navigateTo('member-pass');
         };
       }
+
+      memberPassInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          btnSubMember?.click();
+        }
+      });
+      memberInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (memberPassInput && !memberPassInput.value) {
+            memberPassInput.focus();
+          } else {
+            btnSubMember?.click();
+          }
+        }
+      });
 
       const btnSubAdmin = modalEl.querySelector('#btnSubmitAdminLogin');
       if (btnSubAdmin) {
@@ -2209,6 +2349,13 @@ export const modalManager = {
           }
         };
       }
+
+      adminPassInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          btnSubAdmin?.click();
+        }
+      });
     }, 50);
   },
 

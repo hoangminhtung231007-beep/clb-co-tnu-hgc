@@ -101,35 +101,35 @@ export const memberCardComponent = {
                   <div class="id-details-grid">
                     <div class="id-field">
                       <span class="id-label">MÃ THẺ:</span>
-                      <span class="id-val font-mono">${member.id}</span>
+                      <span class="id-val font-mono val-id">${member.id}</span>
                     </div>
                     <div class="id-field">
                       <span class="id-label">MSSV:</span>
-                      <span class="id-val font-mono">${member.studentId || 'Chưa cập nhật'}</span>
+                      <span class="id-val font-mono val-mssv">${member.studentId || 'Chưa cập nhật'}</span>
                     </div>
                     <div class="id-field">
                       <span class="id-label">NGÀY SINH:</span>
-                      <span class="id-val">${memberDob}</span>
+                      <span class="id-val font-mono val-dob">${memberDob}</span>
                     </div>
                     <div class="id-field">
                       <span class="id-label">KHÓA:</span>
-                      <span class="id-val font-mono">${memberCohort}</span>
+                      <span class="id-val font-mono val-cohort">${memberCohort}</span>
                     </div>
                     <div class="id-field">
                       <span class="id-label">LỚP:</span>
-                      <span class="id-val" title="${memberClass}">${memberClass}</span>
+                      <span class="id-val val-class" title="${memberClass}">${memberClass}</span>
                     </div>
                     <div class="id-field">
                       <span class="id-label">KHOA:</span>
-                      <span class="id-val" title="${memberFaculty}">${memberFaculty}</span>
+                      <span class="id-val val-faculty" title="${memberFaculty}">${memberFaculty}</span>
                     </div>
                     <div class="id-field">
                       <span class="id-label">CHỨC VỤ:</span>
-                      <span class="id-val">${member.roleTitle}</span>
+                      <span class="id-val val-role">${member.roleTitle}</span>
                     </div>
                     <div class="id-field">
                       <span class="id-label">GIA NHẬP:</span>
-                      <span class="id-val">${memberJoinDate}</span>
+                      <span class="id-val font-mono val-join">${memberJoinDate}</span>
                     </div>
                   </div>
                 </div>

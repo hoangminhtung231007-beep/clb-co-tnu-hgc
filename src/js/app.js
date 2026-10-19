@@ -155,8 +155,6 @@ class App {
     if (navUserBadge) {
       if (isAdmin) {
         navUserBadge.innerHTML = `<button type="button" class="btn btn-outline btn-xs" style="font-size:0.75rem; padding: 4px 8px; cursor: pointer; border-radius: 20px; border-color: rgba(212,175,55,0.4); color: var(--gold-light); background: rgba(212,175,55,0.1); white-space: nowrap;" title="Buồng lái Quản trị viên"><span>👑</span> Quản Trị Viên</button>`;
-      } else if (!isGuest && activeMember) {
-        navUserBadge.innerHTML = `<button type="button" class="btn btn-outline btn-xs" style="font-size:0.75rem; padding: 4px 10px; cursor: pointer; border-radius: 20px; border-color: rgba(56,189,248,0.4); color: var(--accent-cyan); background: rgba(56,189,248,0.1); white-space: nowrap;" title="Xem Thẻ Thành Viên"><span>💳</span> ${activeMember.name}</button>`;
       } else {
         navUserBadge.innerHTML = '';
       }

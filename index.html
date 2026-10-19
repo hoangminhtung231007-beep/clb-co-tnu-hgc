@@ -162,10 +162,10 @@
         <span>Xếp hạng</span>
       </button>
 
-      <!-- Prominent Center Floating Action Button (FAB) for Instant QR Scanner -->
-      <button class="mobile-fab-qr" id="mobileFabQr" title="Quét Mã QR Điểm Danh Ngay">
-        <span class="fab-icon">📷</span>
-        <span class="fab-text">Quét QR</span>
+      <!-- Center Floating Action Button (FAB) -->
+      <button class="mobile-fab-center" id="mobileFabCenter" title="Thao tác nhanh">
+        <span class="fab-icon" id="mobileFabIcon">📝</span>
+        <span class="fab-text" id="mobileFabText">Đăng ký</span>
       </button>
 
       <button class="mobile-nav-btn" data-view="events">
@@ -173,11 +173,60 @@
         <span>Hoạt động</span>
       </button>
 
-      <button class="mobile-nav-btn" data-view="member-pass">
-        <span class="icon">💳</span>
-        <span>Thẻ thành viên</span>
+      <button class="mobile-nav-btn" id="btnMobileToggleMenu" data-action="toggle-menu" title="Mở danh mục menu">
+        <span class="icon">☰</span>
+        <span>Menu</span>
       </button>
     </nav>
+
+    <!-- Mobile Drawer Menu Overlay -->
+    <div class="mobile-drawer-overlay" id="mobileDrawerOverlay">
+      <div class="mobile-drawer" id="mobileDrawer">
+        <div class="mobile-drawer-header">
+          <div class="brand-wrapper">
+            <img src="/logo.png" alt="Logo CLB" class="brand-logo-img" style="width:34px; height:34px;">
+            <div class="brand-text">
+              <div class="brand-name" style="font-size: 0.95rem;">CLB CỜ <span class="gold-accent">TNU - HGC</span></div>
+              <div class="brand-sub" style="font-size: 0.65rem;">DANH MỤC HỆ THỐNG</div>
+            </div>
+          </div>
+          <button type="button" class="btn-drawer-close" id="btnCloseMobileDrawer" title="Đóng menu">✕</button>
+        </div>
+
+        <div class="mobile-drawer-body">
+          <!-- Auth Info / Greeting Card -->
+          <div class="mobile-drawer-auth" id="mobileDrawerAuth"></div>
+
+          <!-- Drawer Navigation Links -->
+          <div class="mobile-drawer-links">
+            <button class="mobile-drawer-item active" data-view="home">
+              <span class="drawer-icon">🏠</span> <span>Trang Chủ</span>
+            </button>
+            <button class="mobile-drawer-item" data-view="about">
+              <span class="drawer-icon">📜</span> <span>Giới Thiệu CLB</span>
+            </button>
+            <button class="mobile-drawer-item" data-view="org">
+              <span class="drawer-icon">👥</span> <span>Cơ Cấu Nhân Sự</span>
+            </button>
+            <button class="mobile-drawer-item" data-view="leaderboard">
+              <span class="drawer-icon">🏆</span> <span>Bảng Xếp Hạng Kỳ Thủ</span>
+            </button>
+            <button class="mobile-drawer-item" data-view="events">
+              <span class="drawer-icon">📅</span> <span>Lịch Hoạt Động CLB</span>
+            </button>
+            <button class="mobile-drawer-item" data-view="news">
+              <span class="drawer-icon">📰</span> <span>Tin Tức & Bài Viết</span>
+            </button>
+            <button class="mobile-drawer-item" data-view="member-pass" id="drawerItemMemberPass">
+              <span class="drawer-icon">💳</span> <span>Thẻ Thành Viên Điện Tử</span>
+            </button>
+          </div>
+
+          <!-- Drawer Bottom Actions -->
+          <div class="mobile-drawer-footer" id="mobileDrawerFooter"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Main JavaScript Module Entry -->

@@ -161,6 +161,135 @@ class App {
         navUserBadge.innerHTML = '';
       }
     }
+
+    // 3. Update Mobile Bottom Bar Center FAB (Đăng ký for Guest, Thẻ TV for Member)
+    const fabIcon = document.getElementById('mobileFabIcon');
+    const fabText = document.getElementById('mobileFabText');
+    const fabCenter = document.getElementById('mobileFabCenter');
+    if (fabIcon && fabText && fabCenter) {
+      if (isGuest) {
+        fabIcon.textContent = '📝';
+        fabText.textContent = 'Đăng ký';
+        fabCenter.title = 'Đăng Ký Tham Gia CLB Cờ TNU - HGC';
+      } else {
+        fabIcon.textContent = '💳';
+        fabText.textContent = 'Thẻ TV';
+        fabCenter.title = 'Xem Thẻ Thành Viên Điện Tử';
+      }
+    }
+
+    this.updateMobileDrawerContent();
+  }
+
+  updateMobileDrawerContent() {
+    const state = store.getState();
+    const role = state.currentSession.role;
+    const activeMember = store.getActiveMember();
+    const isGuest = role === 'guest';
+    const drawerOverlay = document.getElementById('mobileDrawerOverlay');
+    if (!drawerOverlay) return;
+
+    // Highlight active link
+    drawerOverlay.querySelectorAll('.mobile-drawer-item').forEach((item) => {
+      const v = item.getAttribute('data-view');
+      item.classList.toggle('active', v === this.currentView);
+    });
+
+    // Hide or show Thẻ thành viên in drawer
+    const drawerPassItem = document.getElementById('drawerItemMemberPass');
+    if (drawerPassItem) {
+      drawerPassItem.style.display = isGuest ? 'none' : 'flex';
+    }
+
+    // Render Auth Greeting Card in Drawer
+    const authBox = document.getElementById('mobileDrawerAuth');
+    if (authBox) {
+      if (isGuest) {
+        authBox.innerHTML = `
+          <div class="card p-3 mb-3" style="background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.25);">
+            <div class="d-flex align-center justify-between">
+              <div>
+                <div class="text-xs font-bold text-gold">Chào mừng kỳ thủ mới!</div>
+                <div class="text-xs text-muted" style="margin-top:2px;">Đăng ký tham gia để cấp Thẻ Thành Viên</div>
+              </div>
+              <button class="btn btn-gold btn-xs" id="btnDrawerRegister" style="padding: 5px 12px; font-weight:700;">Đăng Ký</button>
+            </div>
+          </div>
+        `;
+      } else {
+        authBox.innerHTML = `
+          <div class="card p-3 mb-3" style="background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.25);">
+            <div class="d-flex align-center gap-2">
+              <img src="${activeMember?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--accent-cyan);">
+              <div style="flex:1; min-width:0;">
+                <div class="text-xs font-bold text-white text-truncate">${activeMember?.name || 'Thành Viên'}</div>
+                <div class="text-xs text-dim">${activeMember?.id || ''} • ${activeMember?.roleTitle || 'Thành viên'}</div>
+              </div>
+              <span class="badge badge-cyan" style="font-size:11px;">Elo ${activeMember?.elo || 1200}</span>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Render Bottom Actions in Drawer
+    const footerBox = document.getElementById('mobileDrawerFooter');
+    if (footerBox) {
+      if (isGuest) {
+        footerBox.innerHTML = `
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline btn-sm w-100" id="btnDrawerLogin" style="padding: 9px; font-weight: 600;">
+              <span>🔑</span> <span>Đăng Nhập</span>
+            </button>
+          </div>
+          <div class="text-center mt-2">
+            <a href="#" id="btnDrawerAdminLink" class="text-dim hover-gold text-xs" style="font-size:11px;">🔒 Dành cho Quản trị viên</a>
+          </div>
+        `;
+      } else {
+        footerBox.innerHTML = `
+          <button class="btn btn-outline btn-sm w-100" id="btnDrawerLogout" style="padding: 9px; font-weight: 600; border-color: rgba(244,63,94,0.3); color: #fb7185;">
+            <span>🚪</span> <span>Đăng Xuất Tài Khoản</span>
+          </button>
+        `;
+      }
+    }
+
+    // Re-bind actions inside drawer
+    const closeDrawer = () => {
+      drawerOverlay.classList.remove('active');
+      document.body.style.overflow = '';
+    };
+
+    const btnDrawerReg = drawerOverlay.querySelector('#btnDrawerRegister');
+    btnDrawerReg?.addEventListener('click', () => {
+      sound.playClick();
+      closeDrawer();
+      modalManager.openClubRegistrationModal();
+    });
+
+    const btnDrawerLogin = drawerOverlay.querySelector('#btnDrawerLogin');
+    btnDrawerLogin?.addEventListener('click', () => {
+      sound.playClick();
+      closeDrawer();
+      modalManager.openLoginModal('member');
+    });
+
+    const btnDrawerLogout = drawerOverlay.querySelector('#btnDrawerLogout');
+    btnDrawerLogout?.addEventListener('click', () => {
+      sound.playClick();
+      closeDrawer();
+      store.setRole('guest');
+      this.navigateTo('home');
+    });
+
+    const btnDrawerAdmin = drawerOverlay.querySelector('#btnDrawerAdminLink');
+    btnDrawerAdmin?.addEventListener('click', (e) => {
+      e.preventDefault();
+      sound.playClick();
+      closeDrawer();
+      modalManager.openLoginModal('admin');
+    });
   }
 
   updateFirebaseBadge(status, lastSync) {
@@ -285,25 +414,60 @@ class App {
     const mobileBtns = document.querySelectorAll('.mobile-nav-btn');
     mobileBtns.forEach((btn) => {
       btn.addEventListener('click', () => {
-        sound.playClick();
         const targetView = btn.getAttribute('data-view');
-        this.navigateTo(targetView);
+        if (targetView) {
+          sound.playClick();
+          this.navigateTo(targetView);
+        }
       });
     });
 
-    // Mobile FAB QR Check-in Button
-    const mobileFabQr = document.getElementById('mobileFabQr');
-    if (mobileFabQr) {
-      mobileFabQr.addEventListener('click', () => {
+    // Mobile FAB Center Button (Đăng ký for Guest, Thẻ TV for Member)
+    const mobileFabCenter = document.getElementById('mobileFabCenter');
+    if (mobileFabCenter) {
+      mobileFabCenter.addEventListener('click', () => {
         sound.playClick();
-        const state = store.getState();
-        if (state.currentSession.role === 'guest') {
-          modalManager.openLoginModal('admin');
+        const curRole = store.getState().currentSession?.role;
+        if (curRole === 'member') {
+          this.navigateTo('member-pass');
         } else {
-          this.navigateTo('admin', 'admin-checkin');
+          modalManager.openClubRegistrationModal();
         }
       });
     }
+
+    // Mobile 3-Bar Toggle Menu Button & Drawer Events
+    const btnToggleMenu = document.getElementById('btnMobileToggleMenu');
+    const drawerOverlay = document.getElementById('mobileDrawerOverlay');
+    const btnCloseDrawer = document.getElementById('btnCloseMobileDrawer');
+
+    const openDrawer = () => {
+      sound.playClick();
+      drawerOverlay?.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      this.updateMobileDrawerContent();
+    };
+
+    const closeDrawer = () => {
+      drawerOverlay?.classList.remove('active');
+      document.body.style.overflow = '';
+    };
+
+    btnToggleMenu?.addEventListener('click', openDrawer);
+    btnCloseDrawer?.addEventListener('click', closeDrawer);
+    drawerOverlay?.addEventListener('click', (e) => {
+      if (e.target === drawerOverlay) closeDrawer();
+    });
+
+    // Mobile Drawer Links Click
+    document.querySelectorAll('.mobile-drawer-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        sound.playClick();
+        const targetView = item.getAttribute('data-view');
+        closeDrawer();
+        if (targetView) this.navigateTo(targetView);
+      });
+    });
   }
 
   navigateTo(view, subView = null) {
@@ -340,8 +504,13 @@ class App {
       link.classList.toggle('active', link.getAttribute('data-view') === view);
     });
     document.querySelectorAll('.mobile-nav-btn').forEach((btn) => {
-      btn.classList.toggle('active', btn.getAttribute('data-view') === view);
+      const v = btn.getAttribute('data-view');
+      btn.classList.toggle('active', !!v && v === view);
     });
+    const fabCenter = document.getElementById('mobileFabCenter');
+    if (fabCenter) {
+      fabCenter.classList.toggle('active', view === 'member-pass');
+    }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
     this.renderCurrentView();

@@ -50,6 +50,7 @@ class Store {
       if (Array.isArray(remoteData.alumniMembers)) this.state.alumniMembers = remoteData.alumniMembers;
       if (Array.isArray(remoteData.eventFeedback)) this.state.eventFeedback = remoteData.eventFeedback;
       if (Array.isArray(remoteData.fundRecords)) this.state.fundRecords = remoteData.fundRecords;
+      if (Array.isArray(remoteData.fundCampaigns)) this.state.fundCampaigns = remoteData.fundCampaigns;
       if (remoteData.clubInfo && typeof remoteData.clubInfo === 'object') {
         this.state.clubInfo = { ...this.state.clubInfo, ...remoteData.clubInfo };
       }
@@ -138,7 +139,8 @@ class Store {
           },
           alumniBoard: rawBoard.map((m, idx) => ({ ...m, id: syncAlumniCardId(m.id, idx) })),
           alumniMembers: rawMembers.map((m, idx) => ({ ...m, id: syncAlumniCardId(m.id, idx) })),
-          fundRecords: Array.isArray(parsed.fundRecords) ? parsed.fundRecords : (INITIAL_DATA.fundRecords || [])
+          fundRecords: Array.isArray(parsed.fundRecords) ? parsed.fundRecords : (INITIAL_DATA.fundRecords || []),
+          fundCampaigns: (Array.isArray(parsed.fundCampaigns) && parsed.fundCampaigns.length > 0) ? parsed.fundCampaigns : (INITIAL_DATA.fundCampaigns || [])
         };
       }
     } catch (e) {
@@ -1167,6 +1169,84 @@ class Store {
   deleteFundRecord(id) {
     this.state.fundRecords = (this.state.fundRecords || []).filter((r) => r.id !== id);
     this.notify();
+  }
+
+  // ==========================================
+  // FUND CAMPAIGNS (ĐỢT THU QUỸ MỖI THÁNG)
+  // ==========================================
+  addFundCampaign({ title, amount, deadline, description, bankAccount, bankCode, bankOwner }) {
+    const newCamp = {
+      id: `CAMP-${Date.now().toString().slice(-5)}`,
+      title: title || 'Đợt Thu Quỹ Sinh Hoạt',
+      amount: parseInt(amount) || 50000,
+      deadline: deadline || '',
+      description: description || 'Thu quỹ hoạt động định kỳ của CLB Cờ',
+      bankAccount: bankAccount || '0346578422',
+      bankCode: bankCode || 'MB',
+      bankOwner: bankOwner || 'CLB CO TNU HGC',
+      status: 'active',
+      createdAt: new Date().toISOString().slice(0, 10)
+    };
+    if (!Array.isArray(this.state.fundCampaigns)) {
+      this.state.fundCampaigns = [];
+    }
+    this.state.fundCampaigns.unshift(newCamp);
+    this.notify();
+    return newCamp;
+  }
+
+  toggleFundCampaignStatus(campaignId) {
+    const camp = (this.state.fundCampaigns || []).find((c) => c.id === campaignId);
+    if (camp) {
+      camp.status = camp.status === 'active' ? 'closed' : 'active';
+      this.notify();
+    }
+    return camp;
+  }
+
+  deleteFundCampaign(campaignId) {
+    this.state.fundCampaigns = (this.state.fundCampaigns || []).filter((c) => c.id !== campaignId);
+    this.notify();
+  }
+
+  // ==========================================
+  // AUTO-RECORDING: TỰ ĐỘNG GHI NHẬN KHI ĐÓNG QUỸ
+  // ==========================================
+  memberSelfPayFund({ campaignId, memberId, note, method = 'VietQR Tự Động' }) {
+    const member = this.state.members.find((m) => m.id === memberId);
+    if (!member) throw new Error('Không tìm thấy thông tin thành viên!');
+
+    const camp = (this.state.fundCampaigns || []).find((c) => c.id === campaignId);
+    const amount = camp ? camp.amount : 50000;
+    const term = camp ? camp.title : 'Đóng Quỹ CLB';
+
+    if (!Array.isArray(this.state.fundRecords)) {
+      this.state.fundRecords = [];
+    }
+    const alreadyPaid = this.state.fundRecords.some(
+      (r) => r.memberId === memberId && (r.campaignId === campaignId || r.term === term)
+    );
+    if (alreadyPaid) {
+      throw new Error(`Kỳ thủ ${member.name} đã được ghi nhận hoàn thành đợt thu [${term}] rồi!`);
+    }
+
+    const newRecord = {
+      id: `FND-${Date.now().toString().slice(-5)}`,
+      campaignId: campaignId || '',
+      memberId: member.id,
+      memberName: member.name || member.fullName,
+      studentId: member.studentId || '',
+      amount: amount,
+      term: term,
+      date: new Date().toISOString().slice(0, 10),
+      note: note || `Đóng qua ${method} - Tự động đối soát cú pháp [${member.studentId || 'Kỳ thủ'}]`,
+      confirmedBy: 'Hệ Thống Tự Động (VietQR)',
+      status: 'confirmed'
+    };
+
+    this.state.fundRecords.unshift(newRecord);
+    this.notify();
+    return newRecord;
   }
 }
 

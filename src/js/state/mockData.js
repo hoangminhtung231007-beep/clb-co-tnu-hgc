@@ -30,5 +30,19 @@ export const INITIAL_DATA = {
   attendanceLogs: [],
   articles: [],
   eventFeedback: [],
-  fundRecords: []
+  fundRecords: [],
+  fundCampaigns: [
+    {
+      id: "CAMP-1026",
+      title: "Quỹ Sinh Hoạt Tháng 10/2026",
+      amount: 30000,
+      deadline: "2026-10-31",
+      description: "Tiền trà nước sinh hoạt, mua sắm quân cờ mới và khen thưởng kỳ thủ tích cực",
+      bankAccount: "0346578422",
+      bankCode: "MB",
+      bankOwner: "CLB CO TNU HGC",
+      status: "active",
+      createdAt: "2026-10-01"
+    }
+  ]
 };

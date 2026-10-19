@@ -3367,6 +3367,567 @@ export const modalManager = {
         if (typeof onComplete === 'function') onComplete();
       });
     }
+  },
+
+  // 15. Create Fund Campaign Modal (Tạo đợt thu quỹ theo tháng / sự kiện)
+  openCreateFundCampaignModal(onComplete) {
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const defaultDeadline = nextMonth.toISOString().slice(0, 10);
+
+    const contentHtml = `
+      <div class="fund-campaign-modal p-2" style="max-width: 620px;">
+        <div class="mb-3">
+          <span class="badge badge-gold">ĐỢT THU QUỸ MỚI</span>
+          <h3 class="text-lg font-bold text-white mt-1">Tạo Đợt Thu Quỹ Theo Tháng / Sự Kiện</h3>
+          <p class="text-xs text-muted">Thiết lập định mức thu theo từng tháng hoặc giải đấu. Hệ thống sẽ tự sinh mã VietQR động để thành viên thanh toán tự động ghi nhận.</p>
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label text-gold font-bold text-xs">Tên Đợt Thu Quỹ *</label>
+          <input type="text" class="form-control" id="campTitleInput" placeholder="VD: Quỹ Sinh Hoạt Tháng 11/2026, Quỹ Giải Cờ Thu Đông..." value="Quỹ Sinh Hoạt Tháng ${(new Date().getMonth() + 1)}/${new Date().getFullYear()}">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label text-gold font-bold text-xs">Định Mức Đóng Mỗi Kỳ Thủ (VNĐ) *</label>
+          <div class="d-flex gap-2 mb-2">
+            <button type="button" class="btn btn-outline btn-xs btn-preset-amount" data-amount="20000">20.000đ</button>
+            <button type="button" class="btn btn-outline btn-xs btn-preset-amount" data-amount="30000">30.000đ</button>
+            <button type="button" class="btn btn-outline btn-xs btn-preset-amount" data-amount="50000">50.000đ</button>
+            <button type="button" class="btn btn-outline btn-xs btn-preset-amount" data-amount="100000">100.000đ</button>
+          </div>
+          <input type="number" class="form-control font-mono font-bold" id="campAmountInput" value="30000" step="5000" style="color: #10b981; font-size: 1.1rem;">
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label text-white text-xs">Hạn Chót Đóng Tiền</label>
+          <input type="date" class="form-control" id="campDeadlineInput" value="${defaultDeadline}">
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label text-white text-xs">Mục Đích Thu & Kế Hoạch Chi Tiêu</label>
+          <textarea class="form-control text-xs" id="campDescInput" rows="2" placeholder="VD: Mua bàn cờ mới, tiền nước uống sinh hoạt hàng tuần và khen thưởng...">Tiền nước uống sinh hoạt hàng tuần, mua sắm bổ sung quân cờ và quỹ khen thưởng hoạt động tháng.</textarea>
+        </div>
+
+        <div class="card p-3 mb-3" style="background: rgba(14,23,46,0.6); border: 1px solid rgba(212,175,55,0.3);">
+          <div class="text-xs font-bold text-gold mb-2">💳 Tài Khoản Ngân Hàng Nhận Tiền (Tạo mã VietQR tự động)</div>
+          <div class="row g-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+              <label class="form-label text-dim text-xs">Ngân hàng</label>
+              <select class="form-control text-xs" id="campBankCodeSelect">
+                <option value="MB" selected>MB Bank (Quân Đội)</option>
+                <option value="VCB">Vietcombank</option>
+                <option value="CTG">VietinBank</option>
+                <option value="BIDV">BIDV</option>
+                <option value="TCB">Techcombank</option>
+                <option value="ACB">ACB</option>
+                <option value="TPB">TPBank</option>
+                <option value="VPB">VPBank</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label text-dim text-xs">Số tài khoản nhận</label>
+              <input type="text" class="form-control text-xs font-mono" id="campBankAccountInput" value="0346578422">
+            </div>
+          </div>
+          <div class="mt-2">
+            <label class="form-label text-dim text-xs">Tên chủ tài khoản (Viết hoa không dấu)</label>
+            <input type="text" class="form-control text-xs" id="campBankOwnerInput" value="CLB CO TNU HGC">
+          </div>
+        </div>
+
+        <div class="d-flex justify-end gap-2">
+          <button type="button" class="btn btn-outline btn-sm" id="btnCancelCamp">Hủy bỏ</button>
+          <button type="button" class="btn btn-gold btn-sm" id="btnSaveCamp">
+            🎯 Tạo & Công Bố Đợt Thu
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.open('Tạo Đợt Thu Quỹ CLB Mới', contentHtml, null, null);
+
+    const modalEl = document.getElementById('globalAppModal');
+    if (modalEl) {
+      modalEl.querySelectorAll('.btn-preset-amount').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          sound.playClick();
+          const amt = btn.getAttribute('data-amount');
+          const input = modalEl.querySelector('#campAmountInput');
+          if (input) input.value = amt;
+        });
+      });
+
+      modalEl.querySelector('#btnCancelCamp')?.addEventListener('click', () => this.close());
+      modalEl.querySelector('#btnSaveCamp')?.addEventListener('click', () => {
+        sound.playClick();
+        const title = modalEl.querySelector('#campTitleInput')?.value?.trim();
+        const amount = parseInt(modalEl.querySelector('#campAmountInput')?.value) || 0;
+        const deadline = modalEl.querySelector('#campDeadlineInput')?.value;
+        const description = modalEl.querySelector('#campDescInput')?.value?.trim();
+        const bankCode = modalEl.querySelector('#campBankCodeSelect')?.value || 'MB';
+        const bankAccount = modalEl.querySelector('#campBankAccountInput')?.value?.trim() || '0346578422';
+        const bankOwner = modalEl.querySelector('#campBankOwnerInput')?.value?.trim() || 'CLB CO TNU HGC';
+
+        if (!title) {
+          modalManager.showAlert('Vui lòng nhập tên đợt thu quỹ!');
+          return;
+        }
+        if (amount <= 0) {
+          modalManager.showAlert('Số tiền định mức phải lớn hơn 0đ!');
+          return;
+        }
+
+        store.addFundCampaign({
+          title,
+          amount,
+          deadline,
+          description,
+          bankCode,
+          bankAccount,
+          bankOwner
+        });
+
+        this.close();
+        modalManager.showAlert(`✅ Đã tạo đợt thu quỹ "${title}" với mức ${amount.toLocaleString('vi-VN')}đ thành công! Kỳ thủ có thể quét mã VietQR tự động thanh toán ngay.`);
+        if (typeof onComplete === 'function') onComplete();
+      });
+    }
+  },
+
+  // 16. VietQR Payment Modal (Thành viên quét QR tự động ghi nhận vào quỹ)
+  openVietQRPaymentModal(campaign, member, onComplete) {
+    if (!campaign) return;
+    const activeMember = member || store.getActiveMember();
+    if (!activeMember) {
+      modalManager.showAlert('Vui lòng đăng nhập thẻ thành viên để đóng quỹ!');
+      return;
+    }
+
+    const bankCode = campaign.bankCode || 'MB';
+    const bankAccount = campaign.bankAccount || '0346578422';
+    const bankOwner = campaign.bankOwner || 'CLB CO TNU HGC';
+    const amount = campaign.amount || 30000;
+    const studentIdClean = (activeMember.studentId || activeMember.phone || activeMember.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
+    const transferNote = `CLBCO ${campaign.id} ${studentIdClean}`;
+
+    const qrUrl = `https://img.vietqr.io/image/${bankCode}-${bankAccount}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(transferNote)}&accountName=${encodeURIComponent(bankOwner)}`;
+
+    const contentHtml = `
+      <div class="vietqr-modal-content p-2" style="max-width: 680px;">
+        <div class="text-center mb-3">
+          <span class="badge badge-emerald">⚡ CƠ CHẾ ĐÓNG QUỸ TỰ ĐỘNG KHÔNG CẦN NHẬP TAY</span>
+          <h3 class="text-lg font-bold text-white mt-1">Quét VietQR Đóng: ${campaign.title}</h3>
+          <p class="text-xs text-muted">Mã QR đã gắn sẵn chính xác số tiền và mã định danh của bạn. Sau khi chuyển khoản, bấm nút xác nhận để hệ thống tự động ghi sổ.</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; align-items: center;" class="mb-3">
+          <!-- QR Card -->
+          <div class="text-center p-3" style="background: #fff; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <img src="${qrUrl}" alt="VietQR Napas 247" style="max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 8px;">
+            <div style="color: #0f172a; font-size: 11px; font-weight: bold; margin-top: 8px;">
+              🛡️ NAPAS 24/7 • VIETQR CHUẨN QUỐC GIA
+            </div>
+          </div>
+
+          <!-- Transaction Info -->
+          <div>
+            <div class="card p-3 mb-3" style="background: rgba(14,23,46,0.8); border: 1px solid var(--border-gold);">
+              <div class="d-flex justify-between align-center mb-2 pb-2" style="border-bottom: 1px dashed rgba(212,175,55,0.2);">
+                <span class="text-xs text-muted">Số tiền cần đóng:</span>
+                <span class="font-bold text-emerald font-mono" style="font-size: 1.25rem;">${amount.toLocaleString('vi-VN')} đ</span>
+              </div>
+              <div class="d-flex justify-between align-center mb-2 pb-2" style="border-bottom: 1px dashed rgba(212,175,55,0.2);">
+                <span class="text-xs text-muted">Ngân hàng:</span>
+                <span class="font-bold text-white text-xs">${bankCode} Bank</span>
+              </div>
+              <div class="d-flex justify-between align-center mb-2 pb-2" style="border-bottom: 1px dashed rgba(212,175,55,0.2);">
+                <span class="text-xs text-muted">Số tài khoản:</span>
+                <span class="d-flex align-center gap-1">
+                  <strong class="font-mono text-gold text-xs">${bankAccount}</strong>
+                  <button type="button" class="btn btn-outline btn-xs py-0 px-1 btn-copy-field" data-copy="${bankAccount}" title="Sao chép">📋</button>
+                </span>
+              </div>
+              <div class="d-flex justify-between align-center mb-2 pb-2" style="border-bottom: 1px dashed rgba(212,175,55,0.2);">
+                <span class="text-xs text-muted">Chủ tài khoản:</span>
+                <span class="font-bold text-white text-xs">${bankOwner}</span>
+              </div>
+              <div class="d-flex justify-between align-center mb-1">
+                <span class="text-xs text-muted">Nội dung CK:</span>
+                <span class="d-flex align-center gap-1">
+                  <strong class="font-mono text-gold text-xs">${transferNote}</strong>
+                  <button type="button" class="btn btn-outline btn-xs py-0 px-1 btn-copy-field" data-copy="${transferNote}" title="Sao chép">📋</button>
+                </span>
+              </div>
+            </div>
+
+            <div class="p-2 mb-3" style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 8px;">
+              <div class="text-xs text-emerald font-bold mb-1">💡 Hướng Dẫn Nộp Quỹ Nhanh:</div>
+              <div class="text-xs text-muted" style="line-height: 1.4;">
+                1. Mở App Ngân hàng (MB, VCB, Momo, Techcombank...) quét mã QR trên.<br>
+                2. App sẽ tự động điền đúng số tiền và nội dung.<br>
+                3. Bấm xác nhận chuyển khoản trên App.<br>
+                4. Nhấn nút <strong>"⚡ Tôi Đã Chuyển Khoản Xong"</strong> bên dưới để hệ thống tự động ghi nhận ngay!
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-gold w-100 py-2 font-bold" id="btnConfirmMemberPaid">
+              ⚡ Tôi Đã Chuyển Khoản Xong (Tự Động Ghi Nhận)
+            </button>
+          </div>
+        </div>
+
+        <div class="text-center">
+          <button type="button" class="btn btn-outline btn-xs" id="btnCloseVietQRModal">Đóng lại</button>
+        </div>
+      </div>
+    `;
+
+    this.open('Thanh Toán Quỹ CLB Bằng VietQR Tự Động', contentHtml, null, null);
+
+    const modalEl = document.getElementById('globalAppModal');
+    if (modalEl) {
+      modalEl.querySelector('#btnCloseVietQRModal')?.addEventListener('click', () => this.close());
+
+      modalEl.querySelectorAll('.btn-copy-field').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          sound.playClick();
+          const text = btn.getAttribute('data-copy');
+          navigator.clipboard.writeText(text);
+          btn.textContent = '✅';
+          setTimeout(() => (btn.textContent = '📋'), 1500);
+        });
+      });
+
+      modalEl.querySelector('#btnConfirmMemberPaid')?.addEventListener('click', () => {
+        sound.playClick();
+        try {
+          const rec = store.memberSelfPayFund({
+            campaignId: campaign.id,
+            memberId: activeMember.id,
+            note: `Tự động đối soát qua VietQR [${transferNote}]`,
+            method: 'VietQR Chuyển Khoản'
+          });
+
+          this.close();
+          sound.playSuccess();
+          modalManager.showAlert(
+            `🎉 Chúc mừng ${activeMember.name}!\n\nHệ thống đã tự động ghi nhận thành công số tiền ${amount.toLocaleString('vi-VN')}đ cho đợt [${campaign.title}].\n\nMã biên nhận điện tử: ${rec.id}\nBan Quản Trị xin chân thành cảm ơn đóng góp của bạn!`
+          );
+          if (typeof onComplete === 'function') onComplete();
+        } catch (err) {
+          modalManager.showAlert(err.message || 'Lỗi xử lý đóng quỹ!');
+        }
+      });
+    }
+  },
+
+  // 17. Campaign VietQR General Modal (Mã QR tổng quát cho cả CLB dán Zalo)
+  openCampaignVietQRGeneralModal(campaign) {
+    if (!campaign) return;
+    const bankCode = campaign.bankCode || 'MB';
+    const bankAccount = campaign.bankAccount || '0346578422';
+    const bankOwner = campaign.bankOwner || 'CLB CO TNU HGC';
+    const amount = campaign.amount || 30000;
+    const generalNote = `CLBCO ${campaign.id} MASV`;
+
+    const qrUrl = `https://img.vietqr.io/image/${bankCode}-${bankAccount}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(generalNote)}&accountName=${encodeURIComponent(bankOwner)}`;
+
+    const contentHtml = `
+      <div class="general-vietqr-modal p-2 text-center" style="max-width: 500px;">
+        <span class="badge badge-gold">MÃ QR ĐỢT THU CHO TOÀN BỘ CLB</span>
+        <h3 class="text-base font-bold text-white mt-1">${campaign.title}</h3>
+        <p class="text-xs text-muted mb-3">Tải ảnh hoặc sao chép mã gửi vào Nhóm Zalo để tất cả kỳ thủ quét nộp.</p>
+
+        <div class="p-3 mb-3" style="background: #fff; border-radius: 12px; display: inline-block;">
+          <img src="${qrUrl}" alt="VietQR" style="max-width: 280px; width: 100%; height: auto; border-radius: 8px;">
+        </div>
+
+        <div class="card p-3 text-left mb-3" style="background: rgba(14,23,46,0.8); border: 1px solid var(--border-gold); font-size: 12px;">
+          <div>💰 <strong>Định mức:</strong> ${(campaign.amount || 0).toLocaleString('vi-VN')} đ / người</div>
+          <div>🏦 <strong>STK:</strong> <span class="font-mono text-gold">${bankAccount}</span> (${bankCode})</div>
+          <div>👤 <strong>Chủ TK:</strong> ${bankOwner}</div>
+          <div>📝 <strong>Cú pháp CK:</strong> <span class="font-mono text-gold">${generalNote}</span> (Thay MASV bằng mã sinh viên của kỳ thủ)</div>
+        </div>
+
+        <div class="d-flex justify-center gap-2">
+          <a href="${qrUrl}" download="VietQR_${campaign.id}.png" target="_blank" class="btn btn-gold btn-sm">
+            📥 Tải Ảnh QR Xuống
+          </a>
+          <button type="button" class="btn btn-outline btn-sm" id="btnCopyZaloTemplate">
+            📋 Sao Chép Cú Pháp Zalo
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.open('Mã VietQR Đợt Thu Quỹ', contentHtml, null, null);
+
+    const modalEl = document.getElementById('globalAppModal');
+    if (modalEl) {
+      modalEl.querySelector('#btnCopyZaloTemplate')?.addEventListener('click', () => {
+        sound.playClick();
+        const text = `📢 THÔNG BÁO NỘP QUỸ: ${campaign.title}\n💰 Định mức: ${(campaign.amount || 0).toLocaleString('vi-VN')}đ / người\n🗓️ Hạn chót: ${campaign.deadline || 'Sớm nhất'}\n🏦 Ngân hàng: ${bankCode} - STK: ${bankAccount}\n👤 Chủ TK: ${bankOwner}\n📝 Cú pháp chuyển khoản: CLBCO ${campaign.id} [MÃ_SINH_VIÊN]\n(Hệ thống website sẽ tự động ghi sổ và cấp biên nhận số ngay khi chuyển khoản)`;
+        navigator.clipboard.writeText(text);
+        modalManager.showAlert('✅ Đã sao chép nội dung thông báo vào bộ nhớ tạm! Bạn có thể dán ngay vào Nhóm Zalo CLB.');
+      });
+    }
+  },
+
+  // 18. Campaign Member Status Modal (Chi tiết ai đã đóng / ai chưa đóng)
+  openCampaignMemberStatusModal(campaign, onComplete) {
+    if (!campaign) return;
+    const state = store.getState();
+    const members = state.members || [];
+    const fundRecords = state.fundRecords || [];
+
+    const paidRecordsMap = new Map();
+    fundRecords.forEach((r) => {
+      if (r.campaignId === campaign.id || r.term === campaign.title) {
+        paidRecordsMap.set(r.memberId, r);
+      }
+    });
+
+    const paidMembers = [];
+    const unpaidMembers = [];
+
+    members.forEach((m) => {
+      const record = paidRecordsMap.get(m.id);
+      if (record) {
+        paidMembers.push({ member: m, record });
+      } else {
+        unpaidMembers.push({ member: m });
+      }
+    });
+
+    const totalCollected = paidMembers.reduce((sum, item) => sum + (parseInt(item.record.amount) || campaign.amount), 0);
+    const expectedTotal = members.length * campaign.amount;
+    const progressPercent = members.length > 0 ? Math.round((paidMembers.length / members.length) * 100) : 0;
+
+    const renderList = (filterType = 'all') => {
+      let filtered = [];
+      if (filterType === 'all') {
+        filtered = members.map((m) => ({ member: m, record: paidRecordsMap.get(m.id) }));
+      } else if (filterType === 'unpaid') {
+        filtered = unpaidMembers.map((item) => ({ member: item.member, record: null }));
+      } else if (filterType === 'paid') {
+        filtered = paidMembers;
+      }
+
+      if (filtered.length === 0) {
+        return `<div class="p-4 text-center text-muted">Không có kỳ thủ nào trong danh mục này.</div>`;
+      }
+
+      return `
+        <div class="table-responsive" style="max-height: 340px; overflow-y: auto;">
+          <table class="data-table text-xs">
+            <thead>
+              <tr>
+                <th>Họ & Tên</th>
+                <th>Mã SV</th>
+                <th>Lớp / Khoa</th>
+                <th>Trạng Thái</th>
+                <th style="text-align: right;">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.map(({ member, record }) => `
+                <tr>
+                  <td><strong>${member.name}</strong></td>
+                  <td><span class="font-mono text-muted">${member.studentId || '---'}</span></td>
+                  <td><span class="text-dim">${member.class || member.cohort || '---'}</span></td>
+                  <td>
+                    ${record ? `
+                      <span class="badge badge-emerald">
+                        ✅ Đã nộp ${(parseInt(record.amount) || campaign.amount).toLocaleString('vi-VN')}đ (${record.date})
+                      </span>
+                    ` : `
+                      <span class="badge badge-warning">⏳ Chưa nộp</span>
+                    `}
+                  </td>
+                  <td style="text-align: right;">
+                    ${record ? `
+                      <span class="text-xs text-muted font-mono">${record.id}</span>
+                    ` : `
+                      <button type="button" class="btn btn-gold btn-xs btn-quick-cash-pay" data-member-id="${member.id}" title="Ghi nhận nộp tiền mặt">
+                        💵 Đã thu tiền mặt
+                      </button>
+                    `}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    };
+
+    const contentHtml = `
+      <div class="campaign-status-modal p-2" style="max-width: 760px;">
+        <div class="mb-3">
+          <span class="badge badge-gold">TIẾN ĐỘ THU QUỸ THEO ĐỢT</span>
+          <h3 class="text-lg font-bold text-white mt-1">${campaign.title}</h3>
+          <p class="text-xs text-muted">Định mức: <strong>${(campaign.amount || 0).toLocaleString('vi-VN')} đ / kỳ thủ</strong> • Hạn chót: <strong>${campaign.deadline || 'Không giới hạn'}</strong></p>
+        </div>
+
+        <!-- Metric KPI -->
+        <div class="row g-2 mb-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+          <div class="card p-2 text-center" style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);">
+            <div class="text-xs text-muted">ĐÃ HOÀN THÀNH</div>
+            <div class="text-xl font-bold text-emerald">${paidMembers.length} / ${members.length} kỳ thủ</div>
+            <div class="text-xs text-dim">${progressPercent}% đạt chỉ tiêu</div>
+          </div>
+          <div class="card p-2 text-center" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);">
+            <div class="text-xs text-muted">CHƯA ĐÓNG QUỸ</div>
+            <div class="text-xl font-bold text-gold">${unpaidMembers.length} kỳ thủ</div>
+            <div class="text-xs text-dim">Cần nhắc nhở</div>
+          </div>
+          <div class="card p-2 text-center" style="background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.3);">
+            <div class="text-xs text-muted">TỔNG TIỀN THU ĐƯỢC</div>
+            <div class="text-xl font-bold text-cyan">${totalCollected.toLocaleString('vi-VN')} đ</div>
+            <div class="text-xs text-dim">Mục tiêu: ${expectedTotal.toLocaleString('vi-VN')} đ</div>
+          </div>
+        </div>
+
+        <!-- Filter tabs & Action -->
+        <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
+          <div class="d-flex gap-1" id="filterStatusGroup">
+            <button type="button" class="btn btn-gold btn-xs btn-status-filter" data-filter="all">Tất cả (${members.length})</button>
+            <button type="button" class="btn btn-outline btn-xs btn-status-filter" data-filter="unpaid">Chưa nộp (${unpaidMembers.length})</button>
+            <button type="button" class="btn btn-outline btn-xs btn-status-filter" data-filter="paid">Đã nộp (${paidMembers.length})</button>
+          </div>
+          <button type="button" class="btn btn-outline btn-xs" id="btnCopyUnpaidZaloReminder">
+            📢 Sao chép DS chưa nộp để gửi Zalo
+          </button>
+        </div>
+
+        <!-- Member list container -->
+        <div id="campaignMemberListContainer" class="card mb-3 p-1">
+          ${renderList('all')}
+        </div>
+
+        <div class="d-flex justify-end">
+          <button type="button" class="btn btn-outline btn-sm" id="btnCloseStatusModal">Đóng lại</button>
+        </div>
+      </div>
+    `;
+
+    this.open('Danh Sách Kỳ Thủ Đóng Quỹ', contentHtml, null, null);
+
+    const modalEl = document.getElementById('globalAppModal');
+    if (modalEl) {
+      modalEl.querySelector('#btnCloseStatusModal')?.addEventListener('click', () => this.close());
+
+      const listContainer = modalEl.querySelector('#campaignMemberListContainer');
+
+      const bindActions = () => {
+        listContainer.querySelectorAll('.btn-quick-cash-pay').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            sound.playClick();
+            const memberId = btn.getAttribute('data-member-id');
+            const targetMember = members.find((m) => m.id === memberId);
+            if (!targetMember) return;
+
+            store.addFundRecord({
+              memberId: targetMember.id,
+              amount: campaign.amount,
+              term: campaign.title,
+              note: `Thu tiền mặt trực tiếp đợt [${campaign.title}]`,
+              confirmedBy: 'Ban Quản Trị'
+            });
+
+            sound.playSuccess();
+            modalManager.showAlert(`✅ Đã ghi nhận thu tiền mặt từ kỳ thủ ${targetMember.name}!`);
+            this.close();
+            this.openCampaignMemberStatusModal(campaign, onComplete);
+            if (typeof onComplete === 'function') onComplete();
+          });
+        });
+      };
+
+      bindActions();
+
+      modalEl.querySelectorAll('.btn-status-filter').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          sound.playClick();
+          modalEl.querySelectorAll('.btn-status-filter').forEach((b) => {
+            b.classList.remove('btn-gold');
+            b.classList.add('btn-outline');
+          });
+          btn.classList.remove('btn-outline');
+          btn.classList.add('btn-gold');
+          const filter = btn.getAttribute('data-filter');
+          listContainer.innerHTML = renderList(filter);
+          bindActions();
+        });
+      });
+
+      modalEl.querySelector('#btnCopyUnpaidZaloReminder')?.addEventListener('click', () => {
+        sound.playClick();
+        if (unpaidMembers.length === 0) {
+          modalManager.showAlert('🎉 Tuyệt vời! Toàn bộ kỳ thủ đã hoàn thành đóng quỹ đợt này.');
+          return;
+        }
+
+        const lines = unpaidMembers.map((item, idx) => `${idx + 1}. ${item.member.name} (${item.member.studentId || 'Kỳ thủ'})`).join('\n');
+        const text = `📢 NHẮC NỘP TIỀN QUỸ: ${campaign.title}\n💰 Định mức: ${(campaign.amount || 0).toLocaleString('vi-VN')}đ | Hạn chót: ${campaign.deadline || 'Sớm nhất'}\n⚠️ Danh sách kỳ thủ chưa nộp (${unpaidMembers.length} bạn):\n${lines}\n\n👉 Vui lòng chuyển khoản về STK: ${campaign.bankAccount} (${campaign.bankCode}) - Cú pháp: CLBCO ${campaign.id} [MÃ_SINH_VIÊN]\nHoặc vào website mục Thẻ Thành Viên bấm "Đóng Quỹ" để quét mã VietQR tự động nhé!`;
+        navigator.clipboard.writeText(text);
+        modalManager.showAlert('✅ Đã sao chép danh sách các kỳ thủ chưa nộp! Hãy dán vào Nhóm Zalo CLB để nhắc nhở.');
+      });
+    }
+  },
+
+  // 19. Fund Automation Guide Modal
+  openFundAutomationGuideModal() {
+    const contentHtml = `
+      <div class="fund-automation-guide p-2" style="max-width: 640px;">
+        <div class="mb-3">
+          <span class="badge badge-emerald">CƠ CHẾ VẬN HÀNH THÔNG MINH</span>
+          <h3 class="text-lg font-bold text-white mt-1">Cơ Chế Tự Động Ghi Nhận Quỹ Không Cần Nhập Tay</h3>
+          <p class="text-xs text-muted">Giải pháp giúp Ban Quản Trị không phải đối soát số dư hay gõ tay từng hóa đơn biên nhận.</p>
+        </div>
+
+        <div class="card p-3 mb-3" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3);">
+          <div class="d-flex align-center gap-2 mb-2">
+            <span style="font-size: 1.5rem;">📱</span>
+            <div>
+              <strong class="text-emerald text-sm">Cơ Chế 1: VietQR Động + Tự Xác Nhận Đối Soát Cú Pháp (Đang Hoạt Động)</strong>
+              <div class="text-xs text-dim">Miễn phí 100% • Không cần cài thêm máy chủ</div>
+            </div>
+          </div>
+          <div class="text-xs text-muted" style="line-height: 1.5;">
+            • Khi Admin tạo đợt thu mới, hệ thống tự động sinh ra mã <strong>VietQR Napas 24/7</strong> theo chuẩn quốc gia.<br>
+            • Khi thành viên quét mã trên website, số tài khoản, số tiền và <strong>cú pháp định danh (VD: CLBCO CAMP-1026 K2155...)</strong> được điền chính xác 100%.<br>
+            • Thành viên bấm <em>"Tôi đã chuyển khoản"</em>, hệ thống tự động lưu vào Sổ Quỹ, cấp mã biên nhận số [FND-xxx] và gửi thông báo chuông 🔔 đến điện thoại kỳ thủ. Admin không cần gõ phím.
+          </div>
+        </div>
+
+        <div class="card p-3 mb-3" style="background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.3);">
+          <div class="d-flex align-center gap-2 mb-2">
+            <span style="font-size: 1.5rem;">⚡</span>
+            <div>
+              <strong class="text-cyan text-sm">Cơ Chế 2: Tự Động 100% Không Cần Bấm (Tích Hợp Webhook SePay / Casso)</strong>
+              <div class="text-xs text-dim">Tiền về tài khoản ("ting ting") là website tự gạch nợ tức thì</div>
+            </div>
+          </div>
+          <div class="text-xs text-muted" style="line-height: 1.5;">
+            • Kết nối tài khoản MB Bank / Vietcombank của CLB với cổng miễn phí <strong>SePay.vn</strong> hoặc <strong>Casso.vn</strong>.<br>
+            • Khi có tiền vào tài khoản đúng cú pháp, ngân hàng sẽ bắn tín hiệu Webhook về hệ thống.<br>
+            • Hệ thống sẽ tự động gạch tên thành viên đã nộp mà cả Admin lẫn thành viên không cần bấm bất kỳ nút nào!
+          </div>
+        </div>
+
+        <div class="d-flex justify-end">
+          <button type="button" class="btn btn-gold btn-sm" id="btnCloseGuideModal">Đã Hiểu</button>
+        </div>
+      </div>
+    `;
+
+    this.open('Hướng Dẫn Tự Động Hóa Quỹ CLB', contentHtml, null, null);
+    const modalEl = document.getElementById('globalAppModal');
+    if (modalEl) {
+      modalEl.querySelector('#btnCloseGuideModal')?.addEventListener('click', () => this.close());
+    }
   }
 };
 

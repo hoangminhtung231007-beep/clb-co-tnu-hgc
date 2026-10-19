@@ -44,5 +44,14 @@ export const INITIAL_DATA = {
       status: "active",
       createdAt: "2026-10-01"
     }
-  ]
+  ],
+  fundSettings: {
+    month: "10/2026",
+    title: "Quỹ Sinh Hoạt Tháng 10/2026",
+    amount: 30000,
+    syntaxPrefix: "QUY T10",
+    bankAccount: "0346578422",
+    bankCode: "MB",
+    bankOwner: "CLB CO TNU HGC"
+  }
 };

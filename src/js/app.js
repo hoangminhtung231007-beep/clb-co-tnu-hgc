@@ -547,24 +547,20 @@ class App {
         });
       }
 
-      // Nhắc nhở các đợt thu quỹ đang mở mà thành viên chưa đóng
-      const campaigns = state.fundCampaigns || [];
-      const activeUnpaidCamps = campaigns.filter((c) => {
-        if (c.status !== 'active') return false;
-        return !memberFunds.some((r) => r.campaignId === c.id || r.term === c.title);
-      });
-
-      activeUnpaidCamps.forEach((c) => {
+      // Nhắc nhở nộp quỹ sinh hoạt tháng hiện tại nếu chưa đóng
+      const fundSettings = store.getFundSettings();
+      const hasPaidCurrentMonth = memberFunds.some((r) => r.month === fundSettings.month || r.term === fundSettings.title);
+      if (!hasPaidCurrentMonth) {
         notifications.push({
-          id: `notif_unpaid_camp_${c.id}`,
+          id: `notif_unpaid_month_${fundSettings.month.replace('/', '_')}`,
           icon: '💳',
-          title: `Nhắc nộp: ${c.title}`,
-          desc: `Định mức ${(c.amount || 0).toLocaleString('vi-VN')}đ (Hạn chót: ${c.deadline ? c.deadline.split('-').reverse().join('/') : 'Sớm nhất'}). Bấm để quét VietQR đóng ngay!`,
+          title: `Nhắc nộp: ${fundSettings.title}`,
+          desc: `Định mức ${(fundSettings.amount || 30000).toLocaleString('vi-VN')}đ. Bấm để quét VietQR đóng trực tiếp ngay!`,
           time: 'Cần đóng quỹ',
           badge: 'Chưa nộp',
           targetView: 'member-pass'
         });
-      });
+      }
     }
 
     // =========================================================================
@@ -2171,82 +2167,87 @@ class App {
               </tbody>
             </table>
           </div>
-        <!-- 3. HỘI PHÍ & CÁC ĐỢT THU QUỸ CLB CỦA TÔI -->
+        <!-- 3. HỘI PHÍ & QUỸ SINH HOẠT THÁNG CỦA TÔI -->
         <div class="card p-4 mt-4 animate-fadeIn" style="background: var(--bg-surface); border: 1px solid var(--border-gold); border-radius: var(--radius-lg); box-shadow: 0 12px 36px rgba(0,0,0,0.4);">
           <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3 pb-3" style="border-bottom: 1px solid rgba(212, 175, 55, 0.2);">
             <div>
               <span class="badge badge-gold">TÀI CHÍNH KỲ THỦ</span>
               <h2 class="text-xl font-bold text-white mt-1 d-flex align-center gap-2">
-                <span>💰 Hội Phí & Quỹ CLB Của Tôi</span>
+                <span>💰 Quỹ Sinh Hoạt: ${store.getFundSettings().title}</span>
               </h2>
-              <p class="text-muted text-xs mt-1">Đóng quỹ trực tuyến nhanh qua VietQR động - Hệ thống tự động ghi nhận ngay lập tức</p>
+              <p class="text-muted text-xs mt-1">Định mức tháng: ${(store.getFundSettings().amount || 30000).toLocaleString('vi-VN')} đ • Tích hợp mã VietQR chuyển khoản tự động ghi nhận vào sổ</p>
             </div>
             <div>
-              <button type="button" class="btn btn-outline btn-xs" id="btnMemberOpenGuide">💡 Cơ Chế Đóng Quỹ Tự Động</button>
+              <button type="button" class="btn btn-outline btn-xs" id="btnMemberOpenGuide">💡 Cơ Chế Tự Động Hóa</button>
             </div>
           </div>
 
-          <!-- Các đợt thu đang mở -->
+          <!-- Trạng thái đóng quỹ tháng hiện tại -->
           <div class="mb-3">
-            <h4 class="text-sm font-bold text-white mb-2">🎯 Các Đợt Thu Quỹ Đang Mở</h4>
             ${(() => {
-              const campaigns = (state.fundCampaigns || []).filter((c) => c.status === 'active');
+              const settings = store.getFundSettings();
               const myRecords = store.getMemberFundRecords(activeMember.id);
+              const currentPaid = myRecords.find((r) => r.month === settings.month || r.term === settings.title);
 
-              if (campaigns.length === 0) {
-                return `<div class="p-3 text-center text-muted text-xs">Hiện tại CLB không có đợt thu quỹ nào đang mở.</div>`;
+              if (currentPaid) {
+                return `
+                  <div class="card p-3" style="background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.4); border-radius: 12px;">
+                    <div class="d-flex justify-between align-center flex-wrap gap-2">
+                      <div class="d-flex align-center gap-3">
+                        <span style="font-size: 2.2rem;">✅</span>
+                        <div>
+                          <strong class="text-white text-base">BẠN ĐÃ HOÀN THÀNH ĐÓNG QUỸ ${settings.month}</strong>
+                          <div class="text-xs text-emerald mt-1">
+                            Số tiền: <strong>${(parseInt(currentPaid.amount) || settings.amount).toLocaleString('vi-VN')} đ</strong> • Ngày thu: <strong>${currentPaid.date}</strong> ${currentPaid.time || ''}
+                          </div>
+                          <div class="text-xs text-dim mt-0.5">Mã biên nhận: <span class="font-mono text-gold font-bold">${currentPaid.id}</span> (${currentPaid.confirmedBy || 'Tự Động (VietQR)'})</div>
+                        </div>
+                      </div>
+                      <span class="badge badge-emerald font-bold" style="font-size: 0.9rem; padding: 6px 16px;">
+                        ĐÃ NỘP XONG
+                      </span>
+                    </div>
+                  </div>
+                `;
               }
 
               return `
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
-                  ${campaigns.map((camp) => {
-                    const myRecord = myRecords.find((r) => r.campaignId === camp.id || r.term === camp.title);
-                    const isPaid = !!myRecord;
-
-                    return `
-                      <div class="card p-3 d-flex flex-column justify-between" style="background: rgba(14,23,46,0.7); border: 1px solid ${isPaid ? 'rgba(16,185,129,0.4)' : 'rgba(212,175,55,0.4)'}; border-radius: 10px;">
-                        <div>
-                          <div class="d-flex justify-between align-start mb-2">
-                            <strong class="text-white text-sm">${camp.title}</strong>
-                            <span class="badge ${isPaid ? 'badge-emerald' : 'badge-warning'} font-bold">
-                              ${isPaid ? '✅ ĐÃ HOÀN THÀNH' : '⏳ CHƯA NỘP'}
-                            </span>
-                          </div>
-                          <p class="text-xs text-muted mb-2" style="line-height: 1.4;">${camp.description || 'Thu quỹ hoạt động định kỳ của CLB Cờ'}</p>
-                          <div class="d-flex justify-between align-center mb-1 text-xs">
-                            <span class="text-dim">Định mức cần nộp:</span>
-                            <strong class="text-gold font-bold font-mono">${(camp.amount || 0).toLocaleString('vi-VN')} đ</strong>
-                          </div>
-                          <div class="d-flex justify-between align-center mb-3 text-xs">
-                            <span class="text-dim">Hạn chót:</span>
-                            <span class="text-white">${camp.deadline ? camp.deadline.split('-').reverse().join('/') : 'Không giới hạn'}</span>
-                          </div>
+                <div class="card p-4" style="background: rgba(245,158,11,0.08); border: 1.5px dashed rgba(212,175,55,0.45); border-radius: 12px;">
+                  <div class="d-flex justify-between align-center flex-wrap gap-3">
+                    <div class="d-flex align-center gap-3">
+                      <span style="font-size: 2.5rem;">💳</span>
+                      <div>
+                        <div class="d-flex align-center gap-2">
+                          <strong class="text-white text-base">BẠN CHƯA ĐÓNG QUỸ SINH HOẠT THÁNG NÀY</strong>
+                          <span class="badge badge-warning font-bold">CHƯA NỘP</span>
                         </div>
-
-                        ${isPaid ? `
-                          <div class="p-2 text-xs text-emerald" style="background: rgba(16,185,129,0.1); border-radius: 6px;">
-                            🛡️ Biên nhận: <span class="font-mono font-bold">${myRecord.id}</span> (${myRecord.date})
-                          </div>
-                        ` : `
-                          <button type="button" class="btn btn-gold w-100 btn-sm font-bold btn-member-pay-camp" data-camp-id="${camp.id}">
-                            💳 Đóng Quỹ Trực Tuyến (VietQR)
-                          </button>
-                        `}
+                        <div class="text-xs text-muted mt-1">
+                          Định mức tháng ${settings.month}: <strong class="text-gold font-mono font-bold" style="font-size: 1rem;">${(settings.amount || 30000).toLocaleString('vi-VN')} đ</strong>
+                        </div>
+                        <div class="text-xs text-dim mt-0.5">
+                          Cú pháp tự động: <span class="font-mono text-cyan">${settings.syntaxPrefix} ${(activeMember.studentId || 'KYTHU')}</span>
+                        </div>
                       </div>
-                    `;
-                  }).join('')}
+                    </div>
+                    <div>
+                      <button type="button" class="btn btn-gold btn-md font-bold" id="btnMemberPayCurrentFund" style="padding: 10px 22px; font-size: 0.9rem;">
+                        📱 Quét VietQR Đóng Quỹ Ngay
+                      </button>
+                    </div>
+                  </div>
                 </div>
               `;
             })()}
           </div>
 
-          <!-- Lịch sử biên nhận đã đóng -->
+          <!-- Lịch sử biên nhận đã đóng của bạn -->
           ${(() => {
+            const settings = store.getFundSettings();
             const myRecords = store.getMemberFundRecords(activeMember.id);
             if (myRecords.length === 0) return '';
             return `
               <div class="mt-4 pt-3" style="border-top: 1px dashed rgba(212,175,55,0.2);">
-                <h4 class="text-xs font-bold text-dim mb-2 uppercase">Lịch Sử Biên Nhận Đã Đóng Của Bạn (${myRecords.length})</h4>
+                <h4 class="text-xs font-bold text-dim mb-2 uppercase">Lịch Sử Các Biên Nhận Đã Đóng Của Bạn (${myRecords.length})</h4>
                 <div class="table-responsive">
                   <table class="data-table text-xs">
                     <thead>
@@ -2255,17 +2256,19 @@ class App {
                         <th>Kỳ Thu</th>
                         <th>Số Tiền</th>
                         <th>Ngày Đóng</th>
+                        <th>Phương Thức</th>
                         <th>Xác Nhận</th>
                       </tr>
                     </thead>
                     <tbody>
                       ${myRecords.map((r) => `
                         <tr>
-                          <td><span class="font-mono text-gold">${r.id}</span></td>
-                          <td><strong>${r.term}</strong></td>
-                          <td><span class="badge badge-emerald font-bold">+${(parseInt(r.amount) || 0).toLocaleString('vi-VN')} đ</span></td>
-                          <td><span class="text-dim">${r.date}</span></td>
-                          <td><span class="badge ${r.confirmedBy?.includes('VietQR') ? 'badge-cyan' : 'badge-outline'}">${r.confirmedBy || 'Ban Quản Trị'}</span></td>
+                          <td><span class="font-mono text-gold font-bold">${r.id}</span></td>
+                          <td><strong class="text-white">${r.term || r.month}</strong></td>
+                          <td><span class="badge badge-emerald font-bold">+${(parseInt(r.amount) || settings.amount).toLocaleString('vi-VN')} đ</span></td>
+                          <td><span class="text-dim">${r.date} ${r.time || ''}</span></td>
+                          <td><span class="badge ${r.method?.includes('VietQR') ? 'badge-cyan' : 'badge-outline'}">${r.method || 'Trực tiếp'}</span></td>
+                          <td><span class="text-xs text-dim">${r.confirmedBy || 'Ban Quản Trị'}</span></td>
                         </tr>
                       `).join('')}
                     </tbody>
@@ -2288,17 +2291,11 @@ class App {
       modalManager.openFundAutomationGuideModal();
     });
 
-    container.querySelectorAll('.btn-member-pay-camp').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        sound.playClick();
-        const campId = btn.getAttribute('data-camp-id');
-        const camp = (state.fundCampaigns || []).find((c) => c.id === campId);
-        if (camp) {
-          modalManager.openVietQRPaymentModal(camp, activeMember, () => {
-            this.renderMemberPass(container);
-            this.renderNotificationsList();
-          });
-        }
+    container.querySelector('#btnMemberPayCurrentFund')?.addEventListener('click', () => {
+      sound.playClick();
+      modalManager.openMemberPersonalFundQRModal(activeMember, () => {
+        this.renderMemberPass(container);
+        this.renderNotificationsList();
       });
     });
   }
@@ -3701,90 +3698,320 @@ class App {
   }
 
   // =========================================================================
-  // ADMIN SUB: QUẢN LÝ QUỸ CLB (TÁCH RIÊNG THÀNH MỤC ĐỘC LẬP)
+  // ADMIN SUB: QUẦY THU QUỸ TRỰC TIẾP TẠI BUỔI SINH HOẠT
   // =========================================================================
   renderAdminFunds(container) {
     const state = store.getState();
-    const fundRecords = state.fundRecords || [];
-    const fundCampaigns = state.fundCampaigns || [];
+    const settings = store.getFundSettings();
     const members = state.members || [];
-    const totalAmount = fundRecords.reduce((sum, r) => sum + (parseInt(r.amount) || 0), 0);
-    const uniquePaidMemberIds = new Set(fundRecords.map((r) => r.memberId));
+    const fundRecords = state.fundRecords || [];
 
-    if (!this.adminFundSubTab) {
-      this.adminFundSubTab = 'campaigns';
+    if (!this.adminFundDirectTab) {
+      this.adminFundDirectTab = 'unpaid';
     }
+
+    const currentMonthRecords = fundRecords.filter(
+      (r) => r.month === settings.month || r.term === settings.title
+    );
+    const paidMap = new Map();
+    currentMonthRecords.forEach((r) => paidMap.set(r.memberId, r));
+
+    const paidMembers = [];
+    const unpaidMembers = [];
+    members.forEach((m) => {
+      const rec = paidMap.get(m.id);
+      if (rec) {
+        paidMembers.push({ member: m, record: rec });
+      } else {
+        unpaidMembers.push(m);
+      }
+    });
+
+    const totalCollectedMonth = currentMonthRecords.reduce((sum, r) => sum + (parseInt(r.amount) || settings.amount), 0);
+    const targetMonth = members.length * settings.amount;
+    const percent = members.length > 0 ? Math.round((paidMembers.length / members.length) * 100) : 0;
+
+    const generalSyntax = `${settings.syntaxPrefix || 'QUY T10'} [MASV]`;
+    const deskQrUrl = `https://img.vietqr.io/image/${settings.bankCode || 'MB'}-${settings.bankAccount || '0346578422'}-compact2.png?amount=${settings.amount}&addInfo=${encodeURIComponent(generalSyntax)}&accountName=${encodeURIComponent(settings.bankOwner || 'CLB CO TNU HGC')}`;
 
     container.innerHTML = `
       <div class="admin-sub-funds animate-fadeIn">
+        <!-- Top Bar -->
         <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
           <div>
-            <h2 class="text-xl font-bold">💰 Quản Lý Quỹ & Tài Chính CLB</h2>
-            <p class="text-muted text-xs">Tạo các đợt thu quỹ linh hoạt theo từng tháng, tự động ghi nhận bằng VietQR không cần nhập tay</p>
+            <span class="badge badge-gold font-bold">QUẦY THU QUỸ TRỰC TIẾP BUỔI SINH HOẠT</span>
+            <h2 class="text-xl font-bold mt-1 text-white">💰 ${settings.title}</h2>
+            <p class="text-muted text-xs">Mã VietQR đã tích hợp sẵn số tiền và cú pháp của tháng. Thành viên quét chuyển khoản hoặc nộp trực tiếp sẽ tự động ghi nhận vào danh sách.</p>
           </div>
           <div class="d-flex gap-2">
-            <button class="btn btn-outline btn-sm" id="btnOpenFundAutoGuide" title="Xem cơ chế tự động ghi nhận">
+            <button class="btn btn-outline btn-sm" id="btnOpenFundAutoGuide">
               💡 Cơ Chế Tự Động Hóa
             </button>
-            <button class="btn btn-gold btn-sm" id="btnOpenCreateCampModal">
-              🎯 + Tạo Đợt Thu Mới
+            <button class="btn btn-gold btn-sm" id="btnOpenEditFundSettings">
+              ⚙️ Đổi Tháng & Số Tiền
             </button>
           </div>
         </div>
 
         <!-- Metric KPI Cards -->
-        <div class="row g-3 mb-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+        <div class="row g-3 mb-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
+          <div class="card p-3" style="background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.3);">
+            <div class="text-xs text-muted mb-1">THÁNG & ĐỊNH MỨC THU</div>
+            <div class="text-2xl font-bold text-gold font-mono">${(settings.amount || 30000).toLocaleString('vi-VN')} đ</div>
+            <div class="text-xs text-dim mt-1">Áp dụng: ${settings.title}</div>
+          </div>
           <div class="card p-3" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3);">
-            <div class="text-xs text-muted mb-1">TỔNG QUỸ THỰC THU</div>
-            <div class="text-2xl font-bold text-emerald">${totalAmount.toLocaleString('vi-VN')} đ</div>
-            <div class="text-xs text-dim mt-1">Đã kiểm đếm và ghi sổ</div>
+            <div class="text-xs text-muted mb-1">TIẾN ĐỘ THU QUỸ THÁNG</div>
+            <div class="text-2xl font-bold text-emerald">${paidMembers.length} / ${members.length} kỳ thủ</div>
+            <div class="text-xs text-dim mt-1">Đạt ${percent}% chỉ tiêu (${unpaidMembers.length} bạn chưa nộp)</div>
           </div>
           <div class="card p-3" style="background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.3);">
-            <div class="text-xs text-muted mb-1">KỲ THỦ ĐÃ ĐÓNG GÓP</div>
-            <div class="text-2xl font-bold text-cyan">${uniquePaidMemberIds.size} / ${members.length} kỳ thủ</div>
-            <div class="text-xs text-dim mt-1">Tỉ lệ hoàn thành: ${members.length > 0 ? Math.round((uniquePaidMemberIds.size / members.length) * 100) : 0}%</div>
-          </div>
-          <div class="card p-3" style="background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.3);">
-            <div class="text-xs text-muted mb-1">ĐỢT THU QUỸ CLB</div>
-            <div class="text-2xl font-bold text-gold">${fundCampaigns.length} đợt</div>
-            <div class="text-xs text-dim mt-1">Đang mở: ${fundCampaigns.filter((c) => c.status === 'active').length} đợt thu</div>
+            <div class="text-xs text-muted mb-1">TỔNG TIỀN ĐÃ THU ĐƯỢC</div>
+            <div class="text-2xl font-bold text-cyan font-mono">${totalCollectedMonth.toLocaleString('vi-VN')} đ</div>
+            <div class="text-xs text-dim mt-1">Mục tiêu: ${targetMonth.toLocaleString('vi-VN')} đ</div>
           </div>
         </div>
 
-        <!-- 2 Sub-tabs Navigation -->
-        <div class="d-flex gap-2 mb-3 pb-2" style="border-bottom: 1px solid rgba(212,175,55,0.2);">
-          <button class="btn btn-sm ${this.adminFundSubTab === 'campaigns' ? 'btn-gold' : 'btn-outline'}" id="subTabFundCampaigns">
-            🎯 Các Đợt Thu Quỹ Theo Tháng (${fundCampaigns.length})
-          </button>
-          <button class="btn btn-sm ${this.adminFundSubTab === 'ledger' ? 'btn-gold' : 'btn-outline'}" id="subTabFundLedger">
-            📋 Sổ Giao Dịch & Biên Nhận (${fundRecords.length})
-          </button>
-        </div>
+        <!-- 2 Main Columns Layout -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: start;">
+          <!-- CỘT 1: MÃ VIETQR ĐỂ BÀN SINH HOẠT -->
+          <div class="card p-3" style="background: rgba(14,23,46,0.9); border: 1px solid var(--border-gold); border-radius: 14px;">
+            <div class="text-center mb-2">
+              <span class="badge badge-emerald" style="font-size: 11px;">🛡️ VIETQR NAPAS 24/7 ĐỂ BÀN</span>
+              <h3 class="text-base font-bold text-white mt-1">Mã QR Thu Quỹ Tháng ${settings.month}</h3>
+              <p class="text-xs text-muted">Đặt tại bàn sinh hoạt để kỳ thủ quét</p>
+            </div>
 
-        <!-- Tab Content Container -->
-        <div id="fundTabContent">
-          ${this.adminFundSubTab === 'campaigns' ? this.renderAdminFundCampaignsHtml(fundCampaigns, fundRecords, members) : this.renderAdminFundLedgerHtml(fundRecords)}
+            <!-- Crisp QR Image -->
+            <div class="text-center p-3 mb-3" style="background: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+              <img src="${deskQrUrl}" alt="VietQR" style="max-width: 250px; width: 100%; height: auto; border-radius: 8px; display: block; margin: 0 auto;">
+              <div style="color: #0f172a; font-size: 11px; font-weight: bold; margin-top: 6px;">
+                QUÉT BẰNG MỌI APP NGÂN HÀNG & MOMO
+              </div>
+            </div>
+
+            <!-- Details -->
+            <div class="card p-2.5 mb-3" style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(212,175,55,0.3); font-size: 12px;">
+              <div class="d-flex justify-between align-center mb-1.5">
+                <span class="text-dim">Số tiền:</span>
+                <strong class="font-bold text-emerald font-mono" style="font-size: 1.15rem;">${(settings.amount || 30000).toLocaleString('vi-VN')} đ</strong>
+              </div>
+              <div class="d-flex justify-between align-center mb-1.5">
+                <span class="text-dim">Cú pháp CK:</span>
+                <strong class="font-mono text-gold font-bold">${generalSyntax}</strong>
+              </div>
+              <div class="d-flex justify-between align-center mb-1.5">
+                <span class="text-dim">Tài khoản:</span>
+                <span class="font-mono text-cyan">${settings.bankAccount} (${settings.bankCode})</span>
+              </div>
+              <div class="d-flex justify-between align-center">
+                <span class="text-dim">Chủ TK:</span>
+                <span class="text-white">${settings.bankOwner}</span>
+              </div>
+            </div>
+
+            <div class="d-flex flex-column gap-2">
+              <button type="button" class="btn btn-gold btn-sm font-bold w-100" id="btnFullscreenDeskQR">
+                📺 Chiếu Toàn Màn Hình Để Bàn
+              </button>
+              <a href="${deskQrUrl}" download="VietQR_Quy_Thang_${settings.month.replace('/', '_')}.png" target="_blank" class="btn btn-outline btn-xs text-center">
+                📥 Tải Ảnh Mã QR Xuống Máy
+              </a>
+            </div>
+          </div>
+
+          <!-- CỘT 2: DANH SÁCH THÀNH VIÊN (ĐÃ NỘP & CHƯA NỘP) -->
+          <div class="card p-3">
+            <!-- Tabs & Actions -->
+            <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2 pb-2" style="border-bottom: 1px solid rgba(212,175,55,0.2);">
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm ${this.adminFundDirectTab === 'unpaid' ? 'btn-gold' : 'btn-outline'}" id="tabDirectUnpaid">
+                  ⏳ Chưa Nộp (${unpaidMembers.length})
+                </button>
+                <button type="button" class="btn btn-sm ${this.adminFundDirectTab === 'paid' ? 'btn-gold' : 'btn-outline'}" id="tabDirectPaid">
+                  ✅ Đã Nộp (${paidMembers.length})
+                </button>
+              </div>
+
+              <div class="d-flex gap-2">
+                ${this.adminFundDirectTab === 'unpaid' ? `
+                  <button type="button" class="btn btn-outline btn-xs" id="btnCopyDirectZalo">
+                    📢 Sao Chép DS Chưa Nộp Gửi Zalo
+                  </button>
+                ` : `
+                  <button type="button" class="btn btn-outline btn-xs" id="btnExportDirectCsv">
+                    📥 Xuất Excel (CSV)
+                  </button>
+                `}
+              </div>
+            </div>
+
+            <!-- Search box -->
+            <div class="mb-3">
+              <input type="text" class="form-control text-xs" id="fundMemberSearchInput" placeholder="🔍 Tìm kỳ thủ theo tên hoặc Mã sinh viên...">
+            </div>
+
+            <!-- List Content -->
+            <div id="fundDirectListContainer">
+              ${this.adminFundDirectTab === 'unpaid'
+                ? this.renderDirectUnpaidListHtml(unpaidMembers, settings)
+                : this.renderDirectPaidListHtml(paidMembers, settings)
+              }
+            </div>
+          </div>
         </div>
       </div>
     `;
 
-    // Bind subtab switches
-    container.querySelector('#subTabFundCampaigns')?.addEventListener('click', () => {
+    this.bindAdminFundsLiveEvents(container, unpaidMembers, paidMembers, settings);
+  }
+
+  renderDirectUnpaidListHtml(unpaidMembers, settings, filterText = '') {
+    let list = unpaidMembers;
+    if (filterText) {
+      const q = filterText.toLowerCase();
+      list = list.filter((m) => (m.name || '').toLowerCase().includes(q) || (m.studentId || '').toLowerCase().includes(q));
+    }
+
+    if (list.length === 0) {
+      return `
+        <div class="p-5 text-center text-muted">
+          <div style="font-size: 2.2rem; margin-bottom: 6px;">🎉</div>
+          <strong class="text-white text-sm">Tuyệt vời! Tất cả kỳ thủ đã hoàn thành đóng quỹ tháng này.</strong>
+          <div class="text-xs text-dim mt-1">Không còn kỳ thủ nào trong danh sách chưa nộp.</div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+        <table class="data-table text-xs">
+          <thead>
+            <tr>
+              <th>Kỳ Thủ</th>
+              <th>Mã SV</th>
+              <th>Lớp</th>
+              <th>Định Mức</th>
+              <th style="text-align: right;">Ghi Nhận Thu</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map((m) => `
+              <tr>
+                <td>
+                  <strong class="text-white">${m.name}</strong>
+                  ${m.phone ? `<div class="text-dim text-xs">${m.phone}</div>` : ''}
+                </td>
+                <td><span class="font-mono text-gold font-bold">${m.studentId || '---'}</span></td>
+                <td><span class="text-dim">${m.class || m.cohort || '---'}</span></td>
+                <td>
+                  <span class="badge badge-warning font-bold">
+                    ${(settings.amount || 30000).toLocaleString('vi-VN')} đ
+                  </span>
+                </td>
+                <td style="text-align: right;">
+                  <div class="d-inline-flex gap-1.5 justify-end align-center">
+                    <button type="button" class="btn btn-outline btn-xs btn-open-personal-qr" data-member-id="${m.id}" title="Mở mã VietQR riêng cho bạn này quét">
+                      📱 QR Riêng
+                    </button>
+                    <button type="button" class="btn btn-gold btn-xs font-bold btn-quick-mark-paid" data-member-id="${m.id}" title="Xác nhận đã thu (1 chạm)">
+                      ⚡ Đã Thu
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  renderDirectPaidListHtml(paidMembers, settings, filterText = '') {
+    let list = paidMembers;
+    if (filterText) {
+      const q = filterText.toLowerCase();
+      list = list.filter((item) => (item.member?.name || '').toLowerCase().includes(q) || (item.member?.studentId || '').toLowerCase().includes(q) || (item.record?.id || '').toLowerCase().includes(q));
+    }
+
+    if (list.length === 0) {
+      return `
+        <div class="p-5 text-center text-muted">
+          <div style="font-size: 2.2rem; margin-bottom: 6px;">💳</div>
+          <div>Chưa có kỳ thủ nào nộp quỹ tháng này.</div>
+          <div class="text-xs text-dim mt-1">Các kỳ thủ quét mã VietQR hoặc nộp trực tiếp sẽ tự động xuất hiện tại đây.</div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+        <table class="data-table text-xs">
+          <thead>
+            <tr>
+              <th>Mã BN</th>
+              <th>Kỳ Thủ</th>
+              <th>Mã SV</th>
+              <th>Số Tiền</th>
+              <th>Thời Gian</th>
+              <th>Phương Thức</th>
+              <th style="text-align: center;">Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(({ member, record }) => `
+              <tr>
+                <td><span class="font-mono text-gold font-bold">${record.id}</span></td>
+                <td><strong class="text-white">${member.name}</strong></td>
+                <td><span class="font-mono text-muted">${member.studentId || '---'}</span></td>
+                <td>
+                  <span class="badge badge-emerald font-bold" style="font-size: 0.82rem;">
+                    +${(parseInt(record.amount) || settings.amount).toLocaleString('vi-VN')} đ
+                  </span>
+                </td>
+                <td>
+                  <span class="text-white">${record.date}</span>
+                  ${record.time ? `<span class="text-dim text-xs ml-1">${record.time}</span>` : ''}
+                </td>
+                <td>
+                  <span class="badge ${record.method?.includes('VietQR') ? 'badge-cyan' : 'badge-outline'}">
+                    ${record.method || 'Trực tiếp'}
+                  </span>
+                </td>
+                <td style="text-align: center;">
+                  <button type="button" class="btn btn-danger btn-xs btn-undo-fund-pay" data-record-id="${record.id}" title="Hủy/Hoàn tác biên nhận này">
+                    ↩️ Hủy
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  bindAdminFundsLiveEvents(container, unpaidMembers, paidMembers, settings) {
+    const state = store.getState();
+    const members = state.members || [];
+
+    // Subtab switch
+    container.querySelector('#tabDirectUnpaid')?.addEventListener('click', () => {
       sound.playClick();
-      this.adminFundSubTab = 'campaigns';
+      this.adminFundDirectTab = 'unpaid';
       this.renderAdminFunds(container);
     });
 
-    container.querySelector('#subTabFundLedger')?.addEventListener('click', () => {
+    container.querySelector('#tabDirectPaid')?.addEventListener('click', () => {
       sound.playClick();
-      this.adminFundSubTab = 'ledger';
+      this.adminFundDirectTab = 'paid';
       this.renderAdminFunds(container);
     });
 
     // Top action buttons
-    container.querySelector('#btnOpenCreateCampModal')?.addEventListener('click', () => {
+    container.querySelector('#btnOpenEditFundSettings')?.addEventListener('click', () => {
       sound.playClick();
-      modalManager.openCreateFundCampaignModal(() => {
+      modalManager.openFundSettingsModal(() => {
         this.renderAdminFunds(container);
         this.renderNotificationsList();
       });
@@ -3795,199 +4022,91 @@ class App {
       modalManager.openFundAutomationGuideModal();
     });
 
-    // Bind sub-view specific events
-    if (this.adminFundSubTab === 'campaigns') {
-      this.bindAdminFundCampaignsEvents(container);
-    } else {
-      this.bindAdminFundLedgerEvents(container);
-    }
-  }
-
-  renderAdminFundCampaignsHtml(fundCampaigns, fundRecords, members) {
-    if (fundCampaigns.length === 0) {
-      return `
-        <div class="card p-5 text-center">
-          <div style="font-size: 3rem; margin-bottom: 12px;">🎯</div>
-          <h3 class="text-lg font-bold text-white mb-2">Chưa Có Đợt Thu Quỹ Nào</h3>
-          <p class="text-xs text-muted mb-4" style="max-width: 480px; margin: 0 auto 16px;">
-            Mỗi tháng CLB có thể thu một định mức khác nhau (VD: Tháng 10 thu 30.000đ, Tháng 11 thu 50.000đ, hoặc thu theo giải cờ). Hãy tạo đợt thu đầu tiên để hệ thống cấp mã VietQR động!
-          </p>
-          <button class="btn btn-gold btn-sm" id="btnEmptyCreateCamp">🎯 + Tạo Đợt Thu Quỹ Đầu Tiên</button>
-        </div>
-      `;
-    }
-
-    return `
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px;">
-        ${fundCampaigns.map((camp) => {
-          const isActive = camp.status === 'active';
-          const paidRecords = fundRecords.filter((r) => r.campaignId === camp.id || r.term === camp.title);
-          const uniquePaidIds = new Set(paidRecords.map((r) => r.memberId));
-          const paidCount = uniquePaidIds.size;
-          const totalMembers = members.length;
-          const percent = totalMembers > 0 ? Math.round((paidCount / totalMembers) * 100) : 0;
-          const collectedAmount = paidRecords.reduce((sum, r) => sum + (parseInt(r.amount) || camp.amount), 0);
-          const targetAmount = totalMembers * camp.amount;
-
-          return `
-            <div class="card p-3 d-flex flex-column justify-between" style="background: rgba(14,23,46,0.85); border: 1px solid ${isActive ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.1)'}; border-radius: 12px; position: relative; overflow: hidden;">
-              ${isActive ? `<div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--gold-primary);"></div>` : ''}
-
-              <div>
-                <div class="d-flex justify-between align-start mb-2">
-                  <div>
-                    <span class="badge ${isActive ? 'badge-emerald' : 'badge-outline'} font-bold text-xs">
-                      ${isActive ? '🟢 ĐANG THU' : '⚪ ĐÃ KẾT THÚC'}
-                    </span>
-                    <span class="text-xs text-dim ml-1 font-mono">${camp.id}</span>
-                  </div>
-                  <div class="text-xs text-muted">Tạo: ${camp.createdAt || '---'}</div>
-                </div>
-
-                <h3 class="text-base font-bold text-white mb-1">${camp.title}</h3>
-                <p class="text-xs text-muted mb-3" style="min-height: 36px; line-height: 1.4;">${camp.description || 'Thu quỹ hoạt động định kỳ của CLB Cờ'}</p>
-
-                <div class="card p-2 mb-3" style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(212,175,55,0.25);">
-                  <div class="d-flex justify-between align-center mb-1">
-                    <span class="text-xs text-dim">Định mức nộp:</span>
-                    <strong class="font-bold text-gold text-sm font-mono">${(camp.amount || 0).toLocaleString('vi-VN')} đ / kỳ thủ</strong>
-                  </div>
-                  <div class="d-flex justify-between align-center mb-1">
-                    <span class="text-xs text-dim">Hạn chót:</span>
-                    <span class="text-xs text-white">${camp.deadline ? camp.deadline.split('-').reverse().join('/') : 'Không giới hạn'}</span>
-                  </div>
-                  <div class="d-flex justify-between align-center">
-                    <span class="text-xs text-dim">Tài khoản nhận:</span>
-                    <span class="text-xs font-mono text-cyan">${camp.bankAccount || '0346578422'} (${camp.bankCode || 'MB'})</span>
-                  </div>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="mb-3">
-                  <div class="d-flex justify-between align-center text-xs mb-1">
-                    <span class="text-dim">Tiến độ (${paidCount}/${totalMembers} kỳ thủ)</span>
-                    <strong class="text-emerald font-bold">${percent}%</strong>
-                  </div>
-                  <div style="background: rgba(255,255,255,0.08); border-radius: 999px; height: 8px; overflow: hidden;">
-                    <div style="background: linear-gradient(90deg, #10b981, #d4af37); height: 100%; width: ${percent}%; border-radius: 999px; transition: width 0.4s ease;"></div>
-                  </div>
-                  <div class="d-flex justify-between align-center text-xs mt-1 text-dim">
-                    <span>Đã thu: <strong class="text-white">${collectedAmount.toLocaleString('vi-VN')} đ</strong></span>
-                    <span>Mục tiêu: ${targetAmount.toLocaleString('vi-VN')} đ</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Action buttons -->
-              <div class="d-flex flex-wrap gap-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.08);">
-                <button type="button" class="btn btn-gold btn-xs flex-1 btn-view-camp-members" data-camp-id="${camp.id}">
-                  👥 Danh Sách Đóng Tiền
-                </button>
-                <button type="button" class="btn btn-outline btn-xs btn-view-camp-vietqr" data-camp-id="${camp.id}" title="Lấy mã QR Napas 24/7">
-                  📱 Mã VietQR
-                </button>
-                <button type="button" class="btn btn-outline btn-xs btn-toggle-camp" data-camp-id="${camp.id}" title="${isActive ? 'Khóa đợt thu này' : 'Mở lại đợt thu này'}">
-                  ${isActive ? '🔒 Khóa' : '🔓 Mở'}
-                </button>
-                <button type="button" class="btn btn-danger btn-xs btn-delete-camp" data-camp-id="${camp.id}" title="Xóa đợt thu">
-                  🗑️
-                </button>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  }
-
-  renderAdminFundLedgerHtml(fundRecords) {
-    return `
-      <div class="card">
-        <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
-          <div>
-            <h3 class="font-bold text-white text-base">Sổ Ghi Nhận Thu Quỹ CLB</h3>
-            <span class="badge badge-gold">${fundRecords.length} biên nhận đã xác nhận</span>
-          </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-outline btn-sm" id="btnExportFundsCsv" title="Xuất danh sách ra file CSV">
-              📥 Xuất CSV
-            </button>
-            <button class="btn btn-gold btn-sm" id="btnOpenAddFundModal">
-              + Ghi Nhận Thủ Công (Tiền mặt)
-            </button>
-          </div>
-        </div>
-
-        <div class="table-responsive mobile-card-view">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Mã Biên Nhận</th>
-                <th>Kỳ Thủ</th>
-                <th>Mã Sinh Viên</th>
-                <th>Số Tiền</th>
-                <th>Kỳ Thu Quỹ</th>
-                <th>Ngày Thu</th>
-                <th>Xác Nhận Bởi</th>
-                <th>Ghi Chú</th>
-                <th style="text-align: center;">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${fundRecords.length === 0 ? `
-                <tr>
-                  <td colspan="9" class="text-center text-muted p-5">
-                    <div style="font-size: 2rem; margin-bottom: 6px;">💳</div>
-                    <div>Chưa có biên nhận thu quỹ nào trong sổ. Kỳ thủ quét VietQR sẽ tự động hiển thị ở đây!</div>
-                  </td>
-                </tr>
-              ` : fundRecords.map((r) => `
-                <tr>
-                  <td data-label="Mã"><span class="font-mono text-xs text-gold">${r.id}</span></td>
-                  <td data-label="Kỳ Thủ"><strong class="text-white">${r.memberName}</strong></td>
-                  <td data-label="Mã SV"><span class="text-xs font-mono text-muted">${r.studentId || '---'}</span></td>
-                  <td data-label="Số Tiền">
-                    <span class="badge badge-emerald font-bold" style="font-size: 0.82rem;">
-                      +${(parseInt(r.amount) || 0).toLocaleString('vi-VN')} đ
-                    </span>
-                  </td>
-                  <td data-label="Kỳ Thu"><span class="text-xs font-bold text-white">${r.term}</span></td>
-                  <td data-label="Ngày Thu"><span class="text-xs text-dim">${r.date}</span></td>
-                  <td data-label="Xác Nhận"><span class="badge ${r.confirmedBy?.includes('VietQR') ? 'badge-cyan' : 'badge-outline'}">${r.confirmedBy || 'Ban Quản Trị'}</span></td>
-                  <td data-label="Ghi Chú"><span class="text-xs text-muted">${r.note || '---'}</span></td>
-                  <td data-label="Thao Tác" style="text-align: center;">
-                    <button class="btn btn-danger btn-xs btn-delete-fund" data-fund-id="${r.id}" title="Xóa biên nhận này">
-                      🗑️ Xóa
-                    </button>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `;
-  }
-
-  bindAdminFundCampaignsEvents(container) {
-    const state = store.getState();
-    const fundCampaigns = state.fundCampaigns || [];
-
-    container.querySelector('#btnEmptyCreateCamp')?.addEventListener('click', () => {
+    // Fullscreen QR
+    container.querySelector('#btnFullscreenDeskQR')?.addEventListener('click', () => {
       sound.playClick();
-      modalManager.openCreateFundCampaignModal(() => {
-        this.renderAdminFunds(container);
-        this.renderNotificationsList();
+      modalManager.openFullscreenLiveFundQRModal();
+    });
+
+    // Zalo copy
+    container.querySelector('#btnCopyDirectZalo')?.addEventListener('click', () => {
+      sound.playClick();
+      if (unpaidMembers.length === 0) {
+        modalManager.showAlert('🎉 Toàn bộ kỳ thủ đã hoàn thành đóng quỹ tháng này!');
+        return;
+      }
+      const lines = unpaidMembers.map((m, idx) => `${idx + 1}. ${m.name} (${m.studentId || 'Kỳ thủ'})`).join('\n');
+      const text = `📢 THÔNG BÁO THU QUỸ: ${settings.title}\n💰 Định mức: ${(settings.amount || 30000).toLocaleString('vi-VN')}đ / bạn\n🏦 Ngân hàng: ${settings.bankCode} - STK: ${settings.bankAccount}\n👤 Chủ TK: ${settings.bankOwner}\n📝 Cú pháp chuyển khoản: ${settings.syntaxPrefix} [MÃ_SINH_VIÊN]\n⚠️ Danh sách kỳ thủ chưa nộp (${unpaidMembers.length} bạn):\n${lines}\n\n👉 Các bạn quét mã VietQR tại bàn sinh hoạt hoặc chuyển khoản đúng cú pháp để hệ thống tự động ghi nhận nhé!`;
+      navigator.clipboard.writeText(text);
+      modalManager.showAlert('✅ Đã sao chép danh sách các bạn chưa nộp! Hãy dán vào Nhóm Zalo CLB để nhắc nhở.');
+    });
+
+    // CSV export
+    container.querySelector('#btnExportDirectCsv')?.addEventListener('click', () => {
+      sound.playClick();
+      if (paidMembers.length === 0) {
+        modalManager.showAlert('Chưa có kỳ thủ nào nộp quỹ để xuất file CSV!');
+        return;
+      }
+      const csvHeader = 'Mã Biên Nhận,Kỳ Thủ,Mã SV,Số Tiền,Tháng,Thời Gian,Phương Thức\n';
+      const csvRows = paidMembers
+        .map(({ member, record }) => `"${record.id}","${member.name}","${member.studentId}","${record.amount}","${record.month || settings.month}","${record.date} ${record.time || ''}","${record.method || ''}"`)
+        .join('\n');
+      const blob = new Blob(['\uFEFF' + csvHeader + csvRows], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `DS_Dong_Quy_Thang_${settings.month.replace('/', '_')}.csv`;
+      link.click();
+    });
+
+    // Search input
+    const searchInput = container.querySelector('#fundMemberSearchInput');
+    const listContainer = container.querySelector('#fundDirectListContainer');
+    if (searchInput && listContainer) {
+      searchInput.addEventListener('input', () => {
+        const val = searchInput.value.trim();
+        if (this.adminFundDirectTab === 'unpaid') {
+          listContainer.innerHTML = this.renderDirectUnpaidListHtml(unpaidMembers, settings, val);
+        } else {
+          listContainer.innerHTML = this.renderDirectPaidListHtml(paidMembers, settings, val);
+        }
+        this.bindDynamicListEvents(container, members, settings);
+      });
+    }
+
+    this.bindDynamicListEvents(container, members, settings);
+  }
+
+  bindDynamicListEvents(container, members, settings) {
+    // 1-Click mark as paid
+    container.querySelectorAll('.btn-quick-mark-paid').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const mId = btn.getAttribute('data-member-id');
+        const targetMember = members.find((m) => m.id === mId);
+        if (!targetMember) return;
+
+        try {
+          const rec = store.recordDirectFundPayment(mId, 'Thu Trực Tiếp Tại Buổi Sinh Hoạt');
+          sound.playSuccess();
+          modalManager.showAlert(`✅ Đã ghi nhận thu ${(settings.amount || 30000).toLocaleString('vi-VN')}đ từ kỳ thủ ${targetMember.name}!`);
+          this.renderAdminFunds(container);
+          this.renderNotificationsList();
+        } catch (err) {
+          modalManager.showAlert(err.message || 'Lỗi ghi nhận!');
+        }
       });
     });
 
-    container.querySelectorAll('.btn-view-camp-members').forEach((btn) => {
+    // Open personal QR
+    container.querySelectorAll('.btn-open-personal-qr').forEach((btn) => {
       btn.addEventListener('click', () => {
         sound.playClick();
-        const campId = btn.getAttribute('data-camp-id');
-        const camp = fundCampaigns.find((c) => c.id === campId);
-        if (camp) {
-          modalManager.openCampaignMemberStatusModal(camp, () => {
+        const mId = btn.getAttribute('data-member-id');
+        const targetMember = members.find((m) => m.id === mId);
+        if (targetMember) {
+          modalManager.openMemberPersonalFundQRModal(targetMember, () => {
             this.renderAdminFunds(container);
             this.renderNotificationsList();
           });
@@ -3995,94 +4114,21 @@ class App {
       });
     });
 
-    container.querySelectorAll('.btn-view-camp-vietqr').forEach((btn) => {
+    // Undo payment
+    container.querySelectorAll('.btn-undo-fund-pay').forEach((btn) => {
       btn.addEventListener('click', () => {
         sound.playClick();
-        const campId = btn.getAttribute('data-camp-id');
-        const camp = fundCampaigns.find((c) => c.id === campId);
-        if (camp) {
-          modalManager.openCampaignVietQRGeneralModal(camp);
-        }
-      });
-    });
-
-    container.querySelectorAll('.btn-toggle-camp').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        sound.playClick();
-        const campId = btn.getAttribute('data-camp-id');
-        const camp = store.toggleFundCampaignStatus(campId);
-        if (camp) {
-          modalManager.showAlert(`Đã ${camp.status === 'active' ? 'mở lại' : 'khóa chốt'} đợt thu [${camp.title}]!`);
-          this.renderAdminFunds(container);
-          this.renderNotificationsList();
-        }
-      });
-    });
-
-    container.querySelectorAll('.btn-delete-camp').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        sound.playClick();
-        const campId = btn.getAttribute('data-camp-id');
-        const camp = fundCampaigns.find((c) => c.id === campId);
+        const recId = btn.getAttribute('data-record-id');
         modalManager.showConfirm(
-          `Bạn có chắc chắn muốn xóa đợt thu quỹ [${camp?.title || campId}]?`,
+          `Bạn có chắc chắn muốn hủy biên nhận thu quỹ [${recId}] không? Kỳ thủ sẽ được chuyển lại về danh sách Chưa Nộp.`,
           () => {
-            store.deleteFundCampaign(campId);
+            store.cancelFundPayment(recId);
             this.renderAdminFunds(container);
             this.renderNotificationsList();
-            modalManager.showAlert('Đã xóa đợt thu quỹ!');
+            modalManager.showAlert('Đã hoàn tác biên nhận thu quỹ!');
           },
           null,
-          { title: 'XÓA ĐỢT THU QUỸ', confirmText: '🗑️ Xóa đợt thu', danger: true }
-        );
-      });
-    });
-  }
-
-  bindAdminFundLedgerEvents(container) {
-    const state = store.getState();
-    const fundRecords = state.fundRecords || [];
-
-    container.querySelector('#btnOpenAddFundModal')?.addEventListener('click', () => {
-      sound.playClick();
-      modalManager.openFundRecordModal(() => {
-        this.renderAdminFunds(container);
-        this.renderNotificationsList();
-      });
-    });
-
-    container.querySelector('#btnExportFundsCsv')?.addEventListener('click', () => {
-      sound.playClick();
-      if (fundRecords.length === 0) {
-        modalManager.showAlert('Chưa có dữ liệu thu quỹ để xuất file CSV!');
-        return;
-      }
-      const csvHeader = 'Mã Biên Nhận,Kỳ Thủ,Mã SV,Số Tiền,Kỳ Thu,Ngày Thu,Xác Nhận Bởi,Ghi Chú\n';
-      const csvRows = fundRecords
-        .map((r) => `"${r.id}","${r.memberName}","${r.studentId}","${r.amount}","${r.term}","${r.date}","${r.confirmedBy}","${r.note}"`)
-        .join('\n');
-      const blob = new Blob(['\uFEFF' + csvHeader + csvRows], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `So_Quy_CLB_Co_TNU_HGC_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.click();
-    });
-
-    container.querySelectorAll('.btn-delete-fund').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        sound.playClick();
-        const fId = btn.getAttribute('data-fund-id');
-        modalManager.showConfirm(
-          `Bạn có chắc chắn muốn xóa biên nhận thu quỹ [${fId}] không?`,
-          () => {
-            store.deleteFundRecord(fId);
-            this.renderAdminFunds(container);
-            this.renderNotificationsList();
-            modalManager.showAlert('Đã xóa biên nhận thu quỹ!');
-          },
-          null,
-          { title: 'XÓA BIÊN NHẬN THU QUỸ', confirmText: '🗑️ Xóa biên nhận', danger: true }
+          { title: 'HỦY BIÊN NHẬN THU QUỸ', confirmText: 'Hoàn tác biên nhận', danger: true }
         );
       });
     });

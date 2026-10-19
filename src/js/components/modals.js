@@ -3928,6 +3928,244 @@ export const modalManager = {
     if (modalEl) {
       modalEl.querySelector('#btnCloseGuideModal')?.addEventListener('click', () => this.close());
     }
+  },
+
+  // 20. Live Fund Settings Modal (Thiết lập tháng & số tiền thu của tháng đó)
+  openFundSettingsModal(onComplete) {
+    const settings = store.getFundSettings();
+
+    const contentHtml = `
+      <div class="fund-settings-modal p-2" style="max-width: 540px;">
+        <div class="mb-3">
+          <span class="badge badge-gold">CÀI ĐẶT THU QUỸ SINH HOẠT</span>
+          <h3 class="text-lg font-bold text-white mt-1">Thiết Lập Tháng & Số Tiền Thu</h3>
+          <p class="text-xs text-muted">Mỗi tháng CLB có thể thu một số tiền khác nhau. Mã QR để bàn và mã QR của thành viên sẽ tự động cập nhật theo cài đặt này.</p>
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label text-gold font-bold text-xs">Tháng Thu Quỹ (Định dạng MM/YYYY) *</label>
+          <input type="text" class="form-control" id="fundSettingMonth" value="${settings.month || '10/2026'}" placeholder="VD: 10/2026, 11/2026...">
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label text-gold font-bold text-xs">Tên Đợt Thu Quỹ *</label>
+          <input type="text" class="form-control" id="fundSettingTitle" value="${settings.title || 'Quỹ Sinh Hoạt Tháng 10/2026'}" placeholder="VD: Quỹ Sinh Hoạt Tháng 10/2026">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label text-gold font-bold text-xs">Số Tiền Cần Đóng Của Tháng Đó (VNĐ) *</label>
+          <div class="d-flex gap-2 mb-2">
+            <button type="button" class="btn btn-outline btn-xs btn-preset-fund-amt" data-amount="20000">20.000đ</button>
+            <button type="button" class="btn btn-outline btn-xs btn-preset-fund-amt" data-amount="30000">30.000đ</button>
+            <button type="button" class="btn btn-outline btn-xs btn-preset-fund-amt" data-amount="50000">50.000đ</button>
+            <button type="button" class="btn btn-outline btn-xs btn-preset-fund-amt" data-amount="100000">100.000đ</button>
+          </div>
+          <input type="number" class="form-control font-mono font-bold" id="fundSettingAmount" value="${settings.amount || 30000}" step="5000" style="color: #10b981; font-size: 1.15rem;">
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label text-white text-xs">Cú Pháp Chuyển Khoản Mặc Định</label>
+          <input type="text" class="form-control font-mono text-xs" id="fundSettingSyntax" value="${settings.syntaxPrefix || 'QUY T10'}" placeholder="VD: QUY T10">
+          <small class="text-dim text-xs mt-1 d-block">Hệ thống sẽ tự nối thêm Mã SV của kỳ thủ (VD: QUY T10 2155...)</small>
+        </div>
+
+        <div class="card p-3 mb-3" style="background: rgba(14,23,46,0.6); border: 1px solid rgba(212,175,55,0.25);">
+          <div class="text-xs font-bold text-gold mb-2">💳 Tài Khoản Ngân Hàng Nhận Quỹ</div>
+          <div class="row g-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+              <label class="form-label text-dim text-xs">Ngân hàng</label>
+              <select class="form-control text-xs" id="fundSettingBankCode">
+                <option value="MB" ${settings.bankCode === 'MB' ? 'selected' : ''}>MB Bank (Quân Đội)</option>
+                <option value="VCB" ${settings.bankCode === 'VCB' ? 'selected' : ''}>Vietcombank</option>
+                <option value="CTG" ${settings.bankCode === 'CTG' ? 'selected' : ''}>VietinBank</option>
+                <option value="BIDV" ${settings.bankCode === 'BIDV' ? 'selected' : ''}>BIDV</option>
+                <option value="TCB" ${settings.bankCode === 'TCB' ? 'selected' : ''}>Techcombank</option>
+                <option value="ACB" ${settings.bankCode === 'ACB' ? 'selected' : ''}>ACB</option>
+                <option value="TPB" ${settings.bankCode === 'TPB' ? 'selected' : ''}>TPBank</option>
+                <option value="VPB" ${settings.bankCode === 'VPB' ? 'selected' : ''}>VPBank</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label text-dim text-xs">Số tài khoản nhận</label>
+              <input type="text" class="form-control text-xs font-mono" id="fundSettingBankAccount" value="${settings.bankAccount || '0346578422'}">
+            </div>
+          </div>
+          <div class="mt-2">
+            <label class="form-label text-dim text-xs">Chủ tài khoản (Viết hoa)</label>
+            <input type="text" class="form-control text-xs" id="fundSettingBankOwner" value="${settings.bankOwner || 'CLB CO TNU HGC'}">
+          </div>
+        </div>
+
+        <div class="d-flex justify-end gap-2">
+          <button type="button" class="btn btn-outline btn-sm" id="btnCancelFundSettings">Hủy</button>
+          <button type="button" class="btn btn-gold btn-sm" id="btnSaveFundSettings">
+            💾 Lưu Cài Đặt
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.open('Cài Đặt Tháng & Số Tiền Thu Quỹ', contentHtml, null, null);
+
+    const modalEl = document.getElementById('globalAppModal');
+    if (modalEl) {
+      modalEl.querySelectorAll('.btn-preset-fund-amt').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          sound.playClick();
+          const amt = btn.getAttribute('data-amount');
+          const input = modalEl.querySelector('#fundSettingAmount');
+          if (input) input.value = amt;
+        });
+      });
+
+      modalEl.querySelector('#btnCancelFundSettings')?.addEventListener('click', () => this.close());
+      modalEl.querySelector('#btnSaveFundSettings')?.addEventListener('click', () => {
+        sound.playClick();
+        const month = modalEl.querySelector('#fundSettingMonth')?.value?.trim() || '10/2026';
+        const title = modalEl.querySelector('#fundSettingTitle')?.value?.trim() || `Quỹ Sinh Hoạt Tháng ${month}`;
+        const amount = parseInt(modalEl.querySelector('#fundSettingAmount')?.value) || 30000;
+        const syntaxPrefix = modalEl.querySelector('#fundSettingSyntax')?.value?.trim() || 'QUY';
+        const bankCode = modalEl.querySelector('#fundSettingBankCode')?.value || 'MB';
+        const bankAccount = modalEl.querySelector('#fundSettingBankAccount')?.value?.trim() || '0346578422';
+        const bankOwner = modalEl.querySelector('#fundSettingBankOwner')?.value?.trim() || 'CLB CO TNU HGC';
+
+        store.updateFundSettings({
+          month,
+          title,
+          amount,
+          syntaxPrefix,
+          bankCode,
+          bankAccount,
+          bankOwner
+        });
+
+        this.close();
+        sound.playSuccess();
+        modalManager.showAlert(`✅ Đã cập nhật quỹ ${title} với định mức ${amount.toLocaleString('vi-VN')}đ! Mã VietQR thu trực tiếp đã được làm mới.`);
+        if (typeof onComplete === 'function') onComplete();
+      });
+    }
+  },
+
+  // 21. Member Personal Live Fund QR Modal (Mã QR riêng cho từng kỳ thủ kèm mã SV)
+  openMemberPersonalFundQRModal(member, onComplete) {
+    if (!member) return;
+    const settings = store.getFundSettings();
+    const amount = settings.amount || 30000;
+    const studentIdClean = (member.studentId || member.phone || member.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
+    const transferNote = `${settings.syntaxPrefix || 'QUY'} ${studentIdClean}`;
+    const qrUrl = `https://img.vietqr.io/image/${settings.bankCode || 'MB'}-${settings.bankAccount || '0346578422'}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(transferNote)}&accountName=${encodeURIComponent(settings.bankOwner || 'CLB CO TNU HGC')}`;
+
+    const contentHtml = `
+      <div class="member-fund-qr-modal p-2 text-center" style="max-width: 480px;">
+        <span class="badge badge-emerald">THU QUỸ TRỰC TIẾP TẠI BUỔI SINH HOẠT</span>
+        <h3 class="text-lg font-bold text-white mt-1">Mã VietQR Cho Kỳ Thủ: ${member.name}</h3>
+        <p class="text-xs text-muted mb-3">Mã đã tích hợp sẵn số tiền <strong>${amount.toLocaleString('vi-VN')} đ</strong> và cú pháp <strong>${transferNote}</strong></p>
+
+        <div class="p-3 mb-3" style="background: #fff; border-radius: 14px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+          <img src="${qrUrl}" alt="VietQR" style="max-width: 260px; width: 100%; height: auto; border-radius: 8px;">
+        </div>
+
+        <div class="card p-3 text-left mb-3" style="background: rgba(14,23,46,0.8); border: 1px solid var(--border-gold); font-size: 12px;">
+          <div class="d-flex justify-between align-center mb-1">
+            <span class="text-muted">Kỳ thủ:</span>
+            <strong class="text-white">${member.name} (${member.studentId || 'Kỳ thủ'})</strong>
+          </div>
+          <div class="d-flex justify-between align-center mb-1">
+            <span class="text-muted">Số tiền cần đóng:</span>
+            <strong class="text-emerald font-mono font-bold" style="font-size: 1.1rem;">${amount.toLocaleString('vi-VN')} đ</strong>
+          </div>
+          <div class="d-flex justify-between align-center mb-1">
+            <span class="text-muted">STK & Ngân hàng:</span>
+            <span class="font-mono text-gold">${settings.bankAccount} (${settings.bankCode})</span>
+          </div>
+          <div class="d-flex justify-between align-center">
+            <span class="text-muted">Nội dung CK:</span>
+            <span class="font-mono text-gold font-bold">${transferNote}</span>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column gap-2">
+          <button type="button" class="btn btn-gold py-2 font-bold w-100" id="btnConfirmDirectSelfPay">
+            ⚡ TÔI ĐÃ CHUYỂN KHOẢN (TỰ ĐỘNG GHI NHẬN NGAY)
+          </button>
+          <button type="button" class="btn btn-outline btn-xs" id="btnCloseMemberQRModal">Đóng lại</button>
+        </div>
+      </div>
+    `;
+
+    this.open('Mã VietQR Đóng Quỹ', contentHtml, null, null);
+
+    const modalEl = document.getElementById('globalAppModal');
+    if (modalEl) {
+      modalEl.querySelector('#btnCloseMemberQRModal')?.addEventListener('click', () => this.close());
+      modalEl.querySelector('#btnConfirmDirectSelfPay')?.addEventListener('click', () => {
+        sound.playClick();
+        try {
+          const rec = store.recordDirectFundPayment(member.id, 'VietQR Chuyển Khoản');
+          this.close();
+          sound.playSuccess();
+          modalManager.showAlert(`🎉 Đã tự động ghi nhận thành công ${amount.toLocaleString('vi-VN')}đ từ kỳ thủ ${member.name} vào Danh Sách Đã Nộp! (Mã biên nhận: ${rec.id})`);
+          if (typeof onComplete === 'function') onComplete();
+        } catch (err) {
+          modalManager.showAlert(err.message || 'Lỗi xử lý!');
+        }
+      });
+    }
+  },
+
+  // 22. Fullscreen Live Fund QR Modal (Chế độ chiếu bảng QR đặt tại bàn sinh hoạt)
+  openFullscreenLiveFundQRModal() {
+    const settings = store.getFundSettings();
+    const amount = settings.amount || 30000;
+    const generalNote = `${settings.syntaxPrefix || 'QUY T10'} [MÃ_SV]`;
+    const qrUrl = `https://img.vietqr.io/image/${settings.bankCode || 'MB'}-${settings.bankAccount || '0346578422'}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(generalNote)}&accountName=${encodeURIComponent(settings.bankOwner || 'CLB CO TNU HGC')}`;
+
+    const contentHtml = `
+      <div class="fullscreen-fund-qr p-4 text-center" style="max-width: 650px;">
+        <div style="font-size: 11px; letter-spacing: 2px; color: var(--gold-light); font-weight: 700; margin-bottom: 4px;">
+          CLB CỜ TNU - HGC • ĐẠI HỌC THÁI NGUYÊN PHÂN HIỆU HÀ GIANG
+        </div>
+        <h2 class="text-2xl font-bold text-white mb-1">BÀN THU QUỸ SINH HOẠT TRỰC TIẾP</h2>
+        <div class="badge badge-emerald font-bold mb-3" style="font-size: 0.95rem; padding: 6px 18px;">
+          ${settings.title || 'Quỹ Sinh Hoạt Tháng ' + settings.month}
+        </div>
+
+        <div class="p-3 mb-3" style="background: #fff; border-radius: 18px; display: inline-block; box-shadow: 0 15px 45px rgba(0,0,0,0.8); border: 4px solid var(--border-gold);">
+          <img src="${qrUrl}" alt="VietQR Napas" style="max-width: 340px; width: 100%; height: auto; border-radius: 10px;">
+          <div style="color: #0f172a; font-size: 12px; font-weight: 800; margin-top: 8px;">
+            🛡️ QUÉT BẰNG BẤT KỲ APP NGÂN HÀNG HOẶC MOMO NÀO
+          </div>
+        </div>
+
+        <div class="card p-3 text-left mb-3" style="background: rgba(14,23,46,0.9); border: 1px solid var(--border-gold); max-width: 460px; margin: 0 auto 16px;">
+          <div class="d-flex justify-between align-center mb-1">
+            <span class="text-muted text-xs">Số tiền cần đóng:</span>
+            <strong class="font-mono text-emerald font-bold" style="font-size: 1.4rem;">${amount.toLocaleString('vi-VN')} đ</strong>
+          </div>
+          <div class="d-flex justify-between align-center mb-1 text-xs">
+            <span class="text-muted">Cú pháp chuyển khoản:</span>
+            <strong class="font-mono text-gold font-bold" style="font-size: 1rem;">${generalNote}</strong>
+          </div>
+          <div class="d-flex justify-between align-center text-xs">
+            <span class="text-muted">Tài khoản nhận:</span>
+            <span class="font-mono text-white">${settings.bankAccount} (${settings.bankCode}) - ${settings.bankOwner}</span>
+          </div>
+        </div>
+
+        <div class="d-flex justify-center gap-2">
+          <button type="button" class="btn btn-outline btn-sm" id="btnCloseFullscreenQR">
+            ✖ Đóng Chế Độ Chiếu
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.open('Mã VietQR Để Bàn Sinh Hoạt', contentHtml, null, null);
+    const modalEl = document.getElementById('globalAppModal');
+    if (modalEl) {
+      modalEl.querySelector('#btnCloseFullscreenQR')?.addEventListener('click', () => this.close());
+    }
   }
 };
 

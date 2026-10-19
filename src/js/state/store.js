@@ -51,6 +51,9 @@ class Store {
       if (Array.isArray(remoteData.eventFeedback)) this.state.eventFeedback = remoteData.eventFeedback;
       if (Array.isArray(remoteData.fundRecords)) this.state.fundRecords = remoteData.fundRecords;
       if (Array.isArray(remoteData.fundCampaigns)) this.state.fundCampaigns = remoteData.fundCampaigns;
+      if (remoteData.fundSettings && typeof remoteData.fundSettings === 'object') {
+        this.state.fundSettings = remoteData.fundSettings;
+      }
       if (remoteData.clubInfo && typeof remoteData.clubInfo === 'object') {
         this.state.clubInfo = { ...this.state.clubInfo, ...remoteData.clubInfo };
       }
@@ -140,7 +143,16 @@ class Store {
           alumniBoard: rawBoard.map((m, idx) => ({ ...m, id: syncAlumniCardId(m.id, idx) })),
           alumniMembers: rawMembers.map((m, idx) => ({ ...m, id: syncAlumniCardId(m.id, idx) })),
           fundRecords: Array.isArray(parsed.fundRecords) ? parsed.fundRecords : (INITIAL_DATA.fundRecords || []),
-          fundCampaigns: (Array.isArray(parsed.fundCampaigns) && parsed.fundCampaigns.length > 0) ? parsed.fundCampaigns : (INITIAL_DATA.fundCampaigns || [])
+          fundCampaigns: (Array.isArray(parsed.fundCampaigns) && parsed.fundCampaigns.length > 0) ? parsed.fundCampaigns : (INITIAL_DATA.fundCampaigns || []),
+          fundSettings: (parsed.fundSettings && typeof parsed.fundSettings === 'object') ? parsed.fundSettings : (INITIAL_DATA.fundSettings || {
+            month: "10/2026",
+            title: "Quỹ Sinh Hoạt Tháng 10/2026",
+            amount: 30000,
+            syntaxPrefix: "QUY T10",
+            bankAccount: "0346578422",
+            bankCode: "MB",
+            bankOwner: "CLB CO TNU HGC"
+          })
         };
       }
     } catch (e) {
@@ -1247,6 +1259,89 @@ class Store {
     this.state.fundRecords.unshift(newRecord);
     this.notify();
     return newRecord;
+  }
+
+  // ==========================================
+  // DIRECT LIVE FUND (THU QUỸ TRỰC TIẾP TẠI BUỔI SINH HOẠT)
+  // ==========================================
+  getFundSettings() {
+    if (!this.state.fundSettings || typeof this.state.fundSettings !== 'object') {
+      this.state.fundSettings = {
+        month: "10/2026",
+        title: "Quỹ Sinh Hoạt Tháng 10/2026",
+        amount: 30000,
+        syntaxPrefix: "QUY T10",
+        bankAccount: "0346578422",
+        bankCode: "MB",
+        bankOwner: "CLB CO TNU HGC"
+      };
+    }
+    return this.state.fundSettings;
+  }
+
+  updateFundSettings({ month, title, amount, syntaxPrefix, bankAccount, bankCode, bankOwner }) {
+    const cur = this.getFundSettings();
+    if (month !== undefined) cur.month = month;
+    if (title !== undefined) cur.title = title;
+    if (amount !== undefined) cur.amount = parseInt(amount) || 30000;
+    if (syntaxPrefix !== undefined) cur.syntaxPrefix = syntaxPrefix;
+    if (bankAccount !== undefined) cur.bankAccount = bankAccount;
+    if (bankCode !== undefined) cur.bankCode = bankCode;
+    if (bankOwner !== undefined) cur.bankOwner = bankOwner;
+    this.saveState();
+    this.notify();
+    return cur;
+  }
+
+  recordDirectFundPayment(memberId, method = 'VietQR Chuyển Khoản', note = '') {
+    const member = this.state.members.find((m) => m.id === memberId);
+    if (!member) throw new Error('Không tìm thấy kỳ thủ!');
+
+    const settings = this.getFundSettings();
+    const term = settings.title || `Quỹ Sinh Hoạt Tháng ${settings.month}`;
+    const amount = settings.amount || 30000;
+
+    if (!Array.isArray(this.state.fundRecords)) {
+      this.state.fundRecords = [];
+    }
+
+    const existing = this.state.fundRecords.find(
+      (r) => r.memberId === memberId && (r.term === term || r.month === settings.month)
+    );
+    if (existing) {
+      throw new Error(`Kỳ thủ ${member.name} đã được ghi nhận hoàn thành ${term} rồi! (Mã BN: ${existing.id})`);
+    }
+
+    const studentIdClean = (member.studentId || member.phone || member.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
+    const transferSyntax = `${settings.syntaxPrefix || 'QUY'} ${studentIdClean}`;
+
+    const newRecord = {
+      id: `FND-${Date.now().toString().slice(-5)}`,
+      memberId: member.id,
+      memberName: member.name || member.fullName,
+      studentId: member.studentId || '',
+      month: settings.month,
+      term: term,
+      amount: amount,
+      date: new Date().toISOString().slice(0, 10),
+      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      method: method,
+      syntax: transferSyntax,
+      note: note || `Thu trực tiếp tại buổi sinh hoạt (${method})`,
+      confirmedBy: method.includes('VietQR') ? 'Tự Động (VietQR)' : 'Ban Quản Trị',
+      status: 'confirmed'
+    };
+
+    this.state.fundRecords.unshift(newRecord);
+    this.saveState();
+    this.notify();
+    return newRecord;
+  }
+
+  cancelFundPayment(recordId) {
+    this.state.fundRecords = (this.state.fundRecords || []).filter((r) => r.id !== recordId);
+    this.saveState();
+    this.notify();
   }
 }
 

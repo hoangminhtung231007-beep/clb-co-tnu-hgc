@@ -3627,10 +3627,14 @@ class App {
             </div>
 
             <!-- Crisp QR Image -->
-            <div class="text-center p-3 mb-3" style="background: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-              <img src="${deskQrUrl}" alt="VietQR" style="max-width: 250px; width: 100%; height: auto; border-radius: 8px; display: block; margin: 0 auto;">
-              <div style="color: #0f172a; font-size: 11px; font-weight: bold; margin-top: 6px;">
-                QUÉT BẰNG MỌI APP NGÂN HÀNG & MOMO
+            <div class="text-center p-3 mb-3" style="background: #ffffff; border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 290px; margin: 0 auto 14px;">
+              <div class="d-flex justify-between align-center mb-2 px-1" style="border-bottom: 1.5px solid #f1f5f9; padding-bottom: 6px;">
+                <span style="color: #0033a0; font-weight: 900; font-size: 13px; letter-spacing: 0.5px;">🏦 MB BANK</span>
+                <span style="font-weight: 800; font-size: 12px; letter-spacing: 0.5px;"><span style="color: #e11d48;">Viet</span><span style="color: #0033a0;">QR</span></span>
+              </div>
+              <img src="${deskQrUrl}" alt="Mã VietQR Thu Quỹ" style="max-width: 230px; width: 100%; aspect-ratio: 1/1; border-radius: 6px; display: block; margin: 0 auto;">
+              <div style="color: #0f172a; font-size: 11px; font-weight: 800; margin-top: 8px; letter-spacing: 0.3px;">
+                ⚡ QUÉT BẰNG MỌI APP NGÂN HÀNG & MOMO
               </div>
             </div>
 

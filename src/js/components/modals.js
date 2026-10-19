@@ -4054,7 +4054,7 @@ export const modalManager = {
     const amount = settings.amount || 30000;
     const studentIdClean = (member.studentId || member.phone || member.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
     const transferNote = `${settings.syntaxPrefix || 'QUY'} ${studentIdClean}`;
-    const qrUrl = `https://img.vietqr.io/image/${settings.bankCode || 'MB'}-${settings.bankAccount || '80402233445566'}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(transferNote)}&accountName=${encodeURIComponent(settings.bankOwner || 'HOANG MINH TUNG')}`;
+    const qrUrl = `https://img.vietqr.io/image/${settings.bankCode || 'MB'}-${settings.bankAccount || '80402233445566'}-qr_only.png?amount=${amount}&addInfo=${encodeURIComponent(transferNote)}&accountName=${encodeURIComponent(settings.bankOwner || 'HOANG MINH TUNG')}`;
 
     const contentHtml = `
       <div class="member-fund-qr-modal p-2 text-center" style="max-width: 480px;">
@@ -4062,8 +4062,15 @@ export const modalManager = {
         <h3 class="text-lg font-bold text-white mt-1">Mã VietQR Cho Kỳ Thủ: ${member.name}</h3>
         <p class="text-xs text-muted mb-3">Mã đã tích hợp sẵn số tiền <strong>${amount.toLocaleString('vi-VN')} đ</strong> và cú pháp <strong>${transferNote}</strong></p>
 
-        <div class="p-3 mb-3" style="background: #fff; border-radius: 14px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-          <img src="${qrUrl}" alt="VietQR" style="max-width: 260px; width: 100%; height: auto; border-radius: 8px;">
+        <div class="p-3 mb-3" style="background: #ffffff; border-radius: 14px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 290px; width: 100%;">
+          <div class="d-flex justify-between align-center mb-2 px-1" style="border-bottom: 1.5px solid #f1f5f9; padding-bottom: 6px;">
+            <span style="color: #0033a0; font-weight: 900; font-size: 13px; letter-spacing: 0.5px;">🏦 MB BANK</span>
+            <span style="font-weight: 800; font-size: 12px;"><span style="color: #e11d48;">Viet</span><span style="color: #0033a0;">QR</span></span>
+          </div>
+          <img src="${qrUrl}" alt="Mã VietQR Riêng Kỳ Thủ" style="max-width: 230px; width: 100%; aspect-ratio: 1/1; border-radius: 6px; display: block; margin: 0 auto;">
+          <div style="color: #0f172a; font-size: 11px; font-weight: 800; margin-top: 8px;">
+            ⚡ QUÉT TỰ ĐỘNG ĐIỀN ĐỊNH DANH
+          </div>
         </div>
 
         <div class="card p-3 text-left mb-3" style="background: rgba(14,23,46,0.8); border: 1px solid var(--border-gold); font-size: 12px;">
@@ -4131,9 +4138,13 @@ export const modalManager = {
           ${settings.title || 'Quỹ Sinh Hoạt Tháng ' + settings.month}
         </div>
 
-        <div class="p-3 mb-3" style="background: #fff; border-radius: 18px; display: inline-block; box-shadow: 0 15px 45px rgba(0,0,0,0.8); border: 4px solid var(--border-gold);">
-          <img src="${qrUrl}" alt="VietQR Napas" style="max-width: 340px; width: 100%; height: auto; border-radius: 10px;">
-          <div style="color: #0f172a; font-size: 12px; font-weight: 800; margin-top: 8px;">
+        <div class="p-3 mb-3" style="background: #ffffff; border-radius: 18px; display: inline-block; box-shadow: 0 15px 45px rgba(0,0,0,0.8); border: 3px solid var(--border-gold); max-width: 360px; width: 100%;">
+          <div class="d-flex justify-between align-center mb-2 px-2" style="border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">
+            <span style="color: #0033a0; font-weight: 900; font-size: 15px; letter-spacing: 0.5px;">🏦 MB BANK</span>
+            <span style="font-weight: 800; font-size: 14px; letter-spacing: 0.5px;"><span style="color: #e11d48;">Viet</span><span style="color: #0033a0;">QR</span></span>
+          </div>
+          <img src="${qrUrl}" alt="VietQR Napas" style="max-width: 300px; width: 100%; aspect-ratio: 1/1; border-radius: 8px; display: block; margin: 0 auto;">
+          <div style="color: #0f172a; font-size: 12px; font-weight: 800; margin-top: 10px; letter-spacing: 0.3px;">
             🛡️ QUÉT BẰNG BẤT KỲ APP NGÂN HÀNG HOẶC MOMO NÀO
           </div>
         </div>

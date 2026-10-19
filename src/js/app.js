@@ -50,6 +50,12 @@ class App {
       } else if (this.currentView === 'admin' && this.adminSubView === 'admin-events') {
         const pane = document.getElementById('adminSubContentPane');
         if (pane) this.renderAdminEvents(pane);
+      } else if (this.currentView === 'admin' && this.adminSubView === 'admin-swiss') {
+        const pane = document.getElementById('adminSubContentPane');
+        if (pane) this.renderAdminSwiss(pane);
+      } else if (this.currentView === 'admin' && this.adminSubView === 'admin-funds') {
+        const pane = document.getElementById('adminSubContentPane');
+        if (pane) this.renderAdminFunds(pane);
       } else if (this.currentView === 'admin' && this.adminSubView === 'admin-cms') {
         const pane = document.getElementById('adminSubContentPane');
         if (pane) this.renderAdminCms(pane);
@@ -2202,6 +2208,20 @@ class App {
               <span class="admin-nav-badge">${state.events.length}</span>
             </div>
 
+            <div class="admin-nav-item ${this.adminSubView === 'admin-swiss' ? 'active' : ''}" data-sub="admin-swiss">
+              <div class="admin-nav-left">
+                <span>⚔️</span> <span>Xếp cặp đấu (Thụy Sĩ)</span>
+              </div>
+              <span class="admin-nav-badge">${(state.events || []).filter((e) => e.type === 'tournament' || e.swissData).length}</span>
+            </div>
+
+            <div class="admin-nav-item ${this.adminSubView === 'admin-funds' ? 'active' : ''}" data-sub="admin-funds">
+              <div class="admin-nav-left">
+                <span>💰</span> <span>Quản lý Quỹ CLB</span>
+              </div>
+              <span class="admin-nav-badge">${(state.fundRecords || []).length}</span>
+            </div>
+
             <div class="admin-nav-item ${this.adminSubView === 'admin-cms' ? 'active' : ''}" data-sub="admin-cms">
               <div class="admin-nav-left">
                 <span>📝</span> <span>Quản trị CMS Tin bài</span>
@@ -2269,6 +2289,12 @@ class App {
         break;
       case 'admin-events':
         this.renderAdminEvents(container);
+        break;
+      case 'admin-swiss':
+        this.renderAdminSwiss(container);
+        break;
+      case 'admin-funds':
+        this.renderAdminFunds(container);
         break;
       case 'admin-cms':
         this.renderAdminCms(container);
@@ -3086,12 +3112,9 @@ class App {
         <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
           <div>
             <h2 class="text-xl font-bold">Quản Lý Hoạt Động - Giải Đấu</h2>
-            <p class="text-muted text-xs">Cổng điểm danh thông minh - Bốc thăm Hệ Thụy Sĩ - Quản lý thu quỹ CLB</p>
+            <p class="text-muted text-xs">Cổng điểm danh thông minh - Danh sách phản hồi feedback của kỳ thủ</p>
           </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-outline btn-sm" id="btnAdminFundRecord" style="border-color: rgba(56,189,248,0.4); color: var(--accent-cyan);" title="Ghi nhận thu quỹ hội viên">💰 Ghi Nhận Đóng Quỹ</button>
-            <button class="btn btn-gold btn-sm" id="btnAdminCreateEvent">+ Lên Lịch Sự Kiện Mới</button>
-          </div>
+          <button class="btn btn-gold btn-sm" id="btnAdminCreateEvent">+ Lên Lịch Sự Kiện Mới</button>
         </div>
 
         <div class="card mb-4">
@@ -3144,11 +3167,6 @@ class App {
                     </td>
                     <td data-label="Thao Tác">
                       <div class="d-flex gap-1 align-center flex-wrap">
-                        ${ev.type === 'tournament' ? `
-                          <button class="btn btn-outline btn-sm btn-manage-swiss" data-event-id="${ev.id}" style="border-color: rgba(212,175,55,0.45); color: var(--gold-light);" title="Bốc thăm & tính điểm Hệ Thụy Sĩ">
-                            ⚔️ Hệ Thụy Sĩ ${ev.swissData ? `(V${ev.swissData.currentRound})` : ''}
-                          </button>
-                        ` : ''}
                         ${ev.status === 'completed' ? `
                           <button class="btn btn-outline btn-sm btn-finish-event" data-event-id="${ev.id}" style="border-color: rgba(148,163,184,0.3); color: #94a3b8; font-weight: 600; cursor: pointer;" title="Hoạt động này đã kết thúc (bấm để mở lại nếu cần)">
                             🏁 Giải Đấu Đã Kết Thúc
@@ -3279,26 +3297,412 @@ class App {
       });
     });
 
-    // Bind Swiss Tournament admin management
-    container.querySelectorAll('.btn-manage-swiss').forEach((btn) => {
+  }
+
+  // =========================================================================
+  // ADMIN SUB: XẾP CẶP ĐẤU HỆ THỤY SĨ (TÁCH RIÊNG THÀNH MỤC ĐỘC LẬP)
+  // =========================================================================
+  renderAdminSwiss(container) {
+    const state = store.getState();
+    const tournamentEvents = (state.events || []).filter((e) => e.type === 'tournament' || e.swissData);
+
+    if (!this.selectedSwissEventId && tournamentEvents.length > 0) {
+      this.selectedSwissEventId = tournamentEvents[0].id;
+    }
+
+    const curEvent = tournamentEvents.find((e) => e.id === this.selectedSwissEventId);
+    const swiss = curEvent?.swissData;
+
+    container.innerHTML = `
+      <div class="admin-sub-swiss animate-fadeIn">
+        <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
+          <div>
+            <h2 class="text-xl font-bold">⚔️ Xếp Cặp Đấu (Hệ Thụy Sĩ)</h2>
+            <p class="text-muted text-xs">Bốc thăm vòng đấu theo điểm số FIDE, nhập kết quả từng bàn và bảng xếp hạng Buchholz</p>
+          </div>
+          ${tournamentEvents.length > 0 ? `
+            <div class="d-flex gap-2">
+              ${curEvent && !swiss ? `
+                <button class="btn btn-gold btn-sm" id="btnStartSwissForEvent">
+                  ⚔️ Bắt Đầu Bốc Thăm Vòng 1
+                </button>
+              ` : ''}
+              ${curEvent && swiss && swiss.status !== 'completed' && swiss.currentRound < swiss.totalRounds ? `
+                <button class="btn btn-gold btn-sm" id="btnGenerateNextRoundSwiss">
+                  🔄 Bốc Thăm Vòng ${swiss.currentRound + 1}
+                </button>
+              ` : ''}
+              ${curEvent && swiss ? `
+                <button class="btn btn-outline btn-sm" id="btnResetSwissEvent" style="color:#fb7185; border-color: rgba(244,63,94,0.3);">
+                  🗑️ Đặt Lại Giải
+                </button>
+              ` : ''}
+            </div>
+          ` : ''}
+        </div>
+
+        ${tournamentEvents.length === 0 ? `
+          <div class="card p-5 text-center text-muted" style="border: 1px dashed var(--border-dim); border-radius: 12px;">
+            <div style="font-size: 2.5rem; margin-bottom: 8px;">⚔️</div>
+            <p class="mb-1 text-white font-medium">Chưa có giải đấu nào trong hệ thống để xếp cặp.</p>
+            <p class="text-xs text-muted mb-3">Vui lòng vào mục "Giải đấu - Sự kiện" để tạo một giải cờ mới trước khi bốc thăm!</p>
+            <button class="btn btn-gold btn-sm" id="btnGoToCreateTournament">
+              + Tạo Giải Đấu Mới
+            </button>
+          </div>
+        ` : `
+          <div class="card p-3 mb-3 d-flex justify-between align-center flex-wrap gap-2" style="background: rgba(212,175,55,0.06); border: 1px solid rgba(212,175,55,0.25);">
+            <div class="d-flex align-center gap-2 flex-wrap">
+              <span class="text-xs font-bold text-gold">CHỌN GIẢI ĐẤU:</span>
+              <select class="form-control" id="swissEventSelect" style="width: auto; min-width: 240px; font-weight: 600;">
+                ${tournamentEvents.map((ev) => `
+                  <option value="${ev.id}" ${ev.id === this.selectedSwissEventId ? 'selected' : ''}>
+                    ${ev.title} (${ev.swissData ? `Vòng ${ev.swissData.currentRound}/${ev.swissData.totalRounds}` : 'Chưa bốc thăm'})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+            ${curEvent ? `
+              <div class="d-flex align-center gap-2">
+                <span class="badge ${swiss?.status === 'completed' ? 'badge-emerald' : swiss ? 'badge-gold' : 'badge-outline'}">
+                  ${swiss?.status === 'completed' ? '🏁 ĐÃ HOÀN TẤT' : swiss ? `🟢 ĐANG ĐẤU VÒNG ${swiss.currentRound}/${swiss.totalRounds}` : '⏰ CHƯA BỐC THĂM'}
+                </span>
+              </div>
+            ` : ''}
+          </div>
+
+          ${!swiss ? `
+            <div class="card p-4 text-center">
+              <div style="font-size: 2.5rem; margin-bottom: 8px;">♟️</div>
+              <h3 class="text-base font-bold text-white mb-1">Giải đấu [${curEvent.title}] chưa bắt đầu bốc thăm</h3>
+              <p class="text-xs text-muted mb-3" style="max-width: 500px; margin-left: auto; margin-right: auto;">
+                Nhấn nút bên dưới để chọn số vòng đấu (3, 5 hoặc 7 vòng) và tự động tạo các cặp đấu Vòng 1 theo chuẩn Hệ Thụy Sĩ FIDE.
+              </p>
+              <button class="btn btn-gold btn-sm" id="btnInitSwissCenter">
+                ⚔️ Cấu Hình & Bốc Thăm Vòng 1
+              </button>
+            </div>
+          ` : `
+            ${(() => {
+              const curRoundData = (swiss.rounds || []).find((r) => r.roundNumber === swiss.currentRound);
+              return `
+                <div class="card p-3 mb-4">
+                  <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
+                    <div>
+                      <h3 class="font-bold text-white text-base">
+                        ⚔️ Cặp Đấu Vòng ${swiss.currentRound} / ${swiss.totalRounds}
+                      </h3>
+                      <p class="text-xs text-muted">Nhấn kết quả để hệ thống tự động cộng điểm và cập nhật thứ hạng</p>
+                    </div>
+                    <span class="badge badge-gold font-mono">${(curRoundData?.matches || []).length} bàn đấu</span>
+                  </div>
+
+                  <div class="table-responsive">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th style="width: 60px;">Bàn</th>
+                          <th>Quân Trắng (White)</th>
+                          <th style="text-align: center; width: 180px;">Kết Quả Ván Đấu</th>
+                          <th>Quân Đen (Black)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${(curRoundData?.matches || []).map((m) => `
+                          <tr>
+                            <td class="font-bold text-gold">${m.isBye ? 'BYE' : `Bàn ${m.board}`}</td>
+                            <td>
+                              <span class="font-bold text-white">${m.whiteName}</span>
+                              <span class="badge" style="background: #ffffff; color: #000; font-size: 10px; margin-left: 4px; padding: 1px 5px;">Trắng</span>
+                            </td>
+                            <td style="text-align: center;">
+                              ${m.isBye ? `
+                                <span class="badge badge-emerald">Miễn đấu (+1đ)</span>
+                              ` : `
+                                <div class="d-flex justify-center gap-1">
+                                  <button type="button" class="btn btn-xs ${m.result === '1-0' ? 'btn-gold' : 'btn-outline'} btn-live-res" data-match-id="${m.id}" data-res="1-0" title="Trắng thắng">1 - 0</button>
+                                  <button type="button" class="btn btn-xs ${m.result === '0.5-0.5' ? 'btn-gold' : 'btn-outline'} btn-live-res" data-match-id="${m.id}" data-res="0.5-0.5" title="Hòa ván">½ - ½</button>
+                                  <button type="button" class="btn btn-xs ${m.result === '0-1' ? 'btn-gold' : 'btn-outline'} btn-live-res" data-match-id="${m.id}" data-res="0-1" title="Đen thắng">0 - 1</button>
+                                </div>
+                              `}
+                            </td>
+                            <td>
+                              ${m.isBye ? `<span class="text-muted font-italic">Nghỉ ván (+1đ)</span>` : `
+                                <span class="font-bold text-white">${m.blackName}</span>
+                                <span class="badge" style="background: #1e293b; color: #cbd5e1; border: 1px solid #475569; font-size: 10px; margin-left: 4px; padding: 1px 5px;">Đen</span>
+                              `}
+                            </td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="card p-3">
+                  <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
+                    <div>
+                      <h3 class="font-bold text-gold text-base">
+                        📊 Bảng Xếp Hạng Hệ Thụy Sĩ (Buchholz Standings)
+                      </h3>
+                      <p class="text-xs text-muted">Xếp theo: Điểm số ➔ Hệ số phụ Buchholz ➔ Số ván thắng</p>
+                    </div>
+                  </div>
+
+                  <div class="table-responsive">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th style="width: 50px;">Hạng</th>
+                          <th>Kỳ Thủ</th>
+                          <th style="text-align: center;">Điểm (Pts)</th>
+                          <th style="text-align: center;">Hệ Số Buchholz</th>
+                          <th style="text-align: center;">Số Ván Thắng</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${(swiss.standings || []).map((p, idx) => `
+                          <tr>
+                            <td class="font-bold ${idx === 0 ? 'text-gold' : idx === 1 ? 'text-cyan' : idx === 2 ? 'text-emerald' : 'text-muted'}">
+                              ${idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : (idx + 1)}
+                            </td>
+                            <td>
+                              <strong class="text-white">${p.name}</strong>
+                              <span class="text-xs text-muted font-mono" style="margin-left: 4px;">(${p.studentId || 'Kỳ thủ'})</span>
+                            </td>
+                            <td style="text-align: center;">
+                              <span class="badge badge-gold font-bold" style="font-size: 0.85rem;">${p.score}</span>
+                            </td>
+                            <td style="text-align: center; color: var(--accent-cyan); font-weight: 700;">
+                              ${p.buchholz}
+                            </td>
+                            <td style="text-align: center;">${p.wins || 0}</td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              `;
+            })()}
+          `}
+        `}
+      </div>
+    `;
+
+    container.querySelector('#btnGoToCreateTournament')?.addEventListener('click', () => {
+      sound.playClick();
+      this.adminSubView = 'admin-events';
+      this.renderAdminDashboard(document.getElementById('mainViewport'));
+    });
+
+    container.querySelector('#swissEventSelect')?.addEventListener('change', (e) => {
+      this.selectedSwissEventId = e.target.value;
+      this.renderAdminSwiss(container);
+    });
+
+    const triggerSetupModal = () => {
+      if (curEvent) {
+        modalManager.openSwissTournamentAdminModal(curEvent, () => {
+          this.renderAdminSwiss(container);
+          this.renderNotificationsList();
+        });
+      }
+    };
+
+    container.querySelector('#btnStartSwissForEvent')?.addEventListener('click', triggerSetupModal);
+    container.querySelector('#btnInitSwissCenter')?.addEventListener('click', triggerSetupModal);
+
+    container.querySelector('#btnGenerateNextRoundSwiss')?.addEventListener('click', () => {
+      sound.playClick();
+      if (curEvent) {
+        try {
+          store.generateNextSwissRound(curEvent.id);
+          modalManager.showAlert('✅ Bốc thăm Vòng tiếp theo thành công! Hệ thống đã gửi thông báo đến các kỳ thủ.');
+          this.renderAdminSwiss(container);
+          this.renderNotificationsList();
+        } catch (err) {
+          modalManager.showAlert('Chưa thể bốc thăm: ' + err.message);
+        }
+      }
+    });
+
+    container.querySelector('#btnResetSwissEvent')?.addEventListener('click', () => {
+      sound.playClick();
+      if (curEvent) {
+        modalManager.showConfirm(
+          `Bạn có chắc muốn đặt lại giải đấu [${curEvent.title}] về trạng thái ban đầu? Toàn bộ kết quả các vòng sẽ bị xóa.`,
+          () => {
+            delete curEvent.swissData;
+            store.notify();
+            this.renderAdminSwiss(container);
+            this.renderNotificationsList();
+          },
+          null,
+          { title: 'ĐẶT LẠI GIẢI ĐẤU', confirmText: 'Đặt lại dữ liệu', danger: true }
+        );
+      }
+    });
+
+    container.querySelectorAll('.btn-live-res').forEach((btn) => {
       btn.addEventListener('click', () => {
         sound.playClick();
-        const evId = btn.getAttribute('data-event-id');
-        const ev = state.events.find((e) => e.id === evId);
-        if (ev) {
-          modalManager.openSwissTournamentAdminModal(ev, () => {
-            this.renderAdminEvents(container);
-            this.renderNotificationsList();
-          });
+        const matchId = btn.getAttribute('data-match-id');
+        const res = btn.getAttribute('data-res');
+        if (curEvent && swiss && matchId && res) {
+          store.recordSwissMatchResult(curEvent.id, swiss.currentRound, matchId, res);
+          this.renderAdminSwiss(container);
+          this.renderNotificationsList();
         }
       });
     });
+  }
 
-    // Bind Fund Record button
-    container.querySelector('#btnAdminFundRecord')?.addEventListener('click', () => {
+  // =========================================================================
+  // ADMIN SUB: QUẢN LÝ QUỸ CLB (TÁCH RIÊNG THÀNH MỤC ĐỘC LẬP)
+  // =========================================================================
+  renderAdminFunds(container) {
+    const state = store.getState();
+    const fundRecords = state.fundRecords || [];
+    const members = state.members || [];
+    const totalAmount = fundRecords.reduce((sum, r) => sum + (parseInt(r.amount) || 0), 0);
+    const uniquePaidMemberIds = new Set(fundRecords.map((r) => r.memberId));
+
+    container.innerHTML = `
+      <div class="admin-sub-funds animate-fadeIn">
+        <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
+          <div>
+            <h2 class="text-xl font-bold">💰 Quản Lý Quỹ & Tài Chính CLB</h2>
+            <p class="text-muted text-xs">Theo dõi thu - chi hội phí thành viên, xuất biên nhận và quản lý ngân sách hoạt động</p>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline btn-sm" id="btnExportFundsCsv" title="Xuất danh sách ra file CSV">
+              📥 Xuất CSV
+            </button>
+            <button class="btn btn-gold btn-sm" id="btnOpenAddFundModal">
+              + Ghi Nhận Thu Quỹ
+            </button>
+          </div>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div class="row g-3 mb-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+          <div class="card p-3" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3);">
+            <div class="text-xs text-muted mb-1">TỔNG QUỸ THU ĐƯỢC</div>
+            <div class="text-2xl font-bold text-emerald">${totalAmount.toLocaleString('vi-VN')} đ</div>
+            <div class="text-xs text-dim mt-1">Đã kiểm đếm và ghi sổ</div>
+          </div>
+          <div class="card p-3" style="background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.3);">
+            <div class="text-xs text-muted mb-1">KỲ THỦ ĐÃ NỘP QUỸ</div>
+            <div class="text-2xl font-bold text-cyan">${uniquePaidMemberIds.size} / ${members.length} kỳ thủ</div>
+            <div class="text-xs text-dim mt-1">Tỉ lệ hoàn thành: ${members.length > 0 ? Math.round((uniquePaidMemberIds.size / members.length) * 100) : 0}%</div>
+          </div>
+          <div class="card p-3" style="background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.3);">
+            <div class="text-xs text-muted mb-1">HỘI PHÍ ĐỊNH KỲ</div>
+            <div class="text-2xl font-bold text-gold">50.000 đ</div>
+            <div class="text-xs text-dim mt-1">Áp dụng: Học kỳ I (2026 - 2027)</div>
+          </div>
+        </div>
+
+        <!-- Fund Transactions Table -->
+        <div class="card">
+          <div class="d-flex justify-between align-center mb-3">
+            <h3 class="font-bold text-white text-base">Sổ Ghi Nhận Thu Quỹ CLB</h3>
+            <span class="badge badge-gold">${fundRecords.length} biên nhận</span>
+          </div>
+
+          <div class="table-responsive mobile-card-view">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Mã Biên Nhận</th>
+                  <th>Kỳ Thủ</th>
+                  <th>Mã Sinh Viên</th>
+                  <th>Số Tiền</th>
+                  <th>Kỳ Thu Quỹ</th>
+                  <th>Ngày Thu</th>
+                  <th>Người Xác Nhận</th>
+                  <th>Ghi Chú</th>
+                  <th style="text-align: center;">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${fundRecords.length === 0 ? `
+                  <tr>
+                    <td colspan="9" class="text-center text-muted p-5">
+                      <div style="font-size: 2rem; margin-bottom: 6px;">💳</div>
+                      <div>Chưa có biên nhận thu quỹ nào. Hãy bấm "+ Ghi Nhận Thu Quỹ" để tạo mới!</div>
+                    </td>
+                  </tr>
+                ` : fundRecords.map((r) => `
+                  <tr>
+                    <td data-label="Mã"><span class="font-mono text-xs text-gold">${r.id}</span></td>
+                    <td data-label="Kỳ Thủ"><strong class="text-white">${r.memberName}</strong></td>
+                    <td data-label="Mã SV"><span class="text-xs font-mono text-muted">${r.studentId || '---'}</span></td>
+                    <td data-label="Số Tiền">
+                      <span class="badge badge-emerald font-bold" style="font-size: 0.82rem;">
+                        +${(parseInt(r.amount) || 0).toLocaleString('vi-VN')} đ
+                      </span>
+                    </td>
+                    <td data-label="Kỳ Thu"><span class="text-xs">${r.term}</span></td>
+                    <td data-label="Ngày Thu"><span class="text-xs text-dim">${r.date}</span></td>
+                    <td data-label="Người Xác Nhận"><span class="badge badge-outline">${r.confirmedBy || 'Ban Quản Trị'}</span></td>
+                    <td data-label="Ghi Chú"><span class="text-xs text-muted">${r.note || '---'}</span></td>
+                    <td data-label="Thao Tác" style="text-align: center;">
+                      <button class="btn btn-danger btn-xs btn-delete-fund" data-fund-id="${r.id}" title="Xóa biên nhận này">
+                        🗑️ Xóa
+                      </button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.querySelector('#btnOpenAddFundModal')?.addEventListener('click', () => {
       sound.playClick();
       modalManager.openFundRecordModal(() => {
+        this.renderAdminFunds(container);
         this.renderNotificationsList();
+      });
+    });
+
+    container.querySelector('#btnExportFundsCsv')?.addEventListener('click', () => {
+      sound.playClick();
+      if (fundRecords.length === 0) {
+        modalManager.showAlert('Chưa có dữ liệu thu quỹ để xuất file CSV!');
+        return;
+      }
+      const csvHeader = 'Mã Biên Nhận,Kỳ Thủ,Mã SV,Số Tiền,Kỳ Thu,Ngày Thu,Người Xác Nhận,Ghi Chú\n';
+      const csvRows = fundRecords
+        .map((r) => `"${r.id}","${r.memberName}","${r.studentId}","${r.amount}","${r.term}","${r.date}","${r.confirmedBy}","${r.note}"`)
+        .join('\n');
+      const blob = new Blob(['\uFEFF' + csvHeader + csvRows], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `So_Quy_CLB_Co_TNU_HGC_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+    });
+
+    container.querySelectorAll('.btn-delete-fund').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const fId = btn.getAttribute('data-fund-id');
+        modalManager.showConfirm(
+          `Bạn có chắc chắn muốn xóa biên nhận thu quỹ [${fId}] không?`,
+          () => {
+            store.deleteFundRecord(fId);
+            this.renderAdminFunds(container);
+            this.renderNotificationsList();
+            modalManager.showAlert('Đã xóa biên nhận thu quỹ!');
+          },
+          null,
+          { title: 'XÓA BIÊN NHẬN THU QUỸ', confirmText: '🗑️ Xóa biên nhận', danger: true }
+        );
       });
     });
   }

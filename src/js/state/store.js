@@ -1163,6 +1163,11 @@ class Store {
   getMemberFundRecords(memberId) {
     return (this.state.fundRecords || []).filter((r) => r.memberId === memberId);
   }
+
+  deleteFundRecord(id) {
+    this.state.fundRecords = (this.state.fundRecords || []).filter((r) => r.id !== id);
+    this.notify();
+  }
 }
 
 export const store = new Store();

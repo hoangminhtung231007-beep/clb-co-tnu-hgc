@@ -2199,8 +2199,10 @@ export const modalManager = {
             this.close();
             modalManager.showAlert('Đăng nhập Quản trị viên (Admin) thành công!');
             if (window.app) {
-              window.app.adminSubView = 'admin-overview';
-              window.app.navigateTo('admin', 'admin-overview');
+              const isMobile = window.innerWidth <= 768;
+              const subView = isMobile ? 'admin-checkin' : 'admin-overview';
+              window.app.adminSubView = subView;
+              window.app.navigateTo('admin', subView);
             }
           } else {
             modalManager.showAlert('Tài khoản hoặc mật khẩu không chính xác! Vui lòng nhập đúng mật khẩu quản trị.');

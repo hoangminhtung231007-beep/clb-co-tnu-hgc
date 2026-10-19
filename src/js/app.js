@@ -25,11 +25,11 @@ class App {
   }
 
   init() {
-    // If reloaded while in admin role, go directly to admin-overview
+    // If reloaded while in admin role, go directly to check-in on mobile, or overview on desktop
     const sessionRole = store.getState().currentSession?.role;
     if (sessionRole === 'admin') {
       this.currentView = 'admin';
-      this.adminSubView = 'admin-overview';
+      this.adminSubView = window.innerWidth <= 768 ? 'admin-checkin' : 'admin-overview';
     } else if (sessionRole === 'member') {
       this.currentView = 'member-pass';
     }
@@ -73,6 +73,15 @@ class App {
       } else if (this.currentView === 'member-pass') {
         const container = document.getElementById('mainViewport');
         if (container) this.renderMemberPass(container);
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile && this.currentView === 'admin' && this.adminSubView !== 'admin-checkin') {
+        this.adminSubView = 'admin-checkin';
+        const dashboard = document.getElementById('mainViewport');
+        if (dashboard) this.renderAdminDashboard(dashboard);
       }
     });
 
@@ -125,6 +134,15 @@ class App {
     const btnAdminPortal = document.getElementById('btnAdminPortal');
     const navUserBadge = document.getElementById('navUserBadge');
 
+    document.body.classList.toggle('role-admin', isAdmin);
+    document.body.classList.toggle('role-member', !isGuest && !isAdmin);
+    document.body.classList.toggle('role-guest', isGuest);
+
+    const mobileBottomBar = document.getElementById('mobileBottomBar');
+    if (mobileBottomBar) {
+      mobileBottomBar.style.display = isAdmin ? 'none' : '';
+    }
+
     if (guestNavActions) {
       guestNavActions.style.display = isGuest ? 'flex' : 'none';
     }
@@ -136,9 +154,9 @@ class App {
     }
     if (navUserBadge) {
       if (isAdmin) {
-        navUserBadge.innerHTML = `<button type="button" class="btn btn-outline btn-xs" style="font-size:0.75rem; padding: 4px 10px; cursor: pointer; border-radius: 20px; border-color: rgba(212,175,55,0.4); color: var(--gold-light); background: rgba(212,175,55,0.1);" title="Buồng lái Quản trị viên"><span>👑</span> Quản Trị Viên</button>`;
+        navUserBadge.innerHTML = `<button type="button" class="btn btn-outline btn-xs" style="font-size:0.75rem; padding: 4px 8px; cursor: pointer; border-radius: 20px; border-color: rgba(212,175,55,0.4); color: var(--gold-light); background: rgba(212,175,55,0.1); white-space: nowrap;" title="Buồng lái Quản trị viên"><span>👑</span> Quản Trị Viên</button>`;
       } else if (!isGuest && activeMember) {
-        navUserBadge.innerHTML = `<button type="button" class="btn btn-outline btn-xs" style="font-size:0.75rem; padding: 4px 10px; cursor: pointer; border-radius: 20px; border-color: rgba(56,189,248,0.4); color: var(--accent-cyan); background: rgba(56,189,248,0.1);" title="Xem Thẻ Thành Viên"><span>💳</span> ${activeMember.name}</button>`;
+        navUserBadge.innerHTML = `<button type="button" class="btn btn-outline btn-xs" style="font-size:0.75rem; padding: 4px 10px; cursor: pointer; border-radius: 20px; border-color: rgba(56,189,248,0.4); color: var(--accent-cyan); background: rgba(56,189,248,0.1); white-space: nowrap;" title="Xem Thẻ Thành Viên"><span>💳</span> ${activeMember.name}</button>`;
       } else {
         navUserBadge.innerHTML = '';
       }
@@ -311,7 +329,9 @@ class App {
     }
 
     this.currentView = view;
-    if (subView) {
+    if (view === 'admin' && window.innerWidth <= 768) {
+      this.adminSubView = 'admin-checkin';
+    } else if (subView) {
       this.adminSubView = subView;
     }
 
@@ -1500,12 +1520,17 @@ class App {
   // 8. ADMIN DASHBOARD ("BUỒNG LÁI")
   // ==========================================
   renderAdminDashboard(container) {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      this.adminSubView = 'admin-checkin';
+    }
     const state = store.getState();
 
     container.innerHTML = `
-      <div class="admin-dashboard-view animate-fadeIn">
+      <div class="admin-dashboard-view animate-fadeIn ${isMobile ? 'admin-mobile-scanner-only' : ''}">
         <div class="admin-layout-container">
-          <!-- Admin Sidebar Navigation (Desktop) -->
+          <!-- Admin Sidebar Navigation (Desktop only) -->
+          ${!isMobile ? `
           <aside class="admin-sidebar">
             <div class="admin-sidebar-header">
               <span class="admin-sidebar-title">⚡ BUỒNG LÁI VẬN HÀNH</span>
@@ -1560,6 +1585,7 @@ class App {
               </span>
             </div>
           </aside>
+          ` : ''}
 
           <!-- Main Admin Content Pane -->
           <main class="admin-content-pane" id="adminSubContentPane"></main>

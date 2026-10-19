@@ -513,24 +513,35 @@
 }
 
 @media (max-width: 768px) {
-  /* Streamline Topbar on Mobile */
-  .system-topbar {
-    padding: 4px 10px;
-    font-size: 0.72rem;
+  /* Dedicated Mobile Admin: ONLY show QR Scanner */
+  body.role-admin .admin-sidebar,
+  .role-admin .admin-sidebar,
+  .admin-mobile-scanner-only .admin-sidebar {
+    display: none !important;
   }
-  .system-topbar-left .text-dim {
-    display: none;
+
+  body.role-admin #mobileBottomBar,
+  .role-admin #mobileBottomBar {
+    display: none !important;
   }
-  .system-badge-live {
-    font-size: 0.68rem;
-    padding: 1px 6px;
+
+  body.role-admin #btnAdminPortal,
+  .role-admin #btnAdminPortal {
+    display: none !important;
   }
-  .role-label {
-    display: none;
+
+  body.role-admin .site-footer,
+  .role-admin .site-footer {
+    display: none !important;
   }
-  .role-pill {
-    padding: 2px 7px;
-    font-size: 0.7rem;
+
+  .role-admin .admin-layout-container {
+    gap: 0 !important;
+  }
+
+  .role-admin .admin-content-pane {
+    padding: 10px 4px !important;
+    width: 100% !important;
   }
 
   /* Compact Navbar */

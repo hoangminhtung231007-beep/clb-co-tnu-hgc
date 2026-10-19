@@ -2090,13 +2090,9 @@ export const modalManager = {
                 `).join('')}
               </select>
             </div>
-          ` : `
-            <div class="p-3 mb-3 text-xs text-muted" style="background:rgba(255,255,255,0.04); border-radius:8px; border:1px dashed var(--border-dim); line-height: 1.5;">
-              Hệ thống hiện chưa có thành viên nào. Hãy đăng ký thẻ mới bên dưới hoặc chuyển sang Quản Trị Viên để cấp thẻ.
-            </div>
-          `}
+          ` : ''}
           <div class="form-group mb-3">
-            <label class="form-label">Hoặc nhập Mã Thẻ / MSSV:</label>
+            <label class="form-label">${members.length > 0 ? 'Hoặc nhập Mã Thẻ / MSSV:' : 'Nhập Mã Thẻ hoặc MSSV:'}</label>
             <input type="text" id="loginMemberInput" class="form-input" placeholder="VD: Mã thẻ thành viên hoặc MSSV..." value="${members[0]?.id || ''}">
           </div>
           <div class="form-group mb-4">

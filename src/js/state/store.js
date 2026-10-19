@@ -106,7 +106,10 @@ class Store {
           attendanceLogs: cleanedLogs,
           clubInfo: {
             ...INITIAL_DATA.clubInfo,
-            ...(parsed.clubInfo || {})
+            ...(parsed.clubInfo || {}),
+            zaloGroupLink: (!parsed.clubInfo?.zaloGroupLink || parsed.clubInfo.zaloGroupLink.includes('clbcotnuhgc'))
+              ? INITIAL_DATA.clubInfo.zaloGroupLink
+              : parsed.clubInfo.zaloGroupLink
           },
           articles: rawArticles,
           pendingApplications: rawPending,

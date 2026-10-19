@@ -734,6 +734,10 @@ class App {
               <span class="text-xs"><strong>Hotline/ Zalo:</strong> <a href="tel:0346578422" class="text-gold font-bold">0346578422</a></span>
             </div>
             <div class="d-flex align-center gap-2">
+              <span class="text-cyan" style="font-size:1.1rem;">💬</span>
+              <span class="text-xs"><strong>Nhóm Zalo CLB:</strong> <a href="https://zalo.me/g/ugejmj655" target="_blank" rel="noopener noreferrer" class="text-cyan font-bold">Tham gia nhóm Zalo</a></span>
+            </div>
+            <div class="d-flex align-center gap-2">
               <span class="text-cyan" style="font-size:1.1rem;">📧</span>
               <span class="text-xs"><strong>Gmail:</strong> <a href="mailto:clbcotnuhgc@gmail.com" class="text-cyan font-bold">clbcotnuhgc@gmail.com</a></span>
             </div>

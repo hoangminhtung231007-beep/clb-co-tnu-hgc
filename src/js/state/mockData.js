@@ -15,7 +15,7 @@ export const INITIAL_DATA = {
     email: "clbcotnuhgc@gmail.com",
     hotline: "0346578422",
     fanpage: "CLB Cờ TNU - HGC",
-    zaloGroupLink: "https://zalo.me/g/clbcotnuhgc",
+    zaloGroupLink: "https://zalo.me/g/ugejmj655",
     bankInfo: "",
     totalMembers: 0,
     retiredMembers: 0,

@@ -2618,7 +2618,7 @@ export const modalManager = {
   // 10B. Registration Success Modal (Thông báo gửi đơn thành công & Mã QR/Link Nhóm Zalo)
   openRegistrationSuccessModal(application) {
     if (!application) return;
-    const zaloLink = store.getState().clubInfo?.zaloGroupLink || 'https://zalo.me/g/clbcotnuhgc';
+    const zaloLink = store.getState().clubInfo?.zaloGroupLink || 'https://zalo.me/g/ugejmj655';
 
     const contentHtml = `
       <div class="reg-success-container" style="text-align: center; padding: 10px 4px 16px;">
@@ -2652,9 +2652,18 @@ export const modalManager = {
             Quét mã QR hoặc nhấn nút bên dưới để tham gia ngay nhóm Zalo CLB. Ban Chủ Nhiệm sẽ hướng dẫn lịch giao lưu thử kỳ lực và thông báo kết quả duyệt thành viên chính thức.
           </p>
 
-          <!-- QR Canvas -->
-          <div style="background: #ffffff; padding: 10px; border-radius: 12px; display: inline-block; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.3);">
-            <canvas id="regSuccessZaloQrCanvas" width="170" height="170" style="width: 170px; height: 170px; display: block;"></canvas>
+          <!-- QR Image from Zalo Group -->
+          <div style="background: #ffffff; padding: 10px; border-radius: 14px; display: inline-block; margin-bottom: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.35);">
+            <a href="${zaloLink}" target="_blank" rel="noopener noreferrer" title="Nhấn để tham gia nhóm Zalo CLB" style="display: block; text-decoration: none;">
+              <img id="regSuccessZaloQrImg" src="/zalo-qr.png" alt="Mã QR Nhóm Zalo CLB Cờ TNU - HGC" style="width: 175px; height: 175px; display: block; border-radius: 6px; object-fit: contain;">
+              <canvas id="regSuccessZaloQrCanvas" width="175" height="175" style="width: 175px; height: 175px; display: none;"></canvas>
+            </a>
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <a href="/zalo-qr-full.png" target="_blank" rel="noopener noreferrer" class="text-xs text-dim hover-gold" style="font-size: 11.5px; text-decoration: none;">
+              🔍 Xem ảnh thẻ Zalo gốc
+            </a>
           </div>
 
           <div>
@@ -2675,13 +2684,20 @@ export const modalManager = {
       return true;
     }, 'Đã Hiểu & Đóng');
 
-    // Render Zalo QR code to canvas
+    // Fallback QR canvas renderer if image fails to load
     setTimeout(() => {
-      const canvas = document.getElementById('regSuccessZaloQrCanvas');
-      if (canvas && qrHelper) {
-        qrHelper.renderToCanvas(canvas, zaloLink, { width: 170, margin: 1 });
+      const qrImg = document.getElementById('regSuccessZaloQrImg');
+      if (qrImg) {
+        qrImg.onerror = () => {
+          const canvas = document.getElementById('regSuccessZaloQrCanvas');
+          if (canvas && qrHelper) {
+            qrImg.style.display = 'none';
+            canvas.style.display = 'block';
+            qrHelper.renderToCanvas(canvas, zaloLink, { width: 175, margin: 1 });
+          }
+        };
       }
-    }, 100);
+    }, 50);
   },
 
   // 10C. View Application Detail Modal (Dành cho Ban Điều Hành xem chi tiết đơn)

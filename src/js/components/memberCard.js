@@ -145,7 +145,7 @@ export const memberCardComponent = {
 
               <!-- Card Footer -->
               <div class="id-card-footer">
-                <div class="id-watermark">CLB CỜ TNU - HGC • DANH DỰ & TRÍ TUỆ</div>
+                <div class="id-watermark">CLB CỜ TNU - HGC • TRÍ TUỆ & VĂN HÓA</div>
               </div>
             </div>
 
@@ -273,7 +273,7 @@ export const memberCardComponent = {
 
               <!-- Back Footer Mặt Sau -->
               <div class="id-card-footer id-back-footer">
-                <div class="id-watermark">CLB CỜ TNU - HGC • DANH DỰ & TRÍ TUỆ</div>
+                <div class="id-watermark">CLB CỜ TNU - HGC • TRÍ TUỆ & VĂN HÓA</div>
               </div>
             </div>
 

@@ -460,7 +460,7 @@
   background: rgba(0, 0, 0, 0.4);
 }
 
-/* Card Title: THẺ THÀNH VIÊN (Đơn giản, tinh tế, không cầu kỳ) */
+/* Card Title: THẺ THÀNH VIÊN (Căn giữa hoàn hảo vạch kẻ trên và tên kỳ thủ) */
 .id-card-title-simple {
   text-align: center;
   font-size: 1.05rem;
@@ -469,8 +469,9 @@
   text-transform: uppercase;
   color: #f5d061;
   text-shadow: 0 2px 10px rgba(212, 175, 55, 0.4);
-  margin: 0 0 8px;
+  margin: 24px 0 8px;
   padding: 0;
+  line-height: 1.2;
 }
 
 /* Front Side Body: 3-column layout (Avatar, Details, Smart QR Key) */
@@ -1358,7 +1359,7 @@
   .id-card-title-simple {
     font-size: 0.92rem;
     letter-spacing: 2px;
-    margin: 6px 0 4px;
+    margin: 12px 0 8px;
   }
   .id-front-body {
     flex-direction: column;

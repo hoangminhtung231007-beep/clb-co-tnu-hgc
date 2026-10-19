@@ -2184,14 +2184,11 @@ export const modalManager = {
             <label class="form-label">${members.length > 0 ? 'Mã Thẻ hoặc MSSV:' : 'Nhập Mã Thẻ hoặc MSSV:'}</label>
             <input type="text" id="loginMemberInput" class="form-input" placeholder="VD: Mã thẻ hoặc MSSV..." value="${members[0]?.id || ''}">
           </div>
-          <div class="form-group mb-3">
+          <div class="form-group mb-4">
             <label class="form-label">Mật khẩu (Ngày tháng năm sinh):</label>
-            <input type="password" id="loginMemberPass" class="form-input" placeholder="VD: 23102007 hoặc 23/10/2007..." value="" autocomplete="current-password">
-            <div class="text-xs text-muted mt-1" style="font-size: 0.75rem; color: #94a3b8; line-height: 1.4;">
-              💡 Mật khẩu đăng nhập mặc định là ngày tháng năm sinh của bạn (dạng <code>ddmmyyyy</code> hoặc <code>dd/mm/yyyy</code>).
-            </div>
+            <input type="password" id="loginMemberPass" class="form-input" placeholder="Nhập ngày tháng năm sinh..." value="" autocomplete="current-password">
           </div>
-          <button type="button" class="btn btn-gold btn-md" id="btnSubmitMemberLogin" style="width: 100%; font-weight: 700; padding: 10px; margin-top: 4px;">
+          <button type="button" class="btn btn-gold btn-md" id="btnSubmitMemberLogin" style="width: 100%; font-weight: 700; padding: 10px;">
             Đăng Nhập Thành Viên
           </button>
           <div class="text-center mt-3 text-xs text-muted">

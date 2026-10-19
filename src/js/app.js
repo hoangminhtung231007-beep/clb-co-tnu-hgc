@@ -85,6 +85,7 @@ class App {
     const role = state.currentSession.role;
     const activeMember = store.getActiveMember();
     const isGuest = role === 'guest';
+    const isAdmin = role === 'admin';
     // 1. Hide / Show nav menus:
     // Admin mode: Hide ALL menu links from top nav (as Thẻ Thành Viên moved to Buồng lái vận hành)
     // Guest mode: Hide Member Pass

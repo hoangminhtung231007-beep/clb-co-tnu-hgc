@@ -85,13 +85,6 @@ class App {
     const role = state.currentSession.role;
     const activeMember = store.getActiveMember();
     const isGuest = role === 'guest';
-    const isAdmin = role === 'admin';
-
-    const rolePills = document.querySelectorAll('.role-pill');
-    rolePills.forEach((p) => {
-      p.classList.toggle('active', p.getAttribute('data-role') === role);
-    });
-
     // 1. Hide / Show nav menus:
     // Admin mode: Hide ALL menu links from top nav (as Thẻ Thành Viên moved to Buồng lái vận hành)
     // Guest mode: Hide Member Pass
@@ -129,6 +122,7 @@ class App {
     const guestNavActions = document.getElementById('guestNavActions');
     const userNavActions = document.getElementById('userNavActions');
     const btnAdminPortal = document.getElementById('btnAdminPortal');
+    const navUserBadge = document.getElementById('navUserBadge');
 
     if (guestNavActions) {
       guestNavActions.style.display = isGuest ? 'flex' : 'none';
@@ -138,6 +132,15 @@ class App {
     }
     if (btnAdminPortal) {
       btnAdminPortal.style.display = isAdmin ? 'inline-flex' : 'none';
+    }
+    if (navUserBadge) {
+      if (isAdmin) {
+        navUserBadge.innerHTML = `<button type="button" class="btn btn-outline btn-xs" style="font-size:0.75rem; padding: 4px 10px; cursor: pointer; border-radius: 20px; border-color: rgba(212,175,55,0.4); color: var(--gold-light); background: rgba(212,175,55,0.1);" title="Buồng lái Quản trị viên"><span>👑</span> Quản Trị Viên</button>`;
+      } else if (!isGuest && activeMember) {
+        navUserBadge.innerHTML = `<button type="button" class="btn btn-outline btn-xs" style="font-size:0.75rem; padding: 4px 10px; cursor: pointer; border-radius: 20px; border-color: rgba(56,189,248,0.4); color: var(--accent-cyan); background: rgba(56,189,248,0.1);" title="Xem Thẻ Thành Viên"><span>💳</span> ${activeMember.name}</button>`;
+      } else {
+        navUserBadge.innerHTML = '';
+      }
     }
   }
 
@@ -162,29 +165,35 @@ class App {
   }
 
   bindGlobalNavigation() {
-    // Role switcher pills
-    const rolePills = document.querySelectorAll('.role-pill');
-    rolePills.forEach((p) => {
-      p.addEventListener('click', () => {
+    // Nav User Badge Click (Switch to member pass or admin overview)
+    const navUserBadge = document.getElementById('navUserBadge');
+    if (navUserBadge) {
+      navUserBadge.addEventListener('click', () => {
         sound.playClick();
-        const role = p.getAttribute('data-role');
-        if (role === 'admin') {
-          if (store.getState().currentSession?.role !== 'admin') {
-            modalManager.openLoginModal('admin');
-            return;
-          }
+        const curRole = store.getState().currentSession?.role;
+        if (curRole === 'admin') {
           this.adminSubView = 'admin-overview';
           this.navigateTo('admin', 'admin-overview');
-          return;
-        }
-        store.setRole(role);
-        if (role === 'member') {
+        } else if (curRole === 'member') {
           this.navigateTo('member-pass');
-        } else {
-          this.navigateTo('home');
         }
       });
-    });
+    }
+
+    // Footer Admin Login Link
+    const linkFooterAdmin = document.getElementById('linkFooterAdminLogin');
+    if (linkFooterAdmin) {
+      linkFooterAdmin.addEventListener('click', (e) => {
+        e.preventDefault();
+        sound.playClick();
+        if (store.getState().currentSession?.role === 'admin') {
+          this.adminSubView = 'admin-overview';
+          this.navigateTo('admin', 'admin-overview');
+        } else {
+          modalManager.openLoginModal('admin');
+        }
+      });
+    }
 
     // Guest Action Buttons
     const btnGuestLogin = document.getElementById('btnGuestLogin');

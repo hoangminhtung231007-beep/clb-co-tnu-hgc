@@ -21,25 +21,6 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Top System Switcher Bar (For testing & switching between Guest, Member & Admin seamlessly) -->
-    <header class="system-topbar" id="systemTopbar">
-      <div class="system-topbar-left">
-        <span class="system-badge-live">
-          <span class="pulse-dot"></span> TNU - HGC LIVE CLOUD
-        </span>
-        <span class="text-xs text-dim">Cơ sở dữ liệu tập trung 2 phân hệ (Portal - Admin)</span>
-      </div>
-
-      <div class="role-switcher-group">
-        <span class="role-label text-xs">Chế độ trải nghiệm:</span>
-        <div class="role-btn-group">
-          <button type="button" class="role-pill active" data-role="guest" title="Khách vãng lai">Khách</button>
-          <button type="button" class="role-pill" data-role="member" title="Thành viên có Thẻ QR Key">Thành Viên</button>
-          <button type="button" class="role-pill" data-role="admin" title="Quản trị viên Buồng Lái">Quản Trị Viên (Admin)</button>
-        </div>
-      </div>
-    </header>
-
     <!-- Main Navigation Bar -->
     <nav class="main-navbar" id="mainNavbar">
       <!-- Brand Logo & Title -->
@@ -78,6 +59,7 @@
 
         <!-- Authenticated Actions (Shown when role !== 'guest') -->
         <div class="user-nav-actions" id="userNavActions" style="display: flex; align-items: center; gap: 10px;">
+          <div id="navUserBadge" class="d-flex align-center gap-2"></div>
           <button class="btn-admin-portal" id="btnAdminPortal" title="Cập nhật và đồng bộ dữ liệu hệ thống">
             <span>🔄</span> Cập nhật dữ liệu
           </button>
@@ -124,6 +106,7 @@
             <li><a href="#" onclick="window.app.navigateTo('leaderboard'); return false;">Bảng Xếp Hạng</a></li>
             <li><a href="#" onclick="window.app.navigateTo('events'); return false;">Hoạt Động CLB</a></li>
             <li><a href="#" onclick="window.app.navigateTo('news'); return false;">Tin Tức</a></li>
+            <li><a href="#" id="linkFooterAdminLogin" class="text-dim hover-gold" style="display:inline-flex; align-items:center; gap:4px; margin-top:4px;"><span>🔒</span> Dành cho Quản trị viên</a></li>
           </ul>
         </div>
 

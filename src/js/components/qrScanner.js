@@ -206,35 +206,17 @@ export class SmartQRScanner {
         <!-- Feedback alert area -->
         <div id="scannerAlertArea" class="scanner-alert-area"></div>
 
-        <!-- Quick Test Simulator (Extremely useful for demonstration) -->
-        <div class="scanner-simulator-card">
-          <div class="sim-header">
-            <div>
-              <span class="sim-badge">QUICK TEST DEMO</span>
-              <h4 class="sim-title">Mô phỏng Quét Thẻ Thành Viên (Không cần Camera)</h4>
-            </div>
-            <span class="text-muted text-xs">Kiểm thử chống quét trùng - nhận diện</span>
+        <!-- Manual Code Input -->
+        <div class="card mt-3" style="background: rgba(14,23,46,0.85); border: 1px solid rgba(255,255,255,0.08); padding: 14px 18px;">
+          <div class="d-flex align-center gap-2 mb-2">
+            <span>⌨️</span>
+            <span class="text-xs font-bold text-dim">NHẬP MÃ THẺ HOẶC MSSV ĐIỂM DANH THỦ CÔNG:</span>
           </div>
-          <p class="sim-desc" id="simModeDesc">
-            Chọn một kỳ thủ dưới đây để giả lập quét mã QR (Chế độ hiện tại: <strong class="text-gold">${this.getModeLabel()}</strong>):
-          </p>
-          <div class="sim-members-grid">
-            ${state.members.length > 0 ? state.members.slice(0, 8).map((m) => `
-              <button class="sim-member-btn" data-member-id="${m.id}" title="Quét thử thẻ của ${m.name}">
-                <img src="${m.avatar}" alt="${m.name}" class="sim-member-avatar">
-                <div class="sim-member-meta">
-                  <span class="sim-member-name">${m.name}</span>
-                  <span class="sim-member-sub">${m.id} • ${m.roleTitle}</span>
-                </div>
-                <span class="sim-scan-icon">⚡ Quét</span>
-              </button>
-            `).join('') : '<p class="text-muted text-xs p-3">Chưa có thành viên nào trong danh sách. Hãy thêm thành viên mới để quét thử.</p>'}
-          </div>
-
-          <!-- Manual Code Input -->
-          <div class="sim-manual-input">
-            <input type="text" id="manualQrInput" class="form-input form-input-sm" placeholder="Nhập mã thẻ hoặc token QR (VD: MSSV hoặc mã thẻ)">
-            <button id="btnManualSubmit" class="btn btn-gold btn-sm">Xác nhận điểm danh</button>
+          <div class="d-flex gap-2">
+            <input type="text" id="manualQrInput" class="form-input form-input-sm" placeholder="Nhập mã thẻ hoặc MSSV (VD: MSSV hoặc mã thẻ)..." style="flex: 1;">
+            <button id="btnManualSubmit" class="btn btn-gold btn-sm" style="white-space: nowrap; font-weight: 600;">
+              <span>✓</span> <span>Xác Nhận Điểm Danh</span>
+            </button>
           </div>
         </div>
       </div>
@@ -248,7 +230,6 @@ export class SmartQRScanner {
     const fileInput = this.container.querySelector('#scannerFileInput');
     const manualInput = this.container.querySelector('#manualQrInput');
     const btnManualSubmit = this.container.querySelector('#btnManualSubmit');
-    const simBtns = this.container.querySelectorAll('.sim-member-btn');
 
     // Bind mode tabs
     this.container.querySelectorAll('.btn-checkin-mode').forEach((btn) => {
@@ -292,13 +273,6 @@ export class SmartQRScanner {
         }
       });
     }
-
-    simBtns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const memberId = btn.getAttribute('data-member-id');
-        this.executeCheckIn(memberId, 'QR Giả Lập');
-      });
-    });
   }
 
   updateModeUi() {
@@ -313,11 +287,6 @@ export class SmartQRScanner {
     if (targetDetailArea) {
       targetDetailArea.innerHTML = this.renderTargetDetailHtml(state);
       this.bindEventSelect();
-    }
-
-    const simDesc = this.container.querySelector('#simModeDesc');
-    if (simDesc) {
-      simDesc.innerHTML = `Chọn một kỳ thủ dưới đây để giả lập quét mã QR (Chế độ hiện tại: <strong class="text-gold">${this.getModeLabel()}</strong>):`;
     }
   }
 
@@ -367,11 +336,11 @@ export class SmartQRScanner {
     } catch (err) {
       console.warn('Camera access denied or unavailable', err);
       if (statusText) {
-        statusText.innerHTML = '⚠️ Không thể mở camera (quyền bị chặn hoặc không có thiết bị). Hãy dùng "Mô phỏng Quét Thẻ" bên dưới!';
+        statusText.innerHTML = '⚠️ Không thể mở camera. Vui lòng cấp quyền camera hoặc nhập mã thẻ/MSSV thủ công bên dưới!';
       }
       this.showFeedback({
         success: false,
-        message: 'Không thể truy cập camera. Bạn có thể dùng tính năng Mô phỏng Quét Thẻ bên dưới để thử nghiệm mượt mà!'
+        message: 'Không thể truy cập camera. Vui lòng cấp quyền camera hoặc nhập mã thẻ/MSSV thủ công bên dưới.'
       });
     }
   }
@@ -441,7 +410,7 @@ export class SmartQRScanner {
     } else {
       this.showFeedback({
         success: false,
-        message: 'Trình duyệt hiện tại chưa hỗ trợ quét ảnh trực tiếp. Vui lòng thử nút Mô phỏng bên dưới!'
+        message: 'Trình duyệt hiện tại chưa hỗ trợ quét ảnh trực tiếp. Vui lòng bật camera trực tiếp hoặc nhập mã thẻ thủ công bên dưới!'
       });
     }
     e.target.value = '';

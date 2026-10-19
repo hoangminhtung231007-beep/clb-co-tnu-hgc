@@ -128,7 +128,7 @@ class Store {
             bronzeMedals: m.bronzeMedals !== undefined ? m.bronzeMedals : 0
           })),
           currentSession: {
-            role: parsed.currentSession?.role || INITIAL_DATA.currentSession.role || 'admin',
+            role: parsed.currentSession?.role || INITIAL_DATA.currentSession.role || 'guest',
             activeMemberId: parsed.currentSession?.activeMemberId || (rawClubMembers[0]?.id || null)
           },
           alumniBoard: rawBoard.map((m, idx) => ({ ...m, id: syncAlumniCardId(m.id, idx) })),

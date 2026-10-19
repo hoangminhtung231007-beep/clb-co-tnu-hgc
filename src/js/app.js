@@ -3225,7 +3225,6 @@ class App {
               <h3 class="font-bold text-white text-base">Đổi Mật Khẩu Mở Khóa Firebase Cloud</h3>
               <p class="text-xs text-muted mb-0">Mật khẩu này dùng riêng để mở khóa mục Firebase Cloud (độc lập với mật khẩu đăng nhập Admin)</p>
             </div>
-            <span class="badge badge-outline" style="font-size:0.75rem;">Mặc định ban đầu: admin123456</span>
           </div>
 
           <form id="formChangeFirebaseLockPassword" onsubmit="return false;" class="app-form" style="max-width: 560px;">
@@ -3260,7 +3259,7 @@ class App {
                 <span>💾</span> <span>Lưu Mật Khẩu Firebase</span>
               </button>
               <button type="button" class="btn btn-outline btn-sm" id="btnResetDefaultFbPass" style="font-size: 0.78rem;">
-                <span>🔄</span> Đặt lại gốc (admin123456)
+                <span>🔄</span> Đặt lại mật khẩu gốc
               </button>
             </div>
           </form>
@@ -3567,7 +3566,7 @@ service cloud.firestore {
               <button type="button" class="btn-toggle-eye" data-target="inputFirebaseUnlockPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
             </div>
             <div id="firebaseUnlockError" class="text-xs text-rose mt-2" style="display:none; font-weight:600;">⚠️ Mật khẩu không chính xác! Vui lòng thử lại.</div>
-            <div class="text-xs text-muted mt-2" style="opacity: 0.85;">💡 Mật khẩu mặc định: <code>admin123456</code> (độc lập với mật khẩu đăng nhập Admin)</div>
+            <div class="text-xs text-muted mt-2" style="opacity: 0.85;">🔒 Mật khẩu mở khóa độc lập hoàn toàn với mật khẩu Admin</div>
           </div>
 
           <div class="d-flex gap-2 justify-end">

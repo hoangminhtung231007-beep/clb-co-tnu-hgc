@@ -2101,8 +2101,7 @@ export const modalManager = {
           </div>
           <div class="form-group mb-4">
             <label class="form-label">Mật khẩu thẻ:</label>
-            <input type="password" id="loginMemberPass" class="form-input" placeholder="Mặc định: 123456" value="123456">
-            <small class="text-xs text-muted mt-1" style="display:block;">* Mật khẩu mặc định là <strong>123456</strong></small>
+            <input type="password" id="loginMemberPass" class="form-input" placeholder="Nhập mật khẩu thẻ..." value="">
           </div>
           <button type="button" class="btn btn-gold btn-md" id="btnSubmitMemberLogin" style="width: 100%; font-weight: 700; padding: 10px;">
             Đăng Nhập Thành Viên
@@ -2122,7 +2121,6 @@ export const modalManager = {
           <div class="form-group mb-4">
             <label class="form-label">Mật khẩu Quản trị viên:</label>
             <input type="password" id="loginAdminPass" class="form-input" placeholder="Nhập mật khẩu quản trị..." value="">
-            <small class="text-xs text-muted mt-1" style="display:block;">* Mật khẩu quản trị hệ thống: <strong>admin123456</strong></small>
           </div>
           <button type="button" class="btn btn-gold btn-md" id="btnSubmitAdminLogin" style="width: 100%; font-weight: 700; padding: 10px;">
             Đăng Nhập Quản Trị Hệ Thống

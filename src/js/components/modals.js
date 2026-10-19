@@ -3427,12 +3427,12 @@ export const modalManager = {
             </div>
             <div>
               <label class="form-label text-dim text-xs">Số tài khoản nhận</label>
-              <input type="text" class="form-control text-xs font-mono" id="campBankAccountInput" value="0346578422">
+              <input type="text" class="form-control text-xs font-mono" id="campBankAccountInput" value="80402233445566">
             </div>
           </div>
           <div class="mt-2">
             <label class="form-label text-dim text-xs">Tên chủ tài khoản (Viết hoa không dấu)</label>
-            <input type="text" class="form-control text-xs" id="campBankOwnerInput" value="CLB CO TNU HGC">
+            <input type="text" class="form-control text-xs" id="campBankOwnerInput" value="HOANG MINH TUNG">
           </div>
         </div>
 
@@ -3466,8 +3466,8 @@ export const modalManager = {
         const deadline = modalEl.querySelector('#campDeadlineInput')?.value;
         const description = modalEl.querySelector('#campDescInput')?.value?.trim();
         const bankCode = modalEl.querySelector('#campBankCodeSelect')?.value || 'MB';
-        const bankAccount = modalEl.querySelector('#campBankAccountInput')?.value?.trim() || '0346578422';
-        const bankOwner = modalEl.querySelector('#campBankOwnerInput')?.value?.trim() || 'CLB CO TNU HGC';
+        const bankAccount = modalEl.querySelector('#campBankAccountInput')?.value?.trim() || '80402233445566';
+        const bankOwner = modalEl.querySelector('#campBankOwnerInput')?.value?.trim() || 'HOANG MINH TUNG';
 
         if (!title) {
           modalManager.showAlert('Vui lòng nhập tên đợt thu quỹ!');
@@ -3505,8 +3505,8 @@ export const modalManager = {
     }
 
     const bankCode = campaign.bankCode || 'MB';
-    const bankAccount = campaign.bankAccount || '0346578422';
-    const bankOwner = campaign.bankOwner || 'CLB CO TNU HGC';
+    const bankAccount = campaign.bankAccount || '80402233445566';
+    const bankOwner = campaign.bankOwner || 'HOANG MINH TUNG';
     const amount = campaign.amount || 30000;
     const studentIdClean = (activeMember.studentId || activeMember.phone || activeMember.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
     const transferNote = `CLBCO ${campaign.id} ${studentIdClean}`;
@@ -3626,8 +3626,8 @@ export const modalManager = {
   openCampaignVietQRGeneralModal(campaign) {
     if (!campaign) return;
     const bankCode = campaign.bankCode || 'MB';
-    const bankAccount = campaign.bankAccount || '0346578422';
-    const bankOwner = campaign.bankOwner || 'CLB CO TNU HGC';
+    const bankAccount = campaign.bankAccount || '80402233445566';
+    const bankOwner = campaign.bankOwner || 'HOANG MINH TUNG';
     const amount = campaign.amount || 30000;
     const generalNote = `CLBCO ${campaign.id} MASV`;
 
@@ -3987,12 +3987,12 @@ export const modalManager = {
             </div>
             <div>
               <label class="form-label text-dim text-xs">Số tài khoản nhận</label>
-              <input type="text" class="form-control text-xs font-mono" id="fundSettingBankAccount" value="${settings.bankAccount || '0346578422'}">
+              <input type="text" class="form-control text-xs font-mono" id="fundSettingBankAccount" value="${settings.bankAccount || '80402233445566'}">
             </div>
           </div>
           <div class="mt-2">
             <label class="form-label text-dim text-xs">Chủ tài khoản (Viết hoa)</label>
-            <input type="text" class="form-control text-xs" id="fundSettingBankOwner" value="${settings.bankOwner || 'CLB CO TNU HGC'}">
+            <input type="text" class="form-control text-xs" id="fundSettingBankOwner" value="${settings.bankOwner || 'HOANG MINH TUNG'}">
           </div>
         </div>
 
@@ -4026,8 +4026,8 @@ export const modalManager = {
         const amount = parseInt(modalEl.querySelector('#fundSettingAmount')?.value) || 30000;
         const syntaxPrefix = modalEl.querySelector('#fundSettingSyntax')?.value?.trim() || 'QUY';
         const bankCode = modalEl.querySelector('#fundSettingBankCode')?.value || 'MB';
-        const bankAccount = modalEl.querySelector('#fundSettingBankAccount')?.value?.trim() || '0346578422';
-        const bankOwner = modalEl.querySelector('#fundSettingBankOwner')?.value?.trim() || 'CLB CO TNU HGC';
+        const bankAccount = modalEl.querySelector('#fundSettingBankAccount')?.value?.trim() || '80402233445566';
+        const bankOwner = modalEl.querySelector('#fundSettingBankOwner')?.value?.trim() || 'HOANG MINH TUNG';
 
         store.updateFundSettings({
           month,
@@ -4054,7 +4054,7 @@ export const modalManager = {
     const amount = settings.amount || 30000;
     const studentIdClean = (member.studentId || member.phone || member.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
     const transferNote = `${settings.syntaxPrefix || 'QUY'} ${studentIdClean}`;
-    const qrUrl = `https://img.vietqr.io/image/${settings.bankCode || 'MB'}-${settings.bankAccount || '0346578422'}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(transferNote)}&accountName=${encodeURIComponent(settings.bankOwner || 'CLB CO TNU HGC')}`;
+    const qrUrl = `https://img.vietqr.io/image/${settings.bankCode || 'MB'}-${settings.bankAccount || '80402233445566'}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(transferNote)}&accountName=${encodeURIComponent(settings.bankOwner || 'HOANG MINH TUNG')}`;
 
     const contentHtml = `
       <div class="member-fund-qr-modal p-2 text-center" style="max-width: 480px;">
@@ -4119,7 +4119,7 @@ export const modalManager = {
     const settings = store.getFundSettings();
     const amount = settings.amount || 30000;
     const generalNote = `${settings.syntaxPrefix || 'QUY T10'} [MÃ_SV]`;
-    const qrUrl = `https://img.vietqr.io/image/${settings.bankCode || 'MB'}-${settings.bankAccount || '0346578422'}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(generalNote)}&accountName=${encodeURIComponent(settings.bankOwner || 'CLB CO TNU HGC')}`;
+    const qrUrl = settings.qrImage || '/vietqr-fund.png';
 
     const contentHtml = `
       <div class="fullscreen-fund-qr p-4 text-center" style="max-width: 650px;">

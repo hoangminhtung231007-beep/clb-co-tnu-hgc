@@ -38,9 +38,10 @@ export const INITIAL_DATA = {
       amount: 30000,
       deadline: "2026-10-31",
       description: "Tiền trà nước sinh hoạt, mua sắm quân cờ mới và khen thưởng kỳ thủ tích cực",
-      bankAccount: "0346578422",
+      bankAccount: "80402233445566",
       bankCode: "MB",
-      bankOwner: "CLB CO TNU HGC",
+      bankOwner: "HOANG MINH TUNG",
+      qrImage: "/vietqr-fund.png",
       status: "active",
       createdAt: "2026-10-01"
     }
@@ -50,8 +51,9 @@ export const INITIAL_DATA = {
     title: "Quỹ Sinh Hoạt Tháng 10/2026",
     amount: 30000,
     syntaxPrefix: "QUY T10",
-    bankAccount: "0346578422",
+    bankAccount: "80402233445566",
     bankCode: "MB",
-    bankOwner: "CLB CO TNU HGC"
+    bankOwner: "HOANG MINH TUNG",
+    qrImage: "/vietqr-fund.png"
   }
 };

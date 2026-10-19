@@ -144,15 +144,16 @@ class Store {
           alumniMembers: rawMembers.map((m, idx) => ({ ...m, id: syncAlumniCardId(m.id, idx) })),
           fundRecords: Array.isArray(parsed.fundRecords) ? parsed.fundRecords : (INITIAL_DATA.fundRecords || []),
           fundCampaigns: (Array.isArray(parsed.fundCampaigns) && parsed.fundCampaigns.length > 0) ? parsed.fundCampaigns : (INITIAL_DATA.fundCampaigns || []),
-          fundSettings: (parsed.fundSettings && typeof parsed.fundSettings === 'object') ? parsed.fundSettings : (INITIAL_DATA.fundSettings || {
-            month: "10/2026",
-            title: "Quỹ Sinh Hoạt Tháng 10/2026",
-            amount: 30000,
-            syntaxPrefix: "QUY T10",
-            bankAccount: "0346578422",
+          fundSettings: {
+            month: parsed.fundSettings?.month || INITIAL_DATA.fundSettings?.month || "10/2026",
+            title: parsed.fundSettings?.title || INITIAL_DATA.fundSettings?.title || "Quỹ Sinh Hoạt Tháng 10/2026",
+            amount: parsed.fundSettings?.amount || INITIAL_DATA.fundSettings?.amount || 30000,
+            syntaxPrefix: parsed.fundSettings?.syntaxPrefix || INITIAL_DATA.fundSettings?.syntaxPrefix || "QUY T10",
+            bankAccount: "80402233445566",
             bankCode: "MB",
-            bankOwner: "CLB CO TNU HGC"
-          })
+            bankOwner: "HOANG MINH TUNG",
+            qrImage: "/vietqr-fund.png"
+          }
         };
       }
     } catch (e) {
@@ -1193,9 +1194,10 @@ class Store {
       amount: parseInt(amount) || 50000,
       deadline: deadline || '',
       description: description || 'Thu quỹ hoạt động định kỳ của CLB Cờ',
-      bankAccount: bankAccount || '0346578422',
+      bankAccount: bankAccount || '80402233445566',
       bankCode: bankCode || 'MB',
-      bankOwner: bankOwner || 'CLB CO TNU HGC',
+      bankOwner: bankOwner || 'HOANG MINH TUNG',
+      qrImage: '/vietqr-fund.png',
       status: 'active',
       createdAt: new Date().toISOString().slice(0, 10)
     };
@@ -1265,15 +1267,16 @@ class Store {
   // DIRECT LIVE FUND (THU QUỸ TRỰC TIẾP TẠI BUỔI SINH HOẠT)
   // ==========================================
   getFundSettings() {
-    if (!this.state.fundSettings || typeof this.state.fundSettings !== 'object') {
+    if (!this.state.fundSettings || typeof this.state.fundSettings !== 'object' || this.state.fundSettings.bankAccount === '0346578422') {
       this.state.fundSettings = {
-        month: "10/2026",
-        title: "Quỹ Sinh Hoạt Tháng 10/2026",
-        amount: 30000,
-        syntaxPrefix: "QUY T10",
-        bankAccount: "0346578422",
+        month: this.state.fundSettings?.month || "10/2026",
+        title: this.state.fundSettings?.title || "Quỹ Sinh Hoạt Tháng 10/2026",
+        amount: this.state.fundSettings?.amount || 30000,
+        syntaxPrefix: this.state.fundSettings?.syntaxPrefix || "QUY T10",
+        bankAccount: "80402233445566",
         bankCode: "MB",
-        bankOwner: "CLB CO TNU HGC"
+        bankOwner: "HOANG MINH TUNG",
+        qrImage: "/vietqr-fund.png"
       };
     }
     return this.state.fundSettings;

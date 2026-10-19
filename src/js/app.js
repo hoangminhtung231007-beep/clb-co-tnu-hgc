@@ -529,39 +529,7 @@ class App {
       targetView: 'home'
     });
 
-    // =========================================================================
-    // 9. XÁC NHẬN ĐÃ NỘP QUỸ CLB & NHẮC ĐÓNG QUỸ THEO ĐỢT
-    // =========================================================================
-    if (role === 'member' && activeMember) {
-      const memberFunds = store.getMemberFundRecords(activeMember.id);
-      if (memberFunds.length > 0) {
-        const latestFund = memberFunds[0];
-        notifications.push({
-          id: `notif_fund_${latestFund.id}`,
-          icon: '💰',
-          title: 'Biên nhận nộp quỹ CLB',
-          desc: `Đã xác nhận thu quỹ: ${(latestFund.amount || 50000).toLocaleString('vi-VN')}đ (${latestFund.term}). Cảm ơn bạn đã đóng góp xây dựng CLB!`,
-          time: latestFund.date || 'Quỹ CLB',
-          badge: 'Đã nộp quỹ',
-          targetView: 'member-pass'
-        });
-      }
 
-      // Nhắc nhở nộp quỹ sinh hoạt tháng hiện tại nếu chưa đóng
-      const fundSettings = store.getFundSettings();
-      const hasPaidCurrentMonth = memberFunds.some((r) => r.month === fundSettings.month || r.term === fundSettings.title);
-      if (!hasPaidCurrentMonth) {
-        notifications.push({
-          id: `notif_unpaid_month_${fundSettings.month.replace('/', '_')}`,
-          icon: '💳',
-          title: `Nhắc nộp: ${fundSettings.title}`,
-          desc: `Định mức ${(fundSettings.amount || 30000).toLocaleString('vi-VN')}đ. Bấm để quét VietQR đóng trực tiếp ngay!`,
-          time: 'Cần đóng quỹ',
-          badge: 'Chưa nộp',
-          targetView: 'member-pass'
-        });
-      }
-    }
 
     // =========================================================================
     // 10. (ADMIN) CÓ ĐƠN ĐĂNG KÝ MỚI CHỜ DUYỆT
@@ -2167,116 +2135,6 @@ class App {
               </tbody>
             </table>
           </div>
-        <!-- 3. HỘI PHÍ & QUỸ SINH HOẠT THÁNG CỦA TÔI -->
-        <div class="card p-4 mt-4 animate-fadeIn" style="background: var(--bg-surface); border: 1px solid var(--border-gold); border-radius: var(--radius-lg); box-shadow: 0 12px 36px rgba(0,0,0,0.4);">
-          <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3 pb-3" style="border-bottom: 1px solid rgba(212, 175, 55, 0.2);">
-            <div>
-              <span class="badge badge-gold">TÀI CHÍNH KỲ THỦ</span>
-              <h2 class="text-xl font-bold text-white mt-1 d-flex align-center gap-2">
-                <span>💰 Quỹ Sinh Hoạt: ${store.getFundSettings().title}</span>
-              </h2>
-              <p class="text-muted text-xs mt-1">Định mức tháng: ${(store.getFundSettings().amount || 30000).toLocaleString('vi-VN')} đ • Tích hợp mã VietQR chuyển khoản tự động ghi nhận vào sổ</p>
-            </div>
-            <div>
-              <button type="button" class="btn btn-outline btn-xs" id="btnMemberOpenGuide">💡 Cơ Chế Tự Động Hóa</button>
-            </div>
-          </div>
-
-          <!-- Trạng thái đóng quỹ tháng hiện tại -->
-          <div class="mb-3">
-            ${(() => {
-              const settings = store.getFundSettings();
-              const myRecords = store.getMemberFundRecords(activeMember.id);
-              const currentPaid = myRecords.find((r) => r.month === settings.month || r.term === settings.title);
-
-              if (currentPaid) {
-                return `
-                  <div class="card p-3" style="background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.4); border-radius: 12px;">
-                    <div class="d-flex justify-between align-center flex-wrap gap-2">
-                      <div class="d-flex align-center gap-3">
-                        <span style="font-size: 2.2rem;">✅</span>
-                        <div>
-                          <strong class="text-white text-base">BẠN ĐÃ HOÀN THÀNH ĐÓNG QUỸ ${settings.month}</strong>
-                          <div class="text-xs text-emerald mt-1">
-                            Số tiền: <strong>${(parseInt(currentPaid.amount) || settings.amount).toLocaleString('vi-VN')} đ</strong> • Ngày thu: <strong>${currentPaid.date}</strong> ${currentPaid.time || ''}
-                          </div>
-                          <div class="text-xs text-dim mt-0.5">Mã biên nhận: <span class="font-mono text-gold font-bold">${currentPaid.id}</span> (${currentPaid.confirmedBy || 'Tự Động (VietQR)'})</div>
-                        </div>
-                      </div>
-                      <span class="badge badge-emerald font-bold" style="font-size: 0.9rem; padding: 6px 16px;">
-                        ĐÃ NỘP XONG
-                      </span>
-                    </div>
-                  </div>
-                `;
-              }
-
-              return `
-                <div class="card p-4" style="background: rgba(245,158,11,0.08); border: 1.5px dashed rgba(212,175,55,0.45); border-radius: 12px;">
-                  <div class="d-flex justify-between align-center flex-wrap gap-3">
-                    <div class="d-flex align-center gap-3">
-                      <span style="font-size: 2.5rem;">💳</span>
-                      <div>
-                        <div class="d-flex align-center gap-2">
-                          <strong class="text-white text-base">BẠN CHƯA ĐÓNG QUỸ SINH HOẠT THÁNG NÀY</strong>
-                          <span class="badge badge-warning font-bold">CHƯA NỘP</span>
-                        </div>
-                        <div class="text-xs text-muted mt-1">
-                          Định mức tháng ${settings.month}: <strong class="text-gold font-mono font-bold" style="font-size: 1rem;">${(settings.amount || 30000).toLocaleString('vi-VN')} đ</strong>
-                        </div>
-                        <div class="text-xs text-dim mt-0.5">
-                          Cú pháp tự động: <span class="font-mono text-cyan">${settings.syntaxPrefix} ${(activeMember.studentId || 'KYTHU')}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <button type="button" class="btn btn-gold btn-md font-bold" id="btnMemberPayCurrentFund" style="padding: 10px 22px; font-size: 0.9rem;">
-                        📱 Quét VietQR Đóng Quỹ Ngay
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              `;
-            })()}
-          </div>
-
-          <!-- Lịch sử biên nhận đã đóng của bạn -->
-          ${(() => {
-            const settings = store.getFundSettings();
-            const myRecords = store.getMemberFundRecords(activeMember.id);
-            if (myRecords.length === 0) return '';
-            return `
-              <div class="mt-4 pt-3" style="border-top: 1px dashed rgba(212,175,55,0.2);">
-                <h4 class="text-xs font-bold text-dim mb-2 uppercase">Lịch Sử Các Biên Nhận Đã Đóng Của Bạn (${myRecords.length})</h4>
-                <div class="table-responsive">
-                  <table class="data-table text-xs">
-                    <thead>
-                      <tr>
-                        <th>Mã Biên Nhận</th>
-                        <th>Kỳ Thu</th>
-                        <th>Số Tiền</th>
-                        <th>Ngày Đóng</th>
-                        <th>Phương Thức</th>
-                        <th>Xác Nhận</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${myRecords.map((r) => `
-                        <tr>
-                          <td><span class="font-mono text-gold font-bold">${r.id}</span></td>
-                          <td><strong class="text-white">${r.term || r.month}</strong></td>
-                          <td><span class="badge badge-emerald font-bold">+${(parseInt(r.amount) || settings.amount).toLocaleString('vi-VN')} đ</span></td>
-                          <td><span class="text-dim">${r.date} ${r.time || ''}</span></td>
-                          <td><span class="badge ${r.method?.includes('VietQR') ? 'badge-cyan' : 'badge-outline'}">${r.method || 'Trực tiếp'}</span></td>
-                          <td><span class="text-xs text-dim">${r.confirmedBy || 'Ban Quản Trị'}</span></td>
-                        </tr>
-                      `).join('')}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            `;
-          })()}
         </div>
       </div>
     `;
@@ -2284,20 +2142,6 @@ class App {
     // Render Digital Pass
     const passContainer = container.querySelector('#electronicPassContainer');
     memberCardComponent.render(passContainer, activeMember);
-
-    // Bind Member Fund Actions
-    container.querySelector('#btnMemberOpenGuide')?.addEventListener('click', () => {
-      sound.playClick();
-      modalManager.openFundAutomationGuideModal();
-    });
-
-    container.querySelector('#btnMemberPayCurrentFund')?.addEventListener('click', () => {
-      sound.playClick();
-      modalManager.openMemberPersonalFundQRModal(activeMember, () => {
-        this.renderMemberPass(container);
-        this.renderNotificationsList();
-      });
-    });
   }
 
   // ==========================================
@@ -3732,7 +3576,7 @@ class App {
     const percent = members.length > 0 ? Math.round((paidMembers.length / members.length) * 100) : 0;
 
     const generalSyntax = `${settings.syntaxPrefix || 'QUY T10'} [MASV]`;
-    const deskQrUrl = `https://img.vietqr.io/image/${settings.bankCode || 'MB'}-${settings.bankAccount || '0346578422'}-compact2.png?amount=${settings.amount}&addInfo=${encodeURIComponent(generalSyntax)}&accountName=${encodeURIComponent(settings.bankOwner || 'CLB CO TNU HGC')}`;
+    const deskQrUrl = settings.qrImage || '/vietqr-fund.png';
 
     container.innerHTML = `
       <div class="admin-sub-funds animate-fadeIn">

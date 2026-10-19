@@ -3616,96 +3616,48 @@ class App {
           </div>
         </div>
 
-        <!-- 2 Main Columns Layout -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: start;">
-          <!-- CỘT 1: MÃ VIETQR ĐỂ BÀN SINH HOẠT -->
-          <div class="card p-3" style="background: rgba(14,23,46,0.9); border: 1px solid var(--border-gold); border-radius: 14px;">
-            <div class="text-center mb-2">
-              <span class="badge badge-emerald" style="font-size: 11px;">🛡️ VIETQR NAPAS 24/7 ĐỂ BÀN</span>
-              <h3 class="text-base font-bold text-white mt-1">Mã QR Thu Quỹ Tháng ${settings.month}</h3>
-              <p class="text-xs text-muted">Đặt tại bàn sinh hoạt để kỳ thủ quét</p>
-            </div>
-
-            <!-- Crisp QR Image -->
-            <div class="text-center p-3 mb-3" style="background: #ffffff; border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 290px; margin: 0 auto 14px;">
-              <div class="d-flex justify-between align-center mb-2 px-1" style="border-bottom: 1.5px solid #f1f5f9; padding-bottom: 6px;">
-                <span style="color: #0033a0; font-weight: 900; font-size: 13px; letter-spacing: 0.5px;">🏦 MB BANK</span>
-                <span style="font-weight: 800; font-size: 12px; letter-spacing: 0.5px;"><span style="color: #e11d48;">Viet</span><span style="color: #0033a0;">QR</span></span>
-              </div>
-              <img src="${deskQrUrl}" alt="Mã VietQR Thu Quỹ" style="max-width: 230px; width: 100%; aspect-ratio: 1/1; border-radius: 6px; display: block; margin: 0 auto;">
-              <div style="color: #0f172a; font-size: 11px; font-weight: 800; margin-top: 8px; letter-spacing: 0.3px;">
-                ⚡ QUÉT BẰNG MỌI APP NGÂN HÀNG & MOMO
-              </div>
-            </div>
-
-            <!-- Details -->
-            <div class="card p-2.5 mb-3" style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(212,175,55,0.3); font-size: 12px;">
-              <div class="d-flex justify-between align-center mb-1.5">
-                <span class="text-dim">Số tiền:</span>
-                <strong class="font-bold text-emerald font-mono" style="font-size: 1.15rem;">${(settings.amount || 30000).toLocaleString('vi-VN')} đ</strong>
-              </div>
-              <div class="d-flex justify-between align-center mb-1.5">
-                <span class="text-dim">Cú pháp CK:</span>
-                <strong class="font-mono text-gold font-bold">${generalSyntax}</strong>
-              </div>
-              <div class="d-flex justify-between align-center mb-1.5">
-                <span class="text-dim">Tài khoản:</span>
-                <span class="font-mono text-cyan">${settings.bankAccount} (${settings.bankCode})</span>
-              </div>
-              <div class="d-flex justify-between align-center">
-                <span class="text-dim">Chủ TK:</span>
-                <span class="text-white">${settings.bankOwner}</span>
-              </div>
-            </div>
-
-            <div class="d-flex flex-column gap-2">
-              <button type="button" class="btn btn-gold btn-sm font-bold w-100" id="btnFullscreenDeskQR">
-                📺 Chiếu Toàn Màn Hình Để Bàn
+        <!-- DANH SÁCH THÀNH VIÊN THEO DÕI & THU QUỸ (FULL WIDTH) -->
+        <div class="card p-3" style="background: var(--bg-surface); border: 1px solid var(--border-gold); border-radius: 14px;">
+          <!-- Tabs & Actions -->
+          <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2 pb-2" style="border-bottom: 1px solid rgba(212,175,55,0.2);">
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm ${this.adminFundDirectTab === 'unpaid' ? 'btn-gold' : 'btn-outline'}" id="tabDirectUnpaid">
+                ⏳ Chưa Nộp (${unpaidMembers.length})
               </button>
-              <a href="${deskQrUrl}" download="VietQR_Quy_Thang_${settings.month.replace('/', '_')}.png" target="_blank" class="btn btn-outline btn-xs text-center">
-                📥 Tải Ảnh Mã QR Xuống Máy
-              </a>
+              <button type="button" class="btn btn-sm ${this.adminFundDirectTab === 'paid' ? 'btn-gold' : 'btn-outline'}" id="tabDirectPaid">
+                ✅ Đã Nộp (${paidMembers.length})
+              </button>
+            </div>
+
+            <div class="d-flex gap-2 flex-wrap">
+              ${this.adminFundDirectTab === 'unpaid' ? `
+                <button type="button" class="btn btn-outline btn-xs" id="btnCopyDirectZalo">
+                  📢 Sao Chép DS Chưa Nộp Gửi Zalo
+                </button>
+              ` : `
+                <button type="button" class="btn btn-outline btn-xs" id="btnExportDirectCsv">
+                  📥 Xuất Excel (CSV)
+                </button>
+              `}
             </div>
           </div>
 
-          <!-- CỘT 2: DANH SÁCH THÀNH VIÊN (ĐÃ NỘP & CHƯA NỘP) -->
-          <div class="card p-3">
-            <!-- Tabs & Actions -->
-            <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2 pb-2" style="border-bottom: 1px solid rgba(212,175,55,0.2);">
-              <div class="d-flex gap-2">
-                <button type="button" class="btn btn-sm ${this.adminFundDirectTab === 'unpaid' ? 'btn-gold' : 'btn-outline'}" id="tabDirectUnpaid">
-                  ⏳ Chưa Nộp (${unpaidMembers.length})
-                </button>
-                <button type="button" class="btn btn-sm ${this.adminFundDirectTab === 'paid' ? 'btn-gold' : 'btn-outline'}" id="tabDirectPaid">
-                  ✅ Đã Nộp (${paidMembers.length})
-                </button>
-              </div>
-
-              <div class="d-flex gap-2">
-                ${this.adminFundDirectTab === 'unpaid' ? `
-                  <button type="button" class="btn btn-outline btn-xs" id="btnCopyDirectZalo">
-                    📢 Sao Chép DS Chưa Nộp Gửi Zalo
-                  </button>
-                ` : `
-                  <button type="button" class="btn btn-outline btn-xs" id="btnExportDirectCsv">
-                    📥 Xuất Excel (CSV)
-                  </button>
-                `}
-              </div>
+          <!-- Search box & Quick Guide -->
+          <div class="mb-3 d-flex gap-3 align-center flex-wrap">
+            <div class="flex-1" style="min-width: 280px;">
+              <input type="text" class="form-control text-xs" id="fundMemberSearchInput" placeholder="🔍 Tìm kiếm nhanh theo Họ Tên hoặc Mã Sinh Viên...">
             </div>
-
-            <!-- Search box -->
-            <div class="mb-3">
-              <input type="text" class="form-control text-xs" id="fundMemberSearchInput" placeholder="🔍 Tìm kỳ thủ theo tên hoặc Mã sinh viên...">
+            <div class="text-xs text-muted">
+              💡 Bấm <strong>"📱 Mã QR"</strong> để mở VietQR có sẵn số tiền & cú pháp cho kỳ thủ quét. Bấm <strong>"⚡ Đã Thu"</strong> để ghi nhận 1 chạm.
             </div>
+          </div>
 
-            <!-- List Content -->
-            <div id="fundDirectListContainer">
-              ${this.adminFundDirectTab === 'unpaid'
-                ? this.renderDirectUnpaidListHtml(unpaidMembers, settings)
-                : this.renderDirectPaidListHtml(paidMembers, settings)
-              }
-            </div>
+          <!-- List Content -->
+          <div id="fundDirectListContainer">
+            ${this.adminFundDirectTab === 'unpaid'
+              ? this.renderDirectUnpaidListHtml(unpaidMembers, settings)
+              : this.renderDirectPaidListHtml(paidMembers, settings)
+            }
           </div>
         </div>
       </div>
@@ -3732,35 +3684,35 @@ class App {
     }
 
     return `
-      <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+      <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
         <table class="data-table text-xs">
           <thead>
             <tr>
-              <th>Kỳ Thủ</th>
-              <th>Mã SV</th>
-              <th>Lớp</th>
-              <th>Định Mức</th>
-              <th style="text-align: right;">Ghi Nhận Thu</th>
+              <th style="min-width: 180px;">Kỳ Thủ</th>
+              <th style="min-width: 140px;">Mã Sinh Viên</th>
+              <th style="min-width: 120px;">Lớp & Khóa</th>
+              <th style="min-width: 130px;">Số Tiền Cần Đóng</th>
+              <th style="text-align: right; min-width: 240px;">Thao Tác Thu Quỹ</th>
             </tr>
           </thead>
           <tbody>
             ${list.map((m) => `
               <tr>
                 <td>
-                  <strong class="text-white">${m.name}</strong>
-                  ${m.phone ? `<div class="text-dim text-xs">${m.phone}</div>` : ''}
+                  <strong class="text-white text-sm d-block">${m.name}</strong>
+                  ${m.phone ? `<span class="text-dim text-xs">📞 ${m.phone}</span>` : ''}
                 </td>
-                <td><span class="font-mono text-gold font-bold">${m.studentId || '---'}</span></td>
+                <td><span class="font-mono text-gold font-bold" style="font-size: 0.95rem;">${m.studentId || '---'}</span></td>
                 <td><span class="text-dim">${m.class || m.cohort || '---'}</span></td>
                 <td>
-                  <span class="badge badge-warning font-bold">
+                  <strong class="font-mono font-bold text-emerald" style="font-size: 1.05rem;">
                     ${(settings.amount || 30000).toLocaleString('vi-VN')} đ
-                  </span>
+                  </strong>
                 </td>
                 <td style="text-align: right;">
-                  <div class="d-inline-flex gap-1.5 justify-end align-center">
-                    <button type="button" class="btn btn-outline btn-xs btn-open-personal-qr" data-member-id="${m.id}" title="Mở mã VietQR riêng cho bạn này quét">
-                      📱 QR Riêng
+                  <div class="d-inline-flex gap-2 justify-end align-center">
+                    <button type="button" class="btn btn-outline btn-xs font-bold btn-open-personal-qr" data-member-id="${m.id}" title="Mở mã QR tích hợp sẵn số tiền và cú pháp chuyển khoản cho kỳ thủ này">
+                      📱 Mã QR Có Sẵn Tiền
                     </button>
                     <button type="button" class="btn btn-gold btn-xs font-bold btn-quick-mark-paid" data-member-id="${m.id}" title="Xác nhận đã thu (1 chạm)">
                       ⚡ Đã Thu
@@ -3793,29 +3745,29 @@ class App {
     }
 
     return `
-      <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+      <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
         <table class="data-table text-xs">
           <thead>
             <tr>
-              <th>Mã BN</th>
-              <th>Kỳ Thủ</th>
-              <th>Mã SV</th>
-              <th>Số Tiền</th>
-              <th>Thời Gian</th>
-              <th>Phương Thức</th>
-              <th style="text-align: center;">Thao Tác</th>
+              <th style="min-width: 100px;">Mã BN</th>
+              <th style="min-width: 180px;">Kỳ Thủ</th>
+              <th style="min-width: 140px;">Mã Sinh Viên</th>
+              <th style="min-width: 130px;">Số Tiền Đã Thu</th>
+              <th style="min-width: 140px;">Thời Gian</th>
+              <th style="min-width: 130px;">Hình Thức</th>
+              <th style="text-align: center; min-width: 90px;">Thao Tác</th>
             </tr>
           </thead>
           <tbody>
             ${list.map(({ member, record }) => `
               <tr>
                 <td><span class="font-mono text-gold font-bold">${record.id}</span></td>
-                <td><strong class="text-white">${member.name}</strong></td>
-                <td><span class="font-mono text-muted">${member.studentId || '---'}</span></td>
+                <td><strong class="text-white text-sm">${member.name}</strong></td>
+                <td><span class="font-mono text-gold font-bold" style="font-size: 0.95rem;">${member.studentId || '---'}</span></td>
                 <td>
-                  <span class="badge badge-emerald font-bold" style="font-size: 0.82rem;">
+                  <strong class="badge badge-emerald font-bold font-mono" style="font-size: 0.95rem;">
                     +${(parseInt(record.amount) || settings.amount).toLocaleString('vi-VN')} đ
-                  </span>
+                  </strong>
                 </td>
                 <td>
                   <span class="text-white">${record.date}</span>

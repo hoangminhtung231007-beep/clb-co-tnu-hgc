@@ -274,6 +274,15 @@ class Store {
     return newMember;
   }
 
+  calculateMemberScore(member) {
+    if (!member) return 0;
+    const tour = member.tournamentsJoined !== undefined ? member.tournamentsJoined : (member.tournamentsCount || 0);
+    const act = member.activitiesJoined !== undefined ? member.activitiesJoined : 0;
+    const sess = member.attendanceCount !== undefined ? member.attendanceCount : 0;
+    const activeRate = member.attendanceRate !== undefined ? member.attendanceRate : 0;
+    return (tour * 20) + (act * 5) + (sess * 10) + Math.round(activeRate);
+  }
+
   updateMember(id, updatedFields) {
     const idx = this.state.members.findIndex((m) => m.id === id);
     if (idx !== -1) {

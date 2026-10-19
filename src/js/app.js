@@ -860,7 +860,7 @@ class App {
       ` : `
         <div class="org-board-grid">
           ${bdhList.map((m) => {
-            const totalScore = Math.round((m.eloChess + m.eloXiangqi) / 2);
+            const totalScore = store.calculateMemberScore(m);
             return `
             <div class="board-member-card">
               <img src="${m.avatar}" alt="${m.name}" class="board-avatar">
@@ -868,7 +868,7 @@ class App {
               <h3 class="font-bold text-white text-base">${m.name}</h3>
               <p class="text-xs text-muted mt-2">🎓 Lớp: <span class="text-white font-medium">${m.class || m.major || 'Chưa cập nhật'}</span></p>
               <div class="mt-2 text-xs">
-                <span class="text-gold font-bold">🏆 Tổng điểm thi đua: ${totalScore}</span>
+                <span class="text-gold font-bold">🏆 Tổng điểm thi đua: ${totalScore}đ</span>
               </div>
               <p class="board-quote">❝ ${m.bio || 'Lấy sự tĩnh tâm để nhìn thấu đại cuộc, lấy đam mê làm kim chỉ nam.'} ❞</p>
             </div>
@@ -1137,16 +1137,8 @@ class App {
 
     const state = store.getState();
 
-    // Helper tính Tổng Điểm theo công thức mới:
-    // 1 giải đấu = 20đ, 1 hoạt động = 5đ, 1 buổi sinh hoạt = 10đ, tỷ lệ tích cực quy đổi 100% = 100đ
-    const getScore = (m) => {
-      if (!m) return 0;
-      const tour = m.tournamentsJoined !== undefined ? m.tournamentsJoined : (m.tournamentsCount || 0);
-      const act = m.activitiesJoined !== undefined ? m.activitiesJoined : 0;
-      const sess = m.attendanceCount !== undefined ? m.attendanceCount : 0;
-      const activeRate = m.attendanceRate !== undefined ? m.attendanceRate : 0;
-      return (tour * 20) + (act * 5) + (sess * 10) + Math.round(activeRate);
-    };
+    // Helper tính Tổng Điểm theo công thức thi đua thống nhất
+    const getScore = (m) => store.calculateMemberScore(m);
 
     const sorted = [...state.members].sort((a, b) => getScore(b) - getScore(a));
 

@@ -29,5 +29,6 @@ export const INITIAL_DATA = {
   events: [],
   attendanceLogs: [],
   articles: [],
-  eventFeedback: []
+  eventFeedback: [],
+  fundRecords: []
 };

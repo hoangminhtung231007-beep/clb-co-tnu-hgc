@@ -2915,6 +2915,458 @@ export const modalManager = {
         memberCardComponent.render(mount, member);
       }
     }, 60);
+  },
+
+  // 12. Swiss Tournament Admin Management Modal
+  openSwissTournamentAdminModal(event, onUpdate) {
+    if (!event) return;
+    const state = store.getState();
+    const members = state.members || [];
+
+    const renderModalContent = () => {
+      const curEvent = store.getState().events.find((e) => e.id === event.id) || event;
+      const swiss = curEvent.swissData;
+
+      if (!swiss) {
+        return `
+          <div class="swiss-setup-modal p-2">
+            <div class="mb-3">
+              <span class="badge badge-gold">CẤU HÌNH HỆ THỤY SĨ (SWISS SYSTEM)</span>
+              <h3 class="text-lg font-bold text-white mt-1">${curEvent.title}</h3>
+              <p class="text-xs text-muted">Bốc thăm vòng đấu theo điểm số chuẩn FIDE, không loại trừ, tự động đảo màu quân Trắng/Đen.</p>
+            </div>
+
+            <div class="card p-3 mb-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(212,175,55,0.2);">
+              <div class="form-group mb-3">
+                <label class="form-label text-gold font-bold text-xs">Tổng Số Vòng Đấu (Total Rounds)</label>
+                <select class="form-control" id="swissTotalRoundsSelect" style="width: 140px;">
+                  <option value="3" selected>3 Vòng đấu</option>
+                  <option value="5">5 Vòng đấu</option>
+                  <option value="7">7 Vòng đấu</option>
+                </select>
+              </div>
+
+              <div class="form-group mb-2">
+                <div class="d-flex justify-between align-center mb-1">
+                  <label class="form-label text-white font-bold text-xs">Danh Sách Kỳ Thủ Tham Gia (${members.length} thành viên)</label>
+                  <button type="button" class="btn btn-xs btn-outline" id="btnSwissSelectAll">Chọn tất cả</button>
+                </div>
+                <div style="max-height: 200px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px; background: rgba(0,0,0,0.2);">
+                  ${members.map((m) => `
+                    <label class="d-flex align-center gap-2 mb-1 p-1 hover-bg" style="cursor: pointer; border-radius: 4px;">
+                      <input type="checkbox" class="swiss-player-chk" value="${m.id}" checked>
+                      <span class="text-xs text-white font-medium">${m.name}</span>
+                      <span class="text-xs text-dim">(${m.studentId || 'Kỳ thủ'})</span>
+                    </label>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-end gap-2">
+              <button type="button" class="btn btn-outline btn-sm" id="btnCancelSwiss">Đóng</button>
+              <button type="button" class="btn btn-gold btn-sm" id="btnStartSwissTournament">
+                ⚔️ Bắt Đầu & Bốc Thăm Vòng 1
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      const curRoundData = (swiss.rounds || []).find((r) => r.roundNumber === swiss.currentRound);
+      const isFinished = swiss.status === 'completed' || (swiss.currentRound >= swiss.totalRounds && (curRoundData?.matches || []).every((m) => m.result !== null));
+
+      return `
+        <div class="swiss-admin-modal p-2">
+          <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
+            <div>
+              <span class="badge ${isFinished ? 'badge-emerald' : 'badge-gold'}">
+                ${isFinished ? '🏁 GIẢI ĐẤU ĐÃ HOÀN TẤT' : `🟢 VÒNG ${swiss.currentRound} / ${swiss.totalRounds}`}
+              </span>
+              <h3 class="text-lg font-bold text-white mt-1">${curEvent.title}</h3>
+            </div>
+            <div class="d-flex gap-2">
+              ${!isFinished && swiss.currentRound < swiss.totalRounds ? `
+                <button type="button" class="btn btn-gold btn-sm" id="btnNextSwissRound">
+                  🔄 Bốc Thăm Vòng ${swiss.currentRound + 1}
+                </button>
+              ` : ''}
+              <button type="button" class="btn btn-outline btn-sm" id="btnResetSwissData" title="Khởi tạo lại giải đấu này" style="color: #fb7185; border-color: rgba(244,63,94,0.3);">
+                🗑️ Đặt Lại
+              </button>
+            </div>
+          </div>
+
+          <div class="card p-3 mb-3" style="background: rgba(255,255,255,0.03);">
+            <div class="d-flex justify-between align-center mb-2">
+              <h4 class="font-bold text-white text-xs" style="letter-spacing: 0.5px;">
+                ⚔️ CẶP ĐẤU VÒNG ${swiss.currentRound} (${(curRoundData?.matches || []).length} bàn)
+              </h4>
+              <span class="text-xs text-muted">Nhấn kết quả để ghi nhận điểm</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" style="font-size: 0.8rem;">
+                <thead>
+                  <tr>
+                    <th style="width: 50px;">Bàn</th>
+                    <th>Quân Trắng (White)</th>
+                    <th style="text-align: center; width: 170px;">Kết Quả Ván Đấu</th>
+                    <th>Quân Đen (Black)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${(curRoundData?.matches || []).map((m) => `
+                    <tr>
+                      <td class="font-bold text-gold">${m.isBye ? 'BYE' : `Bàn ${m.board}`}</td>
+                      <td>
+                        <span class="font-bold text-white">${m.whiteName}</span>
+                        <span class="badge" style="background: #ffffff; color: #000; font-size: 10px; margin-left: 4px; padding: 1px 4px;">Trắng</span>
+                      </td>
+                      <td style="text-align: center;">
+                        ${m.isBye ? `
+                          <span class="badge badge-emerald">Miễn đấu (+1đ)</span>
+                        ` : `
+                          <div class="d-flex justify-center gap-1">
+                            <button type="button" class="btn btn-xs ${m.result === '1-0' ? 'btn-gold' : 'btn-outline'} btn-swiss-res" data-match-id="${m.id}" data-res="1-0" title="Trắng thắng">1 - 0</button>
+                            <button type="button" class="btn btn-xs ${m.result === '0.5-0.5' ? 'btn-gold' : 'btn-outline'} btn-swiss-res" data-match-id="${m.id}" data-res="0.5-0.5" title="Hòa ván">½ - ½</button>
+                            <button type="button" class="btn btn-xs ${m.result === '0-1' ? 'btn-gold' : 'btn-outline'} btn-swiss-res" data-match-id="${m.id}" data-res="0-1" title="Đen thắng">0 - 1</button>
+                          </div>
+                        `}
+                      </td>
+                      <td>
+                        ${m.isBye ? `<span class="text-muted font-italic">Nghỉ ván</span>` : `
+                          <span class="font-bold text-white">${m.blackName}</span>
+                          <span class="badge" style="background: #1e293b; color: #cbd5e1; border: 1px solid #475569; font-size: 10px; margin-left: 4px; padding: 1px 4px;">Đen</span>
+                        `}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card p-3" style="background: rgba(255,255,255,0.02);">
+            <div class="d-flex justify-between align-center mb-2">
+              <h4 class="font-bold text-gold text-xs" style="letter-spacing: 0.5px;">
+                📊 BẢNG XẾP HẠNG HỆ THỤY SĨ (BUCHHOLZ STANDINGS)
+              </h4>
+              <span class="text-xs text-muted">Xếp theo: Điểm số ➔ Hệ số Buchholz ➔ Số ván thắng</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" style="font-size: 0.78rem;">
+                <thead>
+                  <tr>
+                    <th style="width: 45px;">Hạng</th>
+                    <th>Kỳ Thủ</th>
+                    <th style="text-align: center;">Điểm (Pts)</th>
+                    <th style="text-align: center;">Buchholz</th>
+                    <th style="text-align: center;">Thắng</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${(swiss.standings || []).map((p, idx) => `
+                    <tr>
+                      <td class="font-bold ${idx === 0 ? 'text-gold' : idx === 1 ? 'text-cyan' : idx === 2 ? 'text-emerald' : 'text-muted'}">
+                        ${idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : (idx + 1)}
+                      </td>
+                      <td>
+                        <strong class="text-white">${p.name}</strong>
+                      </td>
+                      <td style="text-align: center;">
+                        <span class="badge badge-gold font-bold" style="font-size: 0.82rem;">${p.score}</span>
+                      </td>
+                      <td style="text-align: center; color: var(--accent-cyan); font-weight: 600;">
+                        ${p.buchholz}
+                      </td>
+                      <td style="text-align: center;">${p.wins || 0}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    const bindModalEvents = () => {
+      const modalEl = document.getElementById('globalAppModal');
+      if (!modalEl) return;
+
+      modalEl.querySelector('#btnSwissSelectAll')?.addEventListener('click', () => {
+        const chks = modalEl.querySelectorAll('.swiss-player-chk');
+        const anyUnchecked = Array.from(chks).some((c) => !c.checked);
+        chks.forEach((c) => (c.checked = anyUnchecked));
+      });
+
+      modalEl.querySelector('#btnStartSwissTournament')?.addEventListener('click', () => {
+        sound.playClick();
+        const rounds = parseInt(modalEl.querySelector('#swissTotalRoundsSelect')?.value) || 3;
+        const checked = Array.from(modalEl.querySelectorAll('.swiss-player-chk:checked')).map((c) => c.value);
+
+        if (checked.length < 2) {
+          modalManager.showAlert('Vui lòng chọn ít nhất 2 kỳ thủ để bắt đầu giải đấu!');
+          return;
+        }
+
+        try {
+          store.initSwissTournament(event.id, { totalRounds: rounds, playerIds: checked });
+          modalManager.showAlert('✅ Đã khởi tạo giải đấu và bốc thăm Vòng 1 Hệ Thụy Sĩ thành công!');
+          if (typeof onUpdate === 'function') onUpdate();
+          this.open(`Quản Trị Thi Đấu Hệ Thụy Sĩ • ${event.title}`, renderModalContent(), null, null);
+          bindModalEvents();
+        } catch (err) {
+          modalManager.showAlert('Lỗi: ' + err.message);
+        }
+      });
+
+      modalEl.querySelectorAll('.btn-swiss-res').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          sound.playClick();
+          const matchId = btn.getAttribute('data-match-id');
+          const res = btn.getAttribute('data-res');
+          const curEv = store.getState().events.find((e) => e.id === event.id);
+          const roundNum = curEv?.swissData?.currentRound;
+
+          if (roundNum && matchId && res) {
+            store.recordSwissMatchResult(event.id, roundNum, matchId, res);
+            if (typeof onUpdate === 'function') onUpdate();
+            this.open(`Quản Trị Thi Đấu Hệ Thụy Sĩ • ${event.title}`, renderModalContent(), null, null);
+            bindModalEvents();
+          }
+        });
+      });
+
+      modalEl.querySelector('#btnNextSwissRound')?.addEventListener('click', () => {
+        sound.playClick();
+        try {
+          store.generateNextSwissRound(event.id);
+          modalManager.showAlert('✅ Bốc thăm Vòng tiếp theo thành công!');
+          if (typeof onUpdate === 'function') onUpdate();
+          this.open(`Quản Trị Thi Đấu Hệ Thụy Sĩ • ${event.title}`, renderModalContent(), null, null);
+          bindModalEvents();
+        } catch (err) {
+          modalManager.showAlert('Chưa thể bốc thăm: ' + err.message);
+        }
+      });
+
+      modalEl.querySelector('#btnResetSwissData')?.addEventListener('click', () => {
+        sound.playClick();
+        modalManager.showConfirm(
+          'Bạn có chắc chắn muốn đặt lại giải đấu này về trạng thái ban đầu? Lịch sử các vòng đấu sẽ bị xóa.',
+          () => {
+            const ev = store.getState().events.find((e) => e.id === event.id);
+            if (ev) {
+              delete ev.swissData;
+              store.notify();
+              if (typeof onUpdate === 'function') onUpdate();
+              this.open(`Quản Trị Thi Đấu Hệ Thụy Sĩ • ${event.title}`, renderModalContent(), null, null);
+              bindModalEvents();
+            }
+          },
+          null,
+          { title: 'ĐẶT LẠI GIẢI ĐẤU', confirmText: 'Đặt lại dữ liệu', danger: true }
+        );
+      });
+
+      modalEl.querySelector('#btnCancelSwiss')?.addEventListener('click', () => {
+        this.close();
+      });
+    };
+
+    this.open(`Quản Trị Thi Đấu Hệ Thụy Sĩ • ${event.title}`, renderModalContent(), null, null);
+    bindModalEvents();
+  },
+
+  // 13. Public / Member View Swiss Tournament Modal
+  openSwissTournamentPublicModal(event) {
+    if (!event || !event.swissData) {
+      modalManager.showAlert('Giải đấu này chưa có dữ liệu ghép cặp Hệ Thụy Sĩ.');
+      return;
+    }
+    const swiss = event.swissData;
+    const activeMember = store.getActiveMember();
+    const curRoundData = (swiss.rounds || []).find((r) => r.roundNumber === swiss.currentRound);
+    const isFinished = swiss.status === 'completed' || (swiss.currentRound >= swiss.totalRounds && (curRoundData?.matches || []).every((m) => m.result !== null));
+
+    const contentHtml = `
+      <div class="swiss-public-modal p-2">
+        <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
+          <div>
+            <span class="badge ${isFinished ? 'badge-emerald' : 'badge-gold'}">
+              ${isFinished ? '🏁 GIẢI ĐẤU ĐÃ HOÀN TẤT' : `🟢 VÒNG ${swiss.currentRound} / ${swiss.totalRounds}`}
+            </span>
+            <h3 class="text-lg font-bold text-white mt-1">${event.title}</h3>
+          </div>
+          <span class="text-xs text-muted">Hệ Thụy Sĩ FIDE Chuẩn</span>
+        </div>
+
+        <div class="card p-3 mb-3" style="background: rgba(255,255,255,0.03);">
+          <h4 class="font-bold text-white text-xs mb-2">⚔️ CẶP ĐẤU VÒNG ${swiss.currentRound}</h4>
+          <div class="table-responsive">
+            <table class="data-table" style="font-size: 0.8rem;">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">Bàn</th>
+                  <th>Quân Trắng</th>
+                  <th style="text-align: center; width: 100px;">Tỉ Số</th>
+                  <th>Quân Đen</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(curRoundData?.matches || []).map((m) => {
+                  const isUserMatch = activeMember && (m.whiteId === activeMember.id || m.blackId === activeMember.id);
+                  return `
+                    <tr style="${isUserMatch ? 'background: rgba(212,175,55,0.12); border-left: 3px solid var(--gold-primary);' : ''}">
+                      <td class="font-bold text-gold">${m.isBye ? 'BYE' : `Bàn ${m.board}`}</td>
+                      <td>
+                        <strong class="${m.whiteId === activeMember?.id ? 'text-gold' : 'text-white'}">${m.whiteName}</strong>
+                        <span class="badge" style="background: #ffffff; color: #000; font-size: 10px; margin-left: 4px; padding: 1px 4px;">Trắng</span>
+                      </td>
+                      <td style="text-align: center;">
+                        <span class="badge ${m.result ? 'badge-emerald' : 'badge-outline'}" style="font-size: 0.8rem; font-weight: 700;">
+                          ${m.result === '1-0' ? '1 - 0' : m.result === '0-1' ? '0 - 1' : m.result === '0.5-0.5' ? '½ - ½' : 'Chưa đấu'}
+                        </span>
+                      </td>
+                      <td>
+                        ${m.isBye ? `<span class="text-muted font-italic">Nghỉ ván (+1đ)</span>` : `
+                          <strong class="${m.blackId === activeMember?.id ? 'text-gold' : 'text-white'}">${m.blackName}</strong>
+                          <span class="badge" style="background: #1e293b; color: #cbd5e1; border: 1px solid #475569; font-size: 10px; margin-left: 4px; padding: 1px 4px;">Đen</span>
+                        `}
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card p-3" style="background: rgba(255,255,255,0.02);">
+          <h4 class="font-bold text-gold text-xs mb-2">📊 BẢNG XẾP HẠNG HỆ THỤY SĨ</h4>
+          <div class="table-responsive">
+            <table class="data-table" style="font-size: 0.78rem;">
+              <thead>
+                <tr>
+                  <th style="width: 45px;">Hạng</th>
+                  <th>Kỳ Thủ</th>
+                  <th style="text-align: center;">Điểm (Pts)</th>
+                  <th style="text-align: center;">Buchholz</th>
+                  <th style="text-align: center;">Thắng</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(swiss.standings || []).map((p, idx) => {
+                  const isUser = activeMember && p.id === activeMember.id;
+                  return `
+                    <tr style="${isUser ? 'background: rgba(212,175,55,0.12);' : ''}">
+                      <td class="font-bold ${idx === 0 ? 'text-gold' : idx === 1 ? 'text-cyan' : idx === 2 ? 'text-emerald' : 'text-muted'}">
+                        ${idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : (idx + 1)}
+                      </td>
+                      <td>
+                        <strong class="${isUser ? 'text-gold' : 'text-white'}">${p.name}</strong>
+                        ${isUser ? '<span class="badge badge-gold" style="font-size:9px; margin-left:4px;">Bạn</span>' : ''}
+                      </td>
+                      <td style="text-align: center;">
+                        <span class="badge badge-gold font-bold">${p.score}</span>
+                      </td>
+                      <td style="text-align: center; color: var(--accent-cyan); font-weight:600;">
+                        ${p.buchholz}
+                      </td>
+                      <td style="text-align: center;">${p.wins || 0}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.open(`Lịch Đấu & Xếp Hạng Hệ Thụy Sĩ • ${event.title}`, contentHtml, null, null);
+  },
+
+  // 14. Add Fund Payment Modal
+  openFundRecordModal(onComplete) {
+    const state = store.getState();
+    const members = state.members || [];
+
+    const contentHtml = `
+      <div class="fund-record-modal p-2">
+        <div class="mb-3">
+          <span class="badge badge-emerald">QUỸ & HỘI PHÍ CLB CỜ</span>
+          <h3 class="text-base font-bold text-white mt-1">Ghi Nhận Đóng Quỹ Thành Viên</h3>
+          <p class="text-xs text-muted">Xác nhận thu quỹ và gửi thông báo biên nhận về thẻ thành viên.</p>
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label text-gold font-bold text-xs">Chọn Kỳ Thủ Đóng Quỹ</label>
+          <select class="form-control" id="fundMemberSelect">
+            ${members.map((m) => `
+              <option value="${m.id}">${m.name} (${m.studentId || 'Kỳ thủ'})</option>
+            `).join('')}
+          </select>
+        </div>
+
+        <div class="d-flex gap-2 mb-3">
+          <div class="flex-1">
+            <label class="form-label text-white text-xs">Số Tiền Đóng (VNĐ)</label>
+            <input type="number" class="form-control" id="fundAmountInput" value="50000" step="10000">
+          </div>
+          <div class="flex-1">
+            <label class="form-label text-white text-xs">Kỳ Đóng Quỹ</label>
+            <input type="text" class="form-control" id="fundTermInput" value="Học kỳ I (2026 - 2027)">
+          </div>
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label text-white text-xs">Ghi chú (Tùy chọn)</label>
+          <input type="text" class="form-control" id="fundNoteInput" placeholder="VD: Đã nộp qua chuyển khoản / tiền mặt">
+        </div>
+
+        <div class="d-flex justify-end gap-2">
+          <button type="button" class="btn btn-outline btn-sm" id="btnCancelFund">Hủy</button>
+          <button type="button" class="btn btn-gold btn-sm" id="btnConfirmFund">
+            ✅ Xác Nhận Đã Thu Quỹ
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.open('Xác Nhận Thu Quỹ Thành Viên', contentHtml, null, null);
+
+    const modalEl = document.getElementById('globalAppModal');
+    if (modalEl) {
+      modalEl.querySelector('#btnCancelFund')?.addEventListener('click', () => this.close());
+      modalEl.querySelector('#btnConfirmFund')?.addEventListener('click', () => {
+        sound.playClick();
+        const memberId = modalEl.querySelector('#fundMemberSelect')?.value;
+        const amount = parseInt(modalEl.querySelector('#fundAmountInput')?.value) || 50000;
+        const term = modalEl.querySelector('#fundTermInput')?.value || 'Học kỳ I (2026 - 2027)';
+        const note = modalEl.querySelector('#fundNoteInput')?.value || 'Đóng hội phí CLB Cờ';
+
+        if (!memberId) {
+          modalManager.showAlert('Vui lòng chọn kỳ thủ!');
+          return;
+        }
+
+        store.addFundRecord({
+          memberId,
+          amount,
+          term,
+          note,
+          confirmedBy: 'Ban Quản Trị'
+        });
+
+        this.close();
+        modalManager.showAlert(`✅ Đã xác nhận thu quỹ ${amount.toLocaleString('vi-VN')}đ thành công! Hệ thống đã gửi thông báo đến kỳ thủ.`);
+        if (typeof onComplete === 'function') onComplete();
+      });
+    }
   }
 };
 

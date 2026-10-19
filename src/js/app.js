@@ -317,70 +317,268 @@ class App {
     const isAdmin = role === 'admin';
     const activeMember = store.getActiveMember();
     const notifications = [];
+    const events = state.events || [];
 
-    // 1. Admin: Pending registration applications
+    // =========================================================================
+    // 1. HOẠT ĐỘNG HOẶC GIẢI ĐẤU MỚI (Báo ngay khi thêm, không cần mở đăng ký)
+    // =========================================================================
+    events.forEach((ev) => {
+      notifications.push({
+        id: `notif_event_${ev.id}`,
+        icon: ev.type === 'tournament' ? '🏆' : '🎯',
+        title: ev.type === 'tournament' ? `Giải đấu mới: ${ev.title}` : `Hoạt động mới: ${ev.title}`,
+        desc: `Thời gian: ${ev.dateTime || ev.date || 'Sắp tới'} • Địa điểm: ${ev.location || 'CLB Cờ'}. Bấm để xem chi tiết!`,
+        time: ev.date || 'Sự kiện',
+        badge: ev.type === 'tournament' ? 'Giải Đấu' : 'Hoạt Động',
+        targetView: 'events'
+      });
+    });
+
+    // =========================================================================
+    // 2. LỊCH THI ĐẤU & CẶP ĐẤU HỆ THỤY SĨ (Swiss Pairings)
+    // =========================================================================
+    if (role === 'member' && activeMember) {
+      events.forEach((ev) => {
+        if (ev.swissData && ev.swissData.rounds) {
+          const curRound = ev.swissData.rounds.find((r) => r.roundNumber === ev.swissData.currentRound);
+          if (curRound) {
+            const userMatch = (curRound.matches || []).find(
+              (m) => m.whiteId === activeMember.id || m.blackId === activeMember.id
+            );
+            if (userMatch) {
+              const isWhite = userMatch.whiteId === activeMember.id;
+              const oppName = isWhite ? userMatch.blackName : userMatch.whiteName;
+              const colorText = isWhite ? 'quân Trắng (đi trước)' : 'quân Đen (đi sau)';
+              notifications.push({
+                id: `notif_swiss_${ev.id}_r${curRound.roundNumber}_${activeMember.id}`,
+                icon: '⚔️',
+                title: `Cặp đấu Vòng ${curRound.roundNumber} Hệ Thụy Sĩ: ${ev.title}`,
+                desc: userMatch.isBye
+                  ? 'Bạn được miễn đấu vòng này (Bye) và tự động nhận 1 điểm!'
+                  : `Bàn ${userMatch.board}: Bạn cầm ${colorText} thi đấu cùng kỳ thủ ${oppName}. Nhấn để xem chi tiết!`,
+                time: `Vòng ${curRound.roundNumber}`,
+                badge: 'Hệ Thụy Sĩ',
+                targetView: 'events'
+              });
+            }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // 3. CẢNH BÁO VẮNG MẶT (Dựa trực tiếp vào các ngày quét QR điểm danh)
+    // =========================================================================
+    if (role === 'member' && activeMember) {
+      const sessionLogs = (state.attendanceLogs || []).filter((log) => log.category === 'session' && log.timestamp);
+      const sessionDates = [...new Set(sessionLogs.map((l) => l.timestamp.slice(0, 10)))].sort().reverse();
+
+      if (sessionDates.length >= 2) {
+        const lastDate1 = sessionDates[0];
+        const lastDate2 = sessionDates[1];
+
+        const attended1 = (state.attendanceLogs || []).some(
+          (log) => log.memberId === activeMember.id && log.status === 'success' && log.timestamp && log.timestamp.startsWith(lastDate1)
+        );
+        const attended2 = (state.attendanceLogs || []).some(
+          (log) => log.memberId === activeMember.id && log.status === 'success' && log.timestamp && log.timestamp.startsWith(lastDate2)
+        );
+
+        if (!attended1 && !attended2) {
+          notifications.push({
+            id: `notif_absent_warning_${lastDate1}_${lastDate2}_${activeMember.id}`,
+            icon: '⚠️',
+            title: 'Cảnh báo chuyên cần sinh hoạt CLB',
+            desc: `Bạn đã vắng mặt 2 buổi sinh hoạt gần nhất (${lastDate2} và ${lastDate1}). Vui lòng quét mã QR điểm danh buổi tới để duy trì điểm chuyên cần!`,
+            time: 'Chuyên cần',
+            badge: 'Cảnh báo',
+            targetView: 'member-pass'
+          });
+        }
+      }
+    }
+
+    // =========================================================================
+    // 4. CHÚC MỪNG SINH NHẬT KỲ THỦ (Theo ngày sinh dob đã lưu)
+    // =========================================================================
+    if (role === 'member' && activeMember && activeMember.dob) {
+      const today = new Date();
+      const curDay = today.getDate();
+      const curMonth = today.getMonth() + 1;
+
+      let isBirthday = false;
+      if (activeMember.dob.includes('-')) {
+        const parts = activeMember.dob.split('-');
+        if (parts.length === 3) {
+          const bMonth = parseInt(parts[1], 10);
+          const bDay = parseInt(parts[2], 10);
+          if (bDay === curDay && bMonth === curMonth) isBirthday = true;
+        }
+      } else if (activeMember.dob.includes('/')) {
+        const parts = activeMember.dob.split('/');
+        if (parts.length === 3) {
+          const bDay = parseInt(parts[0], 10);
+          const bMonth = parseInt(parts[1], 10);
+          if (bDay === curDay && bMonth === curMonth) isBirthday = true;
+        }
+      }
+
+      if (isBirthday) {
+        notifications.push({
+          id: `notif_birthday_${today.getFullYear()}_${activeMember.id}`,
+          icon: '🎂',
+          title: 'Chúc Mừng Sinh Nhật Kỳ Thủ!',
+          desc: `Chúc mừng sinh nhật ${activeMember.fullName}! Chúc bạn tuổi mới dồi dào sức khỏe, trí tuệ minh mẫn và gặt hái nhiều vinh quang cùng CLB Cờ TNU - HGC! 🎉`,
+          time: 'Hôm nay',
+          badge: 'Sinh nhật',
+          targetView: 'member-pass'
+        });
+      }
+    }
+
+    // =========================================================================
+    // 5. BIẾN ĐỘNG ĐIỂM RÈN LUYỆN (Cộng/trừ điểm thi đua)
+    // =========================================================================
+    if (role === 'member' && activeMember) {
+      const currentScore = activeMember.emulationScore ?? 100;
+      const storageKey = `TNU_HGC_LAST_SCORE_${activeMember.id}`;
+      const savedScoreRaw = localStorage.getItem(storageKey);
+
+      if (savedScoreRaw !== null) {
+        const savedScore = parseInt(savedScoreRaw, 10);
+        if (savedScore !== currentScore) {
+          const diff = currentScore - savedScore;
+          notifications.push({
+            id: `notif_score_change_${savedScore}_to_${currentScore}`,
+            icon: diff > 0 ? '📈' : '📉',
+            title: 'Biến động điểm rèn luyện',
+            desc: `Điểm rèn luyện của bạn vừa được cập nhật: ${diff > 0 ? '+' + diff : diff}đ (Tổng điểm hiện tại: ${currentScore}đ).`,
+            time: 'Thi đua',
+            badge: diff > 0 ? '+Điểm' : '-Điểm',
+            targetView: 'leaderboard'
+          });
+        }
+      } else {
+        localStorage.setItem(storageKey, currentScore.toString());
+      }
+    }
+
+    // =========================================================================
+    // 6. THAY ĐỔI THỨ HẠNG (Thăng hạng trên Bảng xếp hạng)
+    // =========================================================================
+    if (role === 'member' && activeMember) {
+      const sortedMembers = [...(state.members || [])].sort((a, b) => (b.emulationScore || 0) - (a.emulationScore || 0));
+      const myRank = sortedMembers.findIndex((m) => m.id === activeMember.id) + 1;
+
+      if (myRank > 0) {
+        const rankStorageKey = `TNU_HGC_LAST_RANK_${activeMember.id}`;
+        const savedRankRaw = localStorage.getItem(rankStorageKey);
+
+        if (savedRankRaw !== null) {
+          const savedRank = parseInt(savedRankRaw, 10);
+          if (savedRank > myRank) {
+            notifications.push({
+              id: `notif_rank_up_${savedRank}_to_${myRank}`,
+              icon: '🎖️',
+              title: 'Thăng hạng Bảng xếp hạng!',
+              desc: `Chúc mừng bạn đã vươn lên vị trí thứ #${myRank} trên Bảng xếp hạng kỳ thủ toàn CLB! (Tăng ${savedRank - myRank} bậc).`,
+              time: 'Xếp hạng',
+              badge: 'Thăng hạng',
+              targetView: 'leaderboard'
+            });
+          }
+        } else {
+          localStorage.setItem(rankStorageKey, myRank.toString());
+        }
+      }
+    }
+
+    // =========================================================================
+    // 7. BẢN TIN HOẠT ĐỘNG / KỸ THUẬT CỜ MỚI
+    // =========================================================================
+    const articles = state.articles || [];
+    if (articles.length > 0) {
+      const latestArt = articles[0];
+      notifications.push({
+        id: `notif_art_${latestArt.id}`,
+        icon: '📰',
+        title: `Bản tin mới: ${latestArt.title}`,
+        desc: latestArt.summary || 'Nhấn để đón đọc bài viết chuyên môn cờ và hoạt động mới nhất.',
+        time: latestArt.publishDate || 'Tin tức',
+        badge: 'Bản tin',
+        targetView: 'news'
+      });
+    }
+
+    // =========================================================================
+    // 8. NHẮC THAM GIA NHÓM ZALO CLB
+    // =========================================================================
+    notifications.push({
+      id: 'notif_zalo_group_notice',
+      icon: '💬',
+      title: 'Nhóm Zalo CLB Cờ TNU - HGC',
+      desc: 'Tham gia nhóm Zalo chính thức https://zalo.me/g/ugejmj655 để nhận thông báo nội bộ và giao lưu kỳ thủ.',
+      time: 'Cộng đồng',
+      badge: 'Zalo',
+      targetView: 'home'
+    });
+
+    // =========================================================================
+    // 9. XÁC NHẬN ĐÃ NỘP QUỸ CLB (Biên nhận thu hội phí)
+    // =========================================================================
+    if (role === 'member' && activeMember) {
+      const memberFunds = store.getMemberFundRecords(activeMember.id);
+      if (memberFunds.length > 0) {
+        const latestFund = memberFunds[0];
+        notifications.push({
+          id: `notif_fund_${latestFund.id}`,
+          icon: '💰',
+          title: 'Biên nhận nộp quỹ CLB',
+          desc: `Đã xác nhận thu quỹ: ${(latestFund.amount || 50000).toLocaleString('vi-VN')}đ (${latestFund.term}). Cảm ơn bạn đã đóng góp xây dựng CLB!`,
+          time: latestFund.date || 'Quỹ CLB',
+          badge: 'Đã nộp quỹ',
+          targetView: 'member-pass'
+        });
+      }
+    }
+
+    // =========================================================================
+    // 10. (ADMIN) CÓ ĐƠN ĐĂNG KÝ MỚI CHỜ DUYỆT
+    // =========================================================================
     if (isAdmin) {
       const pendingApps = (state.registrationApplications || []).filter((a) => a.status === 'pending');
       if (pendingApps.length > 0) {
         notifications.push({
-          id: `pending_apps_${pendingApps.length}`,
+          id: `notif_pending_apps_${pendingApps.length}`,
           icon: '📝',
-          title: 'Đơn đăng ký mới',
-          desc: `Có ${pendingApps.length} đơn đăng ký gia nhập CLB đang chờ duyệt.`,
+          title: 'Đơn đăng ký mới chờ duyệt',
+          desc: `Có ${pendingApps.length} đơn đăng ký gia nhập CLB đang chờ phê duyệt.`,
           time: 'Cần xử lý',
+          badge: 'Admin',
           targetView: 'admin',
           targetSubView: 'admin-users'
         });
       }
     }
 
-    // 2. Member: Smart QR Member Pass
-    if (role === 'member' && activeMember) {
+    // =========================================================================
+    // 11. (ADMIN) CẢNH BÁO ĐỒNG BỘ DỮ LIỆU FIREBASE
+    // =========================================================================
+    if (isAdmin) {
+      const isOnline = navigator.onLine;
       notifications.push({
-        id: `member_pass_${activeMember.id}`,
-        icon: '🪪',
-        title: 'Thẻ thành viên điện tử',
-        desc: `Kỳ thủ ${activeMember.fullName} (${activeMember.studentId || 'TNU-HGC'}) - Smart QR đã sẵn sàng điểm danh.`,
-        time: 'Cá nhân',
-        targetView: 'member-pass'
+        id: `notif_firebase_status_${isOnline ? 'online' : 'offline'}`,
+        icon: isOnline ? '☁️' : '⚠️',
+        title: isOnline ? 'Cơ sở dữ liệu đám mây: TRỰC TUYẾN' : 'Cảnh báo: MẤT KẾT NỐI MẠNG',
+        desc: isOnline
+          ? 'Hệ thống Firebase đang kết nối ổn định và tự động đồng bộ thời gian thực.'
+          : 'Không có kết nối mạng Internet. Dữ liệu đang được lưu cục bộ (Local Storage).',
+        time: 'Hệ thống',
+        badge: isOnline ? 'Online' : 'Offline',
+        targetView: 'admin',
+        targetSubView: 'admin-firebase'
       });
     }
-
-    // 3. Upcoming Event / Tournament
-    const events = state.events || [];
-    const upcomingEvent = events.find((e) => e.status === 'upcoming') || events[0];
-    if (upcomingEvent) {
-      notifications.push({
-        id: `event_${upcomingEvent.id || 'upcoming'}`,
-        icon: '🏆',
-        title: upcomingEvent.title || 'Giải đấu cờ sắp diễn ra',
-        desc: upcomingEvent.location ? `Địa điểm: ${upcomingEvent.location} - Xem chi tiết lịch thi đấu.` : 'Xem thông tin giải đấu và đăng ký thi đấu.',
-        time: upcomingEvent.date || 'Sự kiện CLB',
-        targetView: 'events'
-      });
-    }
-
-    // 4. Emulation & Leaderboard update
-    notifications.push({
-      id: 'emulation_leaderboard_sync',
-      icon: '📊',
-      title: 'Bảng xếp hạng kỳ thủ',
-      desc: role === 'member' && activeMember
-        ? `Điểm rèn luyện hiện tại: ${activeMember.emulationScore ?? 100}đ. Nhấn để xem vị trí trên bảng xếp hạng.`
-        : 'Bảng xếp hạng thi đua và danh hiệu kỳ thủ đã được đồng bộ.',
-      time: 'Thi đua',
-      targetView: 'leaderboard'
-    });
-
-    // 5. Official Zalo Group Notice
-    notifications.push({
-      id: 'zalo_group_notice',
-      icon: '💬',
-      title: 'Nhóm Zalo CLB Cờ TNU - HGC',
-      desc: 'Tham gia nhóm Zalo chính thức để cập nhật thông báo nội bộ và giao lưu kỳ thủ.',
-      time: 'Cộng đồng',
-      targetView: 'home'
-    });
 
     return notifications;
   }
@@ -414,6 +612,55 @@ class App {
     this.renderNotificationsList();
   }
 
+  showToastNotification(notif) {
+    if (!notif) return;
+    let container = document.getElementById('toastNotificationsContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastNotificationsContainer';
+      container.className = 'toast-notifications-container';
+      document.body.appendChild(container);
+    }
+
+    while (container.children.length >= 3) {
+      container.firstChild.remove();
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'toast-item';
+    toast.innerHTML = `
+      <div style="font-size: 1.3rem; line-height: 1;">${notif.icon || '🔔'}</div>
+      <div style="flex: 1; min-width: 0;">
+        <div class="d-flex justify-between align-center mb-1">
+          <strong style="font-size: 0.8rem; color: #fff;">${notif.title}</strong>
+          <span class="badge" style="background: rgba(212,175,55,0.15); color: var(--gold-light); font-size: 10px;">${notif.badge || 'Mới'}</span>
+        </div>
+        <div style="font-size: 0.72rem; color: #cbd5e1; line-height: 1.3;">${notif.desc}</div>
+      </div>
+    `;
+
+    toast.addEventListener('click', () => {
+      sound.playClick();
+      this.markNotificationAsRead(notif.id);
+      toast.remove();
+      if (notif.targetView) {
+        if (notif.targetView === 'admin' && notif.targetSubView) {
+          this.adminSubView = notif.targetSubView;
+          this.navigateTo('admin', notif.targetSubView);
+        } else {
+          this.navigateTo(notif.targetView);
+        }
+      }
+    });
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('toast-hiding');
+      setTimeout(() => toast.remove(), 300);
+    }, 4500);
+  }
+
   renderNotificationsList() {
     const listEl = document.getElementById('notificationList');
     const badgeDot = document.getElementById('navNotificationBadge');
@@ -429,6 +676,14 @@ class App {
       } else {
         badgeDot.classList.add('hidden');
       }
+    }
+
+    // Auto-pop Toast for new unread notifications in this session
+    if (!this.toastedIds) this.toastedIds = new Set();
+    const firstUnread = notifs.find((n) => !readIds.includes(n.id) && !this.toastedIds.has(n.id));
+    if (firstUnread) {
+      this.toastedIds.add(firstUnread.id);
+      this.showToastNotification(firstUnread);
     }
 
     if (notifs.length === 0) {
@@ -1525,10 +1780,15 @@ class App {
                 </div>
 
                 <div class="d-flex gap-2 pt-3 flex-wrap align-center" style="border-top:1px solid rgba(255,255,255,0.06);">
-                  <div class="flex-1 d-flex align-center">
+                  <div class="flex-1 d-flex align-center gap-1 flex-wrap">
                     <span class="badge badge-gold text-xs" style="padding: 6px 12px; font-weight: 600;">
                       📍 Quét mã QR Smart Key tại bàn để điểm danh
                     </span>
+                    ${ev.swissData ? `
+                      <button class="btn btn-gold btn-sm btn-view-swiss-public" data-event-id="${ev.id}" title="Xem lịch thi đấu & cặp đấu Hệ Thụy Sĩ">
+                        ⚔️ Bảng Đấu Hệ Thụy Sĩ
+                      </button>
+                    ` : ''}
                   </div>
                   <button class="btn btn-outline btn-sm btn-feedback-event" data-event-id="${ev.id}" title="Gửi đánh giá">
                     💬 Góp ý
@@ -1545,6 +1805,16 @@ class App {
         </div>
       </div>
     `;
+
+    // Bind Swiss public view
+    container.querySelectorAll('.btn-view-swiss-public').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const evId = btn.getAttribute('data-event-id');
+        const ev = state.events.find((e) => e.id === evId);
+        if (ev) modalManager.openSwissTournamentPublicModal(ev);
+      });
+    });
 
     // Bind feedback button
     container.querySelectorAll('.btn-feedback-event').forEach((btn) => {
@@ -2816,9 +3086,12 @@ class App {
         <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
           <div>
             <h2 class="text-xl font-bold">Quản Lý Hoạt Động - Giải Đấu</h2>
-            <p class="text-muted text-xs">Cổng điểm danh thông minh - Danh sách phản hồi feedback của kỳ thủ</p>
+            <p class="text-muted text-xs">Cổng điểm danh thông minh - Bốc thăm Hệ Thụy Sĩ - Quản lý thu quỹ CLB</p>
           </div>
-          <button class="btn btn-gold btn-sm" id="btnAdminCreateEvent">+ Lên Lịch Sự Kiện Mới</button>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline btn-sm" id="btnAdminFundRecord" style="border-color: rgba(56,189,248,0.4); color: var(--accent-cyan);" title="Ghi nhận thu quỹ hội viên">💰 Ghi Nhận Đóng Quỹ</button>
+            <button class="btn btn-gold btn-sm" id="btnAdminCreateEvent">+ Lên Lịch Sự Kiện Mới</button>
+          </div>
         </div>
 
         <div class="card mb-4">
@@ -2871,6 +3144,11 @@ class App {
                     </td>
                     <td data-label="Thao Tác">
                       <div class="d-flex gap-1 align-center flex-wrap">
+                        ${ev.type === 'tournament' ? `
+                          <button class="btn btn-outline btn-sm btn-manage-swiss" data-event-id="${ev.id}" style="border-color: rgba(212,175,55,0.45); color: var(--gold-light);" title="Bốc thăm & tính điểm Hệ Thụy Sĩ">
+                            ⚔️ Hệ Thụy Sĩ ${ev.swissData ? `(V${ev.swissData.currentRound})` : ''}
+                          </button>
+                        ` : ''}
                         ${ev.status === 'completed' ? `
                           <button class="btn btn-outline btn-sm btn-finish-event" data-event-id="${ev.id}" style="border-color: rgba(148,163,184,0.3); color: #94a3b8; font-weight: 600; cursor: pointer;" title="Hoạt động này đã kết thúc (bấm để mở lại nếu cần)">
                             🏁 Giải Đấu Đã Kết Thúc
@@ -2998,6 +3276,29 @@ class App {
           null,
           { title: 'XÁC NHẬN XÓA HOẠT ĐỘNG', confirmText: '🗑️ Xóa vĩnh viễn', danger: true }
         );
+      });
+    });
+
+    // Bind Swiss Tournament admin management
+    container.querySelectorAll('.btn-manage-swiss').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const evId = btn.getAttribute('data-event-id');
+        const ev = state.events.find((e) => e.id === evId);
+        if (ev) {
+          modalManager.openSwissTournamentAdminModal(ev, () => {
+            this.renderAdminEvents(container);
+            this.renderNotificationsList();
+          });
+        }
+      });
+    });
+
+    // Bind Fund Record button
+    container.querySelector('#btnAdminFundRecord')?.addEventListener('click', () => {
+      sound.playClick();
+      modalManager.openFundRecordModal(() => {
+        this.renderNotificationsList();
       });
     });
   }

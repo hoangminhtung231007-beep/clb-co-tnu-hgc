@@ -1,7 +1,8 @@
 import { INITIAL_DATA } from './mockData.js';
 import { CHESS_MOTTOS, getMottoByIndex } from './chessMottos.js';
 import { firebaseService } from '../services/firebaseService.js';
-export { CHESS_MOTTOS, getMottoByIndex, firebaseService };
+import { SwissTournament } from '../utils/swissSystem.js';
+export { CHESS_MOTTOS, getMottoByIndex, firebaseService, SwissTournament };
 
 export const ALUMNI_MESSAGES = [
   'Chúc CLB và Ban Điều Hành mới luôn giữ vững ngọn lửa đam mê, đoàn kết và đưa phong trào cờ Phân hiệu ngày càng lớn mạnh, gặt hái thêm nhiều vinh quang!',
@@ -48,6 +49,7 @@ class Store {
       if (Array.isArray(remoteData.alumniBoard)) this.state.alumniBoard = remoteData.alumniBoard;
       if (Array.isArray(remoteData.alumniMembers)) this.state.alumniMembers = remoteData.alumniMembers;
       if (Array.isArray(remoteData.eventFeedback)) this.state.eventFeedback = remoteData.eventFeedback;
+      if (Array.isArray(remoteData.fundRecords)) this.state.fundRecords = remoteData.fundRecords;
       if (remoteData.clubInfo && typeof remoteData.clubInfo === 'object') {
         this.state.clubInfo = { ...this.state.clubInfo, ...remoteData.clubInfo };
       }
@@ -136,6 +138,7 @@ class Store {
           },
           alumniBoard: rawBoard.map((m, idx) => ({ ...m, id: syncAlumniCardId(m.id, idx) })),
           alumniMembers: rawMembers.map((m, idx) => ({ ...m, id: syncAlumniCardId(m.id, idx) })),
+          fundRecords: Array.isArray(parsed.fundRecords) ? parsed.fundRecords : (INITIAL_DATA.fundRecords || [])
         };
       }
     } catch (e) {
@@ -1067,6 +1070,98 @@ class Store {
   deleteArticle(id) {
     this.state.articles = this.state.articles.filter((a) => a.id !== id);
     this.notify();
+  }
+
+  // ==========================================
+  // SWISS-SYSTEM TOURNAMENT OPERATIONS
+  // ==========================================
+  initSwissTournament(eventId, { totalRounds = 3, playerIds = [] } = {}) {
+    const event = this.state.events.find((e) => e.id === eventId);
+    if (!event) throw new Error('Không tìm thấy giải đấu.');
+
+    let players = [];
+    if (Array.isArray(playerIds) && playerIds.length >= 2) {
+      players = this.state.members.filter((m) => playerIds.includes(m.id));
+    } else if (Array.isArray(event.registeredMembers) && event.registeredMembers.length >= 2) {
+      players = this.state.members.filter((m) => event.registeredMembers.includes(m.id));
+    } else {
+      players = this.state.members.slice(0, 16);
+    }
+
+    if (players.length < 2) {
+      throw new Error('Cần ít nhất 2 kỳ thủ tham gia để tạo giải đấu Hệ Thụy Sĩ.');
+    }
+
+    const tournament = new SwissTournament({
+      id: `SWISS-${eventId}`,
+      title: event.title,
+      totalRounds: parseInt(totalRounds) || 3,
+      players: players.map((p) => ({
+        id: p.id,
+        name: p.name || p.fullName,
+        studentId: p.studentId,
+        elo: p.eloRating || 1200
+      }))
+    });
+
+    // Bốc thăm vòng 1 ngay lập tức
+    tournament.generateNextRound();
+
+    event.swissData = tournament.toJSON();
+    event.type = 'tournament';
+    this.notify();
+    return event.swissData;
+  }
+
+  generateNextSwissRound(eventId) {
+    const event = this.state.events.find((e) => e.id === eventId);
+    if (!event || !event.swissData) throw new Error('Giải đấu chưa được cấu hình Hệ Thụy Sĩ.');
+
+    const tournament = SwissTournament.fromJSON(event.swissData);
+    const newRound = tournament.generateNextRound();
+    event.swissData = tournament.toJSON();
+    this.notify();
+    return newRound;
+  }
+
+  recordSwissMatchResult(eventId, roundNumber, matchId, result) {
+    const event = this.state.events.find((e) => e.id === eventId);
+    if (!event || !event.swissData) throw new Error('Giải đấu chưa được cấu hình Hệ Thụy Sĩ.');
+
+    const tournament = SwissTournament.fromJSON(event.swissData);
+    tournament.recordResult(roundNumber, matchId, result);
+    event.swissData = tournament.toJSON();
+    this.notify();
+    return event.swissData;
+  }
+
+  // ==========================================
+  // FUND / QUỸ CLB OPERATIONS
+  // ==========================================
+  addFundRecord({ memberId, amount, term, note, confirmedBy }) {
+    const member = this.state.members.find((m) => m.id === memberId);
+    const newRecord = {
+      id: `FND-${Date.now().toString().slice(-5)}`,
+      memberId: memberId || '',
+      memberName: member?.name || member?.fullName || 'Kỳ thủ',
+      studentId: member?.studentId || '',
+      amount: parseInt(amount) || 50000,
+      term: term || 'Học kỳ I (2026 - 2027)',
+      date: new Date().toISOString().slice(0, 10),
+      note: note || 'Đóng hội phí CLB Cờ',
+      confirmedBy: confirmedBy || 'Ban Chủ Nhiệm',
+      status: 'confirmed'
+    };
+    if (!Array.isArray(this.state.fundRecords)) {
+      this.state.fundRecords = [];
+    }
+    this.state.fundRecords.unshift(newRecord);
+    this.notify();
+    return newRecord;
+  }
+
+  getMemberFundRecords(memberId) {
+    return (this.state.fundRecords || []).filter((r) => r.memberId === memberId);
   }
 }
 

@@ -58,14 +58,36 @@
         </div>
 
         <!-- Authenticated Actions (Shown when role !== 'guest') -->
-        <div class="user-nav-actions" id="userNavActions" style="display: flex; align-items: center; gap: 10px;">
+        <div class="user-nav-actions" id="userNavActions" style="display: flex; align-items: center; gap: 8px;">
           <div id="navUserBadge" class="d-flex align-center gap-2"></div>
           <button class="btn-admin-portal" id="btnAdminPortal" title="Cập nhật và đồng bộ dữ liệu hệ thống">
             <span>🔄</span> Cập nhật dữ liệu
           </button>
 
+          <!-- Notification Bell Button (Icon only) -->
+          <div class="nav-notification-wrap" id="navNotificationWrap">
+            <button type="button" class="btn-nav-bell" id="btnNavNotifications" title="Thông báo hệ thống" aria-label="Thông báo hệ thống">
+              <span class="bell-icon">🔔</span>
+              <span class="notification-badge-dot" id="navNotificationBadge"></span>
+            </button>
+
+            <!-- Notification Dropdown Popover -->
+            <div class="notification-dropdown" id="notificationDropdown">
+              <div class="notification-header">
+                <div class="d-flex align-center gap-2">
+                  <span style="font-size: 1.05rem;">🔔</span>
+                  <span class="font-bold text-white text-xs" style="letter-spacing: 0.5px;">THÔNG BÁO CLB</span>
+                </div>
+                <button type="button" class="btn-mark-read" id="btnMarkAllNotificationsRead" title="Đánh dấu tất cả đã đọc">
+                  Đã đọc
+                </button>
+              </div>
+              <div class="notification-list" id="notificationList"></div>
+            </div>
+          </div>
+
           <button class="btn btn-outline btn-sm" id="btnLogout" title="Đăng xuất về chế độ khách" style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.15); color: #cbd5e1;">
-            <span>🚪</span> Đăng xuất
+            Đăng xuất
           </button>
         </div>
       </div>

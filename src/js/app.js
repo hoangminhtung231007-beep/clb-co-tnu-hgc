@@ -177,6 +177,7 @@ class App {
     }
 
     this.updateMobileDrawerContent();
+    this.renderNotificationsList();
   }
 
   updateMobileDrawerContent() {
@@ -310,6 +311,177 @@ class App {
     }
   }
 
+  getNotificationsList() {
+    const state = store.getState();
+    const role = state.currentSession?.role || 'guest';
+    const isAdmin = role === 'admin';
+    const activeMember = store.getActiveMember();
+    const notifications = [];
+
+    // 1. Admin: Pending registration applications
+    if (isAdmin) {
+      const pendingApps = (state.registrationApplications || []).filter((a) => a.status === 'pending');
+      if (pendingApps.length > 0) {
+        notifications.push({
+          id: `pending_apps_${pendingApps.length}`,
+          icon: '📝',
+          title: 'Đơn đăng ký mới',
+          desc: `Có ${pendingApps.length} đơn đăng ký gia nhập CLB đang chờ duyệt.`,
+          time: 'Cần xử lý',
+          targetView: 'admin',
+          targetSubView: 'admin-users'
+        });
+      }
+    }
+
+    // 2. Member: Smart QR Member Pass
+    if (role === 'member' && activeMember) {
+      notifications.push({
+        id: `member_pass_${activeMember.id}`,
+        icon: '🪪',
+        title: 'Thẻ thành viên điện tử',
+        desc: `Kỳ thủ ${activeMember.fullName} (${activeMember.studentId || 'TNU-HGC'}) - Smart QR đã sẵn sàng điểm danh.`,
+        time: 'Cá nhân',
+        targetView: 'member-pass'
+      });
+    }
+
+    // 3. Upcoming Event / Tournament
+    const events = state.events || [];
+    const upcomingEvent = events.find((e) => e.status === 'upcoming') || events[0];
+    if (upcomingEvent) {
+      notifications.push({
+        id: `event_${upcomingEvent.id || 'upcoming'}`,
+        icon: '🏆',
+        title: upcomingEvent.title || 'Giải đấu cờ sắp diễn ra',
+        desc: upcomingEvent.location ? `Địa điểm: ${upcomingEvent.location} - Xem chi tiết lịch thi đấu.` : 'Xem thông tin giải đấu và đăng ký thi đấu.',
+        time: upcomingEvent.date || 'Sự kiện CLB',
+        targetView: 'events'
+      });
+    }
+
+    // 4. Emulation & Leaderboard update
+    notifications.push({
+      id: 'emulation_leaderboard_sync',
+      icon: '📊',
+      title: 'Bảng xếp hạng kỳ thủ',
+      desc: role === 'member' && activeMember
+        ? `Điểm rèn luyện hiện tại: ${activeMember.emulationScore ?? 100}đ. Nhấn để xem vị trí trên bảng xếp hạng.`
+        : 'Bảng xếp hạng thi đua và danh hiệu kỳ thủ đã được đồng bộ.',
+      time: 'Thi đua',
+      targetView: 'leaderboard'
+    });
+
+    // 5. Official Zalo Group Notice
+    notifications.push({
+      id: 'zalo_group_notice',
+      icon: '💬',
+      title: 'Nhóm Zalo CLB Cờ TNU - HGC',
+      desc: 'Tham gia nhóm Zalo chính thức để cập nhật thông báo nội bộ và giao lưu kỳ thủ.',
+      time: 'Cộng đồng',
+      targetView: 'home'
+    });
+
+    return notifications;
+  }
+
+  getReadNotificationIds() {
+    try {
+      const raw = localStorage.getItem('TNU_HGC_READ_NOTIFICATIONS');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  markNotificationAsRead(id) {
+    try {
+      const readIds = this.getReadNotificationIds();
+      if (!readIds.includes(id)) {
+        readIds.push(id);
+        localStorage.setItem('TNU_HGC_READ_NOTIFICATIONS', JSON.stringify(readIds));
+      }
+    } catch (e) {}
+    this.renderNotificationsList();
+  }
+
+  markAllNotificationsAsRead() {
+    const notifs = this.getNotificationsList();
+    const allIds = notifs.map((n) => n.id);
+    try {
+      localStorage.setItem('TNU_HGC_READ_NOTIFICATIONS', JSON.stringify(allIds));
+    } catch (e) {}
+    this.renderNotificationsList();
+  }
+
+  renderNotificationsList() {
+    const listEl = document.getElementById('notificationList');
+    const badgeDot = document.getElementById('navNotificationBadge');
+    if (!listEl) return;
+
+    const notifs = this.getNotificationsList();
+    const readIds = this.getReadNotificationIds();
+    const unreadCount = notifs.filter((n) => !readIds.includes(n.id)).length;
+
+    if (badgeDot) {
+      if (unreadCount > 0) {
+        badgeDot.classList.remove('hidden');
+      } else {
+        badgeDot.classList.add('hidden');
+      }
+    }
+
+    if (notifs.length === 0) {
+      listEl.innerHTML = `
+        <div class="notification-empty">
+          <span style="font-size: 1.8rem;">📭</span>
+          <div class="text-xs text-muted mt-2">Hiện chưa có thông báo mới nào.</div>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = notifs
+      .map((item) => {
+        const isUnread = !readIds.includes(item.id);
+        return `
+        <div class="notification-item ${isUnread ? 'unread' : ''}" data-notif-id="${item.id}" data-view="${item.targetView || ''}" data-subview="${item.targetSubView || ''}">
+          <div class="notification-item-icon">${item.icon}</div>
+          <div class="notification-item-content">
+            <div class="notification-item-title">${item.title}</div>
+            <div class="notification-item-desc">${item.desc}</div>
+            <div class="notification-item-time">${item.time}</div>
+          </div>
+        </div>
+      `;
+      })
+      .join('');
+
+    // Bind item clicks
+    listEl.querySelectorAll('.notification-item').forEach((el) => {
+      el.addEventListener('click', () => {
+        sound.playClick();
+        const notifId = el.getAttribute('data-notif-id');
+        const targetView = el.getAttribute('data-view');
+        const targetSubView = el.getAttribute('data-subview');
+
+        if (notifId) this.markNotificationAsRead(notifId);
+
+        const dropdown = document.getElementById('notificationDropdown');
+        if (dropdown) dropdown.classList.remove('active');
+
+        if (targetView) {
+          if (targetView === 'admin' && targetSubView) {
+            this.adminSubView = targetSubView;
+            this.navigateTo('admin', targetSubView);
+          } else {
+            this.navigateTo(targetView);
+          }
+        }
+      });
+    });
+  }
+
   bindGlobalNavigation() {
     // Nav User Badge Click (Switch to member pass or admin overview)
     const navUserBadge = document.getElementById('navUserBadge');
@@ -365,6 +537,40 @@ class App {
         sound.playClick();
         store.setRole('guest');
         this.navigateTo('home');
+      });
+    }
+
+    // Topbar Notification Bell & Dropdown Popover
+    const btnNavNotifications = document.getElementById('btnNavNotifications');
+    const notificationDropdown = document.getElementById('notificationDropdown');
+    const btnMarkAll = document.getElementById('btnMarkAllNotificationsRead');
+
+    if (btnNavNotifications && notificationDropdown) {
+      btnNavNotifications.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sound.playClick();
+        notificationDropdown.classList.toggle('active');
+        if (notificationDropdown.classList.contains('active')) {
+          this.renderNotificationsList();
+        }
+      });
+
+      notificationDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!notificationDropdown.contains(e.target) && !btnNavNotifications.contains(e.target)) {
+          notificationDropdown.classList.remove('active');
+        }
+      });
+    }
+
+    if (btnMarkAll) {
+      btnMarkAll.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sound.playClick();
+        this.markAllNotificationsAsRead();
       });
     }
 

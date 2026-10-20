@@ -2938,12 +2938,20 @@ export const modalManager = {
 
             <div class="card p-3 mb-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(212,175,55,0.2);">
               <div class="form-group mb-3">
-                <label class="form-label text-gold font-bold text-xs">Tổng Số Vòng Đấu (Total Rounds)</label>
-                <select class="form-control" id="swissTotalRoundsSelect" style="width: 140px;">
-                  <option value="3" selected>3 Vòng đấu</option>
-                  <option value="5">5 Vòng đấu</option>
-                  <option value="7">7 Vòng đấu</option>
-                </select>
+                <label class="form-label text-gold font-bold text-xs d-flex align-center gap-1.5">
+                  <span>✍️ Tổng Số Vòng Đấu (Trọng tài tự viết số ván):</span>
+                </label>
+                <div class="d-flex align-center gap-2 mb-2">
+                  <input type="number" class="form-control font-mono font-bold text-gold" id="swissTotalRoundsInput" value="5" min="1" max="50" step="1" style="width: 130px; font-size: 1.15rem; padding: 6px 12px;" placeholder="VD: 5">
+                  <span class="text-xs text-muted">Ván / Vòng đấu (Trọng tài nhập số ván tùy chỉnh theo điều lệ)</span>
+                </div>
+                <div class="d-flex gap-1.5 flex-wrap align-center">
+                  <span class="text-xs text-dim mr-1">Gợi ý nhanh:</span>
+                  <button type="button" class="btn btn-outline btn-xs btn-preset-rounds" data-rounds="3">3 ván</button>
+                  <button type="button" class="btn btn-outline btn-xs btn-preset-rounds" data-rounds="5">5 ván</button>
+                  <button type="button" class="btn btn-outline btn-xs btn-preset-rounds" data-rounds="7">7 ván</button>
+                  <button type="button" class="btn btn-outline btn-xs btn-preset-rounds" data-rounds="9">9 ván</button>
+                </div>
               </div>
 
               <div class="form-group mb-2">
@@ -2980,9 +2988,14 @@ export const modalManager = {
         <div class="swiss-admin-modal p-2">
           <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
             <div>
-              <span class="badge ${isFinished ? 'badge-emerald' : 'badge-gold'}">
-                ${isFinished ? '🏁 GIẢI ĐẤU ĐÃ HOÀN TẤT' : `🟢 VÒNG ${swiss.currentRound} / ${swiss.totalRounds}`}
-              </span>
+              <div class="d-flex align-center gap-2 flex-wrap mb-1">
+                <span class="badge ${isFinished ? 'badge-emerald' : 'badge-gold'}">
+                  ${isFinished ? '🏁 GIẢI ĐẤU ĐÃ HOÀN TẤT' : `🟢 VÒNG ${swiss.currentRound} / ${swiss.totalRounds}`}
+                </span>
+                <button type="button" class="btn btn-outline btn-xs" id="btnEditSwissTotalRoundsMid" title="Trọng tài chỉnh sửa tổng số ván đấu của giải" style="font-size: 11px; padding: 2px 8px;">
+                  ✏️ Sửa Số Ván (${swiss.totalRounds})
+                </button>
+              </div>
               <h3 class="text-lg font-bold text-white mt-1">${curEvent.title}</h3>
             </div>
             <div class="d-flex gap-2">
@@ -3102,9 +3115,22 @@ export const modalManager = {
         chks.forEach((c) => (c.checked = anyUnchecked));
       });
 
+      modalEl.querySelectorAll('.btn-preset-rounds').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          sound.playClick();
+          const val = btn.getAttribute('data-rounds');
+          const input = modalEl.querySelector('#swissTotalRoundsInput');
+          if (input) input.value = val;
+        });
+      });
+
       modalEl.querySelector('#btnStartSwissTournament')?.addEventListener('click', () => {
         sound.playClick();
-        const rounds = parseInt(modalEl.querySelector('#swissTotalRoundsSelect')?.value) || 3;
+        const rounds = parseInt(modalEl.querySelector('#swissTotalRoundsInput')?.value);
+        if (isNaN(rounds) || rounds < 1) {
+          modalManager.showAlert('Vui lòng nhập tổng số vòng đấu hợp lệ (ít nhất 1 ván)!');
+          return;
+        }
         const checked = Array.from(modalEl.querySelectorAll('.swiss-player-chk:checked')).map((c) => c.value);
 
         if (checked.length < 2) {
@@ -3114,7 +3140,36 @@ export const modalManager = {
 
         try {
           store.initSwissTournament(event.id, { totalRounds: rounds, playerIds: checked });
-          modalManager.showAlert('✅ Đã khởi tạo giải đấu và bốc thăm Vòng 1 Hệ Thụy Sĩ thành công!');
+          modalManager.showAlert(`✅ Đã khởi tạo giải đấu ${rounds} ván và bốc thăm Vòng 1 Hệ Thụy Sĩ thành công!`);
+          if (typeof onUpdate === 'function') onUpdate();
+          this.open(`Quản Trị Thi Đấu Hệ Thụy Sĩ • ${event.title}`, renderModalContent(), null, null);
+          bindModalEvents();
+        } catch (err) {
+          modalManager.showAlert('Lỗi: ' + err.message);
+        }
+      });
+
+      modalEl.querySelector('#btnEditSwissTotalRoundsMid')?.addEventListener('click', () => {
+        sound.playClick();
+        const curEv = store.getState().events.find((e) => e.id === event.id);
+        const curRounds = curEv?.swissData?.totalRounds || 3;
+        const curRoundNum = curEv?.swissData?.currentRound || 1;
+        
+        const newRoundsStr = prompt(`✍️ TRỌNG TÀI SỬA TỔNG SỐ VÁN ĐẤU:\n\nNhập số ván mới cho giải đấu (Hiện tại: ${curRounds} ván, đã bốc thăm đến vòng ${curRoundNum}):`, curRounds);
+        if (newRoundsStr === null) return;
+        const newRounds = parseInt(newRoundsStr);
+        if (isNaN(newRounds) || newRounds < 1) {
+          modalManager.showAlert('Số ván phải là số nguyên dương lớn hơn 0!');
+          return;
+        }
+        if (newRounds < curRoundNum) {
+          modalManager.showAlert(`Không thể giảm số ván xuống ${newRounds} vì giải đã bốc thăm đến vòng ${curRoundNum}!`);
+          return;
+        }
+
+        try {
+          store.updateSwissTotalRounds(event.id, newRounds);
+          modalManager.showAlert(`✅ Đã cập nhật tổng số ván đấu thành ${newRounds} ván thành công!`);
           if (typeof onUpdate === 'function') onUpdate();
           this.open(`Quản Trị Thi Đấu Hệ Thụy Sĩ • ${event.title}`, renderModalContent(), null, null);
           bindModalEvents();

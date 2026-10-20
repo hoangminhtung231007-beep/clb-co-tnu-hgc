@@ -1150,6 +1150,29 @@ class Store {
     return event.swissData;
   }
 
+  updateSwissTotalRounds(eventId, newTotalRounds) {
+    const event = this.state.events.find((e) => e.id === eventId);
+    if (!event || !event.swissData) throw new Error('Giải đấu chưa được cấu hình Hệ Thụy Sĩ.');
+    const rounds = parseInt(newTotalRounds);
+    if (isNaN(rounds) || rounds < 1) throw new Error('Số ván đấu phải là số nguyên dương lớn hơn 0.');
+    if (rounds < event.swissData.currentRound) {
+      throw new Error(`Số ván (${rounds}) không thể nhỏ hơn số vòng hiện tại đã đấu (${event.swissData.currentRound}).`);
+    }
+    event.swissData.totalRounds = rounds;
+    if (event.swissData.currentRound >= rounds) {
+      const curRoundData = (event.swissData.rounds || []).find((r) => r.roundNumber === event.swissData.currentRound);
+      const allDone = (curRoundData?.matches || []).every((m) => m.result !== null);
+      if (allDone) {
+        event.swissData.status = 'completed';
+      }
+    } else if (event.swissData.status === 'completed' && event.swissData.currentRound < rounds) {
+      event.swissData.status = 'ongoing';
+    }
+    this.saveState();
+    this.notify();
+    return event.swissData;
+  }
+
   // ==========================================
   // FUND / QUỸ CLB OPERATIONS
   // ==========================================

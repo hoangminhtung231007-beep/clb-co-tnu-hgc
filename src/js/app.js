@@ -3316,6 +3316,9 @@ class App {
                 </button>
               ` : ''}
               ${curEvent && swiss ? `
+                <button class="btn btn-outline btn-sm" id="btnEditRoundsInAdminSwiss" title="Trọng tài chỉnh sửa tổng số ván đấu">
+                  ✏️ Sửa Số Ván (${swiss.totalRounds})
+                </button>
                 <button class="btn btn-outline btn-sm" id="btnResetSwissEvent" style="color:#fb7185; border-color: rgba(244,63,94,0.3);">
                   🗑️ Đặt Lại Giải
                 </button>
@@ -3359,7 +3362,7 @@ class App {
               <div style="font-size: 2.5rem; margin-bottom: 8px;">♟️</div>
               <h3 class="text-base font-bold text-white mb-1">Giải đấu [${curEvent.title}] chưa bắt đầu bốc thăm</h3>
               <p class="text-xs text-muted mb-3" style="max-width: 500px; margin-left: auto; margin-right: auto;">
-                Nhấn nút bên dưới để chọn số vòng đấu (3, 5 hoặc 7 vòng) và tự động tạo các cặp đấu Vòng 1 theo chuẩn Hệ Thụy Sĩ FIDE.
+                Trọng tài tự do viết số ván đấu thủ công và chọn danh sách kỳ thủ để bốc thăm Vòng 1 theo chuẩn Hệ Thụy Sĩ FIDE.
               </p>
               <button class="btn btn-gold btn-sm" id="btnInitSwissCenter">
                 ⚔️ Cấu Hình & Bốc Thăm Vòng 1
@@ -3372,9 +3375,14 @@ class App {
                 <div class="card p-3 mb-4">
                   <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
                     <div>
-                      <h3 class="font-bold text-white text-base">
-                        ⚔️ Cặp Đấu Vòng ${swiss.currentRound} / ${swiss.totalRounds}
-                      </h3>
+                      <div class="d-flex align-center gap-2 flex-wrap mb-1">
+                        <h3 class="font-bold text-white text-base mb-0">
+                          ⚔️ Cặp Đấu Vòng ${swiss.currentRound} / ${swiss.totalRounds}
+                        </h3>
+                        <button type="button" class="btn btn-outline btn-xs" id="btnEditRoundsInline" title="Trọng tài sửa lại tổng số ván của giải đấu" style="font-size: 11px; padding: 2px 8px;">
+                          ✏️ Sửa Số Ván (${swiss.totalRounds})
+                        </button>
+                      </div>
                       <p class="text-xs text-muted">Nhấn kết quả để hệ thống tự động cộng điểm và cập nhật thứ hạng</p>
                     </div>
                     <span class="badge badge-gold font-mono">${(curRoundData?.matches || []).length} bàn đấu</span>
@@ -3495,6 +3503,35 @@ class App {
 
     container.querySelector('#btnStartSwissForEvent')?.addEventListener('click', triggerSetupModal);
     container.querySelector('#btnInitSwissCenter')?.addEventListener('click', triggerSetupModal);
+
+    const handleEditTotalRounds = () => {
+      sound.playClick();
+      if (!curEvent || !curEvent.swissData) return;
+      const curRounds = curEvent.swissData.totalRounds || 3;
+      const curRoundNum = curEvent.swissData.currentRound || 1;
+      const newRoundsStr = prompt(`✍️ TRỌNG TÀI SỬA TỔNG SỐ VÁN ĐẤU:\n\nNhập số ván mới cho giải [${curEvent.title}]\n(Hiện tại: ${curRounds} ván, đã bốc thăm đến vòng ${curRoundNum}):`, curRounds);
+      if (newRoundsStr === null) return;
+      const newRounds = parseInt(newRoundsStr);
+      if (isNaN(newRounds) || newRounds < 1) {
+        modalManager.showAlert('Số ván đấu phải là số nguyên dương lớn hơn 0!');
+        return;
+      }
+      if (newRounds < curRoundNum) {
+        modalManager.showAlert(`Không thể giảm số ván xuống ${newRounds} vì giải đã bốc thăm đến vòng ${curRoundNum}!`);
+        return;
+      }
+      try {
+        store.updateSwissTotalRounds(curEvent.id, newRounds);
+        modalManager.showAlert(`✅ Đã cập nhật tổng số ván đấu thành ${newRounds} ván thành công!`);
+        this.renderAdminSwiss(container);
+        this.renderNotificationsList();
+      } catch (err) {
+        modalManager.showAlert('Lỗi: ' + err.message);
+      }
+    };
+
+    container.querySelector('#btnEditRoundsInAdminSwiss')?.addEventListener('click', handleEditTotalRounds);
+    container.querySelector('#btnEditRoundsInline')?.addEventListener('click', handleEditTotalRounds);
 
     container.querySelector('#btnGenerateNextRoundSwiss')?.addEventListener('click', () => {
       sound.playClick();

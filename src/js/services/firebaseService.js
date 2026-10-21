@@ -119,6 +119,9 @@ class FirebaseService {
             alumniMembers: state.alumniMembers || [],
             clubInfo: state.clubInfo || {},
             eventFeedback: state.eventFeedback || [],
+            fundRecords: state.fundRecords || [],
+            fundCampaigns: state.fundCampaigns || [],
+            fundSettings: state.fundSettings || {},
             updatedAt: new Date().toISOString()
           };
 
@@ -169,6 +172,9 @@ class FirebaseService {
       alumniMembers: state.alumniMembers || [],
       clubInfo: state.clubInfo || {},
       eventFeedback: state.eventFeedback || [],
+      fundRecords: state.fundRecords || [],
+      fundCampaigns: state.fundCampaigns || [],
+      fundSettings: state.fundSettings || {},
       updatedAt: new Date().toISOString()
     };
     const cleanPayload = JSON.parse(JSON.stringify(payload));

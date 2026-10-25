@@ -1,0 +1,26 @@
+{
+  "name": "CLB Cờ TNU - HGC",
+  "short_name": "CLB Cờ HGC",
+  "description": "Cổng thông tin và buồng lái quản trị trực tuyến CLB Cờ TNU - HGC, Đại học Thái Nguyên Phân hiệu tại Hà Giang.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0f1d",
+  "theme_color": "#0a0f1d",
+  "scope": "/",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -4225,6 +4225,175 @@ export const modalManager = {
     if (modalEl) {
       modalEl.querySelector('#btnCloseFullscreenQR')?.addEventListener('click', () => this.close());
     }
+  },
+
+  openPwaInstallGuideModal() {
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const initialTab = isIos ? 'ios' : 'android';
+
+    const contentHtml = `
+      <div class="pwa-guide-modal" style="padding: 4px 0;">
+        <div class="text-center mb-3">
+          <img src="/logo.png" alt="Logo CLB" style="width: 60px; height: 60px; border-radius: 14px; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(212,175,55,0.25);">
+          <h3 class="text-base font-bold text-white">Thêm CLB Cờ Vào Màn Hình Điện Thoại</h3>
+          <p class="text-xs text-muted mt-1">Cài đặt ứng dụng trực tiếp từ trình duyệt — mở toàn màn hình, truy cập cực nhanh và nhận thông báo tức thì!</p>
+        </div>
+
+        <div class="d-flex gap-2 mb-3" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+          <button type="button" class="btn btn-sm ${initialTab === 'ios' ? 'btn-gold' : 'btn-outline'}" id="tabPwaIos" style="flex: 1; font-weight: 600;">
+            🍎 iPhone / iPad (Safari)
+          </button>
+          <button type="button" class="btn btn-sm ${initialTab === 'android' ? 'btn-gold' : 'btn-outline'}" id="tabPwaAndroid" style="flex: 1; font-weight: 600;">
+            🤖 Android (Chrome)
+          </button>
+        </div>
+
+        <!-- Section 1: iOS -->
+        <div id="secPwaIos" style="display: ${initialTab === 'ios' ? 'block' : 'none'};">
+          <div class="d-flex flex-column gap-2.5">
+            <div class="p-2.5" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
+              <div class="d-flex align-center gap-2 mb-1">
+                <span class="badge badge-gold" style="font-weight: 700; font-size: 0.72rem;">Bước 1</span>
+                <strong class="text-white text-xs">Mở website bằng trình duyệt Safari</strong>
+              </div>
+              <p class="text-xs text-muted mb-0">
+                Hãy chắc chắn bạn đang mở bằng trình duyệt <strong>Safari</strong> trên iPhone.
+              </p>
+            </div>
+
+            <div class="p-2.5" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
+              <div class="d-flex align-center gap-2 mb-1">
+                <span class="badge badge-gold" style="font-weight: 700; font-size: 0.72rem;">Bước 2</span>
+                <strong class="text-white text-xs">Bấm nút "Chia sẻ" (Share 📤)</strong>
+              </div>
+              <p class="text-xs text-muted mb-0">
+                Ở thanh công cụ dưới cùng của màn hình Safari, bấm vào biểu tượng <strong>hình vuông có mũi tên chỉ lên (📤)</strong>.
+              </p>
+            </div>
+
+            <div class="p-2.5" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
+              <div class="d-flex align-center gap-2 mb-1">
+                <span class="badge badge-gold" style="font-weight: 700; font-size: 0.72rem;">Bước 3</span>
+                <strong class="text-white text-xs">Chọn "Thêm vào MH chính" (Add to Home Screen ➕)</strong>
+              </div>
+              <p class="text-xs text-muted mb-0">
+                Cuộn xuống danh sách tùy chọn, bấm <strong>"Thêm vào MH chính"</strong> rồi bấm <strong>"Thêm" (Add)</strong> ở góc trên bên phải.
+              </p>
+            </div>
+
+            <div class="p-2.5" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); border-radius: 8px;">
+              <div class="d-flex align-center gap-2 mb-1">
+                <span class="badge badge-emerald" style="font-weight: 700; font-size: 0.72rem;">Bước 4: Bật Thông Báo</span>
+                <strong class="text-white text-xs">Mở App từ màn hình chính</strong>
+              </div>
+              <p class="text-xs text-muted mb-0">
+                Sau khi thêm ra màn hình chính, hãy bấm mở icon <strong>CLB Cờ HGC</strong> -> Bấm hình Quả chuông 🔔 -> Chọn <strong>"Bật thông báo thiết bị"</strong> và nhấn <strong>Cho phép (Allow)</strong>!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Android -->
+        <div id="secPwaAndroid" style="display: ${initialTab === 'android' ? 'block' : 'none'};">
+          <div class="d-flex flex-column gap-2.5">
+            <div class="p-2.5" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
+              <div class="d-flex align-center gap-2 mb-1">
+                <span class="badge badge-gold" style="font-weight: 700; font-size: 0.72rem;">Cách 1</span>
+                <strong class="text-white text-xs">Cài Đặt Tự Động Ngay</strong>
+              </div>
+              <p class="text-xs text-muted mb-2">
+                Bấm nút bên dưới để trình duyệt tự động hiển thị hộp thoại thêm App:
+              </p>
+              <button type="button" class="btn btn-gold btn-sm w-100" id="btnTriggerNativeInstall" style="font-weight: 700; padding: 8px;">
+                📲 Cài Đặt App Vào Màn Hình
+              </button>
+            </div>
+
+            <div class="p-2.5" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
+              <div class="d-flex align-center gap-2 mb-1">
+                <span class="badge badge-gold" style="font-weight: 700; font-size: 0.72rem;">Cách 2</span>
+                <strong class="text-white text-xs">Cài qua Menu Trình Duyệt Chrome</strong>
+              </div>
+              <p class="text-xs text-muted mb-0">
+                1. Bấm biểu tượng <strong>3 dấu chấm (⋮)</strong> ở góc trên bên phải Chrome.<br>
+                2. Chọn <strong>"Thêm vào màn hình chính"</strong> hoặc <strong>"Cài đặt ứng dụng"</strong>.<br>
+                3. Bấm <strong>"Cài đặt" / "Thêm"</strong>.
+              </p>
+            </div>
+
+            <div class="p-2.5" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); border-radius: 8px;">
+              <div class="d-flex align-center gap-2 mb-1">
+                <span class="badge badge-emerald" style="font-weight: 700; font-size: 0.72rem;">Bật Thông Báo</span>
+                <strong class="text-white text-xs">Nhận tin lịch sinh hoạt & giải đấu</strong>
+              </div>
+              <p class="text-xs text-muted mb-2">
+                Bấm nút bên dưới và chọn <strong>Cho phép (Allow)</strong>:
+              </p>
+              <button type="button" class="btn btn-outline btn-sm w-100" id="btnTriggerNotifFromModal" style="padding: 7px;">
+                🔔 Bật Thông Báo Trên Thiết Bị
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.open('Thêm Vào Màn Hình & Bật Thông Báo', contentHtml, null, null);
+
+    setTimeout(() => {
+      const modalEl = document.getElementById('globalAppModal');
+      if (!modalEl) return;
+
+      const tabIos = modalEl.querySelector('#tabPwaIos');
+      const tabAndroid = modalEl.querySelector('#tabPwaAndroid');
+      const secIos = modalEl.querySelector('#secPwaIos');
+      const secAndroid = modalEl.querySelector('#secPwaAndroid');
+
+      if (tabIos && tabAndroid) {
+        tabIos.onclick = () => {
+          sound.playClick();
+          tabIos.className = 'btn btn-sm btn-gold';
+          tabAndroid.className = 'btn btn-sm btn-outline';
+          secIos.style.display = 'block';
+          secAndroid.style.display = 'none';
+        };
+        tabAndroid.onclick = () => {
+          sound.playClick();
+          tabAndroid.className = 'btn btn-sm btn-gold';
+          tabIos.className = 'btn btn-sm btn-outline';
+          secAndroid.style.display = 'block';
+          secIos.style.display = 'none';
+        };
+      }
+
+      const btnNativeInstall = modalEl.querySelector('#btnTriggerNativeInstall');
+      if (btnNativeInstall) {
+        btnNativeInstall.onclick = async () => {
+          sound.playClick();
+          if (window.app && window.app.deferredInstallPrompt) {
+            window.app.deferredInstallPrompt.prompt();
+            const { outcome } = await window.app.deferredInstallPrompt.userChoice;
+            if (outcome === 'accepted') {
+              modalManager.showAlert('Cài đặt thành công! Biểu tượng CLB Cờ đã xuất hiện trên màn hình chính.');
+              this.close();
+            }
+            window.app.deferredInstallPrompt = null;
+          } else {
+            modalManager.showAlert('Trình duyệt đang sẵn sàng! Hãy làm theo Cách 2: Bấm menu 3 chấm (⋮) góc trên của Chrome -> Chọn "Thêm vào màn hình chính".');
+          }
+        };
+      }
+
+      const btnNotifModal = modalEl.querySelector('#btnTriggerNotifFromModal');
+      if (btnNotifModal) {
+        btnNotifModal.onclick = async () => {
+          sound.playClick();
+          if (window.app) {
+            await window.app.requestDeviceNotificationPermission();
+          }
+        };
+      }
+    }, 50);
   }
 };
 

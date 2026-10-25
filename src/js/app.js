@@ -20,11 +20,29 @@ class App {
     this.analyticsStartDate = '2026-09-01';
     this.analyticsEndDate = '2027-06-30';
     this.firebaseUnlocked = false;
+    this.deferredInstallPrompt = null;
 
     this.init();
   }
 
   init() {
+    // Register Service Worker for PWA & Device Push Notifications
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        console.log('CLB Cờ PWA ServiceWorker registered', reg);
+      }).catch((err) => {
+        console.warn('SW registration skipped', err);
+      });
+    }
+
+    // Capture PWA beforeinstallprompt on Android / Chromium
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        this.deferredInstallPrompt = e;
+      });
+    }
+
     // If reloaded while in admin role, go directly to check-in on mobile, or overview on desktop
     const sessionRole = store.getState().currentSession?.role;
     if (sessionRole === 'admin') {
@@ -601,8 +619,73 @@ class App {
     this.renderNotificationsList();
   }
 
+  async requestDeviceNotificationPermission() {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      modalManager.showAlert('Trình duyệt hiện tại của bạn chưa hỗ trợ thông báo đẩy trực tiếp. Hãy thêm website vào màn hình chính để sử dụng.');
+      return false;
+    }
+
+    if (Notification.permission === 'granted') {
+      sound.playSuccess();
+      modalManager.showAlert('🟢 Thông báo trên thiết bị đang hoạt động! Bạn sẽ nhận được thông báo giải đấu, sinh hoạt và tin mới từ CLB.');
+      this.sendDevicePushNotification('CLB Cờ TNU - HGC', 'Thông báo thiết bị đang hoạt động bình thường!');
+      return true;
+    }
+
+    if (Notification.permission === 'denied') {
+      modalManager.showAlert('⚠️ Quyền thông báo đã bị từ chối trước đó trên trình duyệt. Vui lòng bấm vào biểu tượng Ổ khóa / Cài đặt trang web trên thanh địa chỉ -> Chọn "Bật thông báo" rồi tải lại trang!');
+      return false;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        sound.playSuccess();
+        modalManager.showAlert('🎉 Bật thông báo thành công! CLB Cờ TNU - HGC sẽ gửi thông báo các sự kiện và giải đấu đến thiết bị của bạn.');
+        this.sendDevicePushNotification('CLB Cờ TNU - HGC', 'Chào mừng bạn! Đã bật thông báo thiết bị thành công.');
+        return true;
+      } else {
+        modalManager.showAlert('Bạn chưa cấp quyền thông báo. Bạn có thể bật lại bất cứ lúc nào bằng nút "Bật thông báo"!');
+        return false;
+      }
+    } catch (e) {
+      console.warn('Notification permission error', e);
+      return false;
+    }
+  }
+
+  sendDevicePushNotification(title, body, url = '/') {
+    if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
+      return;
+    }
+
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then((reg) => {
+          reg.showNotification(title, {
+            body,
+            icon: '/logo.png',
+            badge: '/favicon.png',
+            vibrate: [200, 100, 200],
+            data: { url }
+          });
+        }).catch(() => {
+          new Notification(title, { body, icon: '/logo.png' });
+        });
+      } else {
+        new Notification(title, { body, icon: '/logo.png' });
+      }
+    } catch (err) {
+      console.warn('Could not display device notification', err);
+    }
+  }
+
   showToastNotification(notif) {
     if (!notif) return;
+
+    // Send native device push notification if permission granted
+    this.sendDevicePushNotification(notif.title, notif.desc, notif.targetView || '/');
+
     let container = document.getElementById('toastNotificationsContainer');
     if (!container) {
       container = document.createElement('div');
@@ -818,6 +901,25 @@ class App {
       });
     }
 
+    // Notification Dropdown PWA & Push buttons
+    const btnEnablePush = document.getElementById('btnEnableDevicePushNotif');
+    if (btnEnablePush) {
+      btnEnablePush.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sound.playClick();
+        this.requestDeviceNotificationPermission();
+      });
+    }
+
+    const btnOpenPwa = document.getElementById('btnOpenPwaInstallGuide');
+    if (btnOpenPwa) {
+      btnOpenPwa.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sound.playClick();
+        modalManager.openPwaInstallGuideModal();
+      });
+    }
+
     // Nav brand
     const brand = document.getElementById('navBrand');
     if (brand) {
@@ -916,6 +1018,25 @@ class App {
         if (targetView) this.navigateTo(targetView);
       });
     });
+
+    // Drawer Mobile PWA & Push buttons
+    const btnDrawerInstallPwa = document.getElementById('btnDrawerInstallPwa');
+    if (btnDrawerInstallPwa) {
+      btnDrawerInstallPwa.addEventListener('click', () => {
+        sound.playClick();
+        closeDrawer();
+        modalManager.openPwaInstallGuideModal();
+      });
+    }
+
+    const btnDrawerEnablePush = document.getElementById('btnDrawerEnablePush');
+    if (btnDrawerEnablePush) {
+      btnDrawerEnablePush.addEventListener('click', () => {
+        sound.playClick();
+        closeDrawer();
+        this.requestDeviceNotificationPermission();
+      });
+    }
   }
 
   navigateTo(view, subView = null) {

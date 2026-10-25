@@ -1,6 +1,7 @@
 import { store } from '../state/store.js';
 import { sound } from '../utils/audio.js';
 import confetti from 'canvas-confetti';
+import jsQR from 'jsqr';
 
 export class SmartQRScanner {
   constructor(containerEl, onScanSuccess) {
@@ -10,6 +11,9 @@ export class SmartQRScanner {
     this.scanning = false;
     this.barcodeDetector = null;
     this.animFrameId = null;
+    this.currentFacingMode = 'environment';
+    this.scanCanvas = null;
+    this.scanCtx = null;
 
     const state = store.getState();
     const activeEvt = state.events.find((e) => e.checkinActive);
@@ -176,8 +180,8 @@ export class SmartQRScanner {
         <!-- Camera Scanner Area -->
         <div class="scanner-viewport-box">
           <div class="scanner-viewfinder">
-            <video id="scannerVideo" playsinline muted style="display:none;"></video>
-            <canvas id="scannerCanvas"></canvas>
+            <video id="scannerVideo" playsinline webkit-playsinline autoplay muted></video>
+            <canvas id="scannerCanvas" style="display:none;"></canvas>
             
             <div class="viewfinder-overlay">
               <div class="viewfinder-corner top-left"></div>
@@ -186,7 +190,7 @@ export class SmartQRScanner {
               <div class="viewfinder-corner bottom-right"></div>
               <div class="viewfinder-laser" id="viewfinderLaser"></div>
               <div class="viewfinder-hint" id="scannerStatusText">
-                <span class="icon-camera">📷</span> Nhấn "Bật Camera" hoặc dùng "Quét Giả Lập" bên dưới
+                <span class="icon-camera">📷</span> Nhấn "Bật Camera" hoặc dùng "Tải ảnh QR" / nhập mã bên dưới
               </div>
             </div>
           </div>
@@ -195,6 +199,9 @@ export class SmartQRScanner {
           <div class="scanner-controls-row">
             <button id="btnToggleCamera" class="btn btn-primary btn-sm">
               <span class="btn-icon">📹</span> Bật Camera Quét Thật
+            </button>
+            <button id="btnSwitchCamera" class="btn btn-outline btn-sm" title="Chuyển Camera Trước / Sau">
+              <span class="btn-icon">🔄</span> Đổi Camera
             </button>
             <label class="btn btn-outline btn-sm file-input-label">
               <span class="btn-icon">📁</span> Tải ảnh QR
@@ -227,6 +234,7 @@ export class SmartQRScanner {
 
   bindEvents() {
     const btnToggleCamera = this.container.querySelector('#btnToggleCamera');
+    const btnSwitchCamera = this.container.querySelector('#btnSwitchCamera');
     const fileInput = this.container.querySelector('#scannerFileInput');
     const manualInput = this.container.querySelector('#manualQrInput');
     const btnManualSubmit = this.container.querySelector('#btnManualSubmit');
@@ -250,6 +258,16 @@ export class SmartQRScanner {
           this.stopCamera();
         } else {
           this.startCamera();
+        }
+      });
+    }
+
+    if (btnSwitchCamera) {
+      btnSwitchCamera.addEventListener('click', async () => {
+        sound.playClick();
+        this.currentFacingMode = this.currentFacingMode === 'environment' ? 'user' : 'environment';
+        if (this.scanning) {
+          await this.startCamera();
         }
       });
     }
@@ -319,28 +337,71 @@ export class SmartQRScanner {
     const statusText = this.container.querySelector('#scannerStatusText');
     const laser = this.container.querySelector('#viewfinderLaser');
 
+    // Stop existing stream if running
+    if (this.videoStream) {
+      this.videoStream.getTracks().forEach((track) => track.stop());
+      this.videoStream = null;
+    }
+    cancelAnimationFrame(this.animFrameId);
+
+    if (statusText) {
+      statusText.innerHTML = '⏳ Đang khởi động camera...';
+    }
+
     try {
-      this.videoStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
-      video.srcObject = this.videoStream;
-      video.setAttribute('playsinline', 'true');
-      await video.play();
+      let stream = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: this.currentFacingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+      } catch (e1) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: this.currentFacingMode },
+            audio: false
+          });
+        } catch (e2) {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+        }
+      }
+
+      this.videoStream = stream;
+      if (video) {
+        video.srcObject = stream;
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
+        video.playsInline = true;
+        video.muted = true;
+        video.autoplay = true;
+        await video.play();
+      }
 
       this.scanning = true;
       if (btn) btn.innerHTML = '<span class="btn-icon">⏹</span> Dừng Camera';
       if (laser) laser.classList.add('active');
-      if (statusText) statusText.innerHTML = '🟢 Camera đang hoạt động. Hướng mã QR vào khung ngắm...';
+      const camName = this.currentFacingMode === 'environment' ? 'Camera Sau' : 'Camera Trước';
+      if (statusText) statusText.innerHTML = `🟢 ${camName} đang hoạt động. Hướng mã QR vào khung ngắm...`;
 
       this.scanLoop();
     } catch (err) {
       console.warn('Camera access denied or unavailable', err);
+      this.scanning = false;
+      if (btn) btn.innerHTML = '<span class="btn-icon">📹</span> Bật Camera Quét Thật';
+      if (laser) laser.classList.remove('active');
       if (statusText) {
-        statusText.innerHTML = '⚠️ Không thể mở camera. Vui lòng cấp quyền camera hoặc nhập mã thẻ/MSSV thủ công bên dưới!';
+        statusText.innerHTML = '⚠️ Không thể mở camera. Vui lòng cấp quyền camera trong trình duyệt!';
       }
       this.showFeedback({
         success: false,
-        message: 'Không thể truy cập camera. Vui lòng cấp quyền camera hoặc nhập mã thẻ/MSSV thủ công bên dưới.'
+        message: 'Không thể truy cập camera. Vui lòng cấp quyền camera trong trình duyệt hoặc nhập mã thẻ/MSSV thủ công bên dưới.'
       });
     }
   }
@@ -352,6 +413,11 @@ export class SmartQRScanner {
     }
     this.scanning = false;
     cancelAnimationFrame(this.animFrameId);
+
+    const video = this.container.querySelector('#scannerVideo');
+    if (video) {
+      video.srcObject = null;
+    }
 
     const btn = this.container.querySelector('#btnToggleCamera');
     const statusText = this.container.querySelector('#scannerStatusText');
@@ -366,51 +432,124 @@ export class SmartQRScanner {
     if (!this.scanning) return;
 
     const video = this.container.querySelector('#scannerVideo');
-    if (video && video.readyState === video.HAVE_ENOUGH_DATA && this.barcodeDetector) {
-      try {
-        const barcodes = await this.barcodeDetector.detect(video);
-        if (barcodes.length > 0) {
-          const rawValue = barcodes[0].rawValue;
-          this.executeCheckIn(rawValue, 'QR Camera Trực tiếp');
-          // Pause slightly before next scan to prevent instant re-trigger
-          await new Promise((r) => setTimeout(r, 1600));
+    if (video && video.readyState >= 2 && video.videoWidth > 0) {
+      let qrValue = null;
+
+      // 1. First try native BarcodeDetector if available
+      if (this.barcodeDetector) {
+        try {
+          const barcodes = await this.barcodeDetector.detect(video);
+          if (barcodes.length > 0 && barcodes[0].rawValue) {
+            qrValue = barcodes[0].rawValue;
+          }
+        } catch (e) {
+          // Native detector frame error, fallback to jsQR
         }
-      } catch (e) {
-        // Continue detection loop
+      }
+
+      // 2. jsQR universal engine fallback (reliable across iOS Safari, Chrome Mobile, WebViews)
+      if (!qrValue) {
+        try {
+          if (!this.scanCanvas) {
+            this.scanCanvas = document.createElement('canvas');
+            this.scanCtx = this.scanCanvas.getContext('2d', { willReadFrequently: true });
+          }
+          // Downscale high-resolution frames for fast 60fps processing
+          const maxDim = 640;
+          let w = video.videoWidth;
+          let h = video.videoHeight;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          this.scanCanvas.width = w;
+          this.scanCanvas.height = h;
+          this.scanCtx.drawImage(video, 0, 0, w, h);
+          const imgData = this.scanCtx.getImageData(0, 0, w, h);
+          const code = jsQR(imgData.data, imgData.width, imgData.height, {
+            inversionAttempts: 'dontInvert'
+          });
+          if (code && code.data) {
+            qrValue = code.data;
+          }
+        } catch (err) {
+          // Frame capture error
+        }
+      }
+
+      if (qrValue) {
+        this.executeCheckIn(qrValue, 'QR Camera Trực tiếp');
+        // Pause briefly before next scan to prevent instant re-trigger
+        await new Promise((r) => setTimeout(r, 1600));
       }
     }
 
-    this.animFrameId = requestAnimationFrame(() => this.scanLoop());
+    if (this.scanning) {
+      this.animFrameId = requestAnimationFrame(() => this.scanLoop());
+    }
   }
 
   async handleFileScan(e) {
-    const file = e.target.files[0];
+    const file = e.target.files && e.target.files[0];
     if (!file) return;
 
-    if (this.barcodeDetector) {
-      try {
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        await img.decode();
-        const barcodes = await this.barcodeDetector.detect(img);
-        if (barcodes.length > 0) {
-          this.executeCheckIn(barcodes[0].rawValue, 'Tải ảnh QR');
-        } else {
-          this.showFeedback({
-            success: false,
-            message: 'Không phát hiện thấy mã QR hợp lệ trong ảnh tải lên!'
-          });
+    try {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.src = objectUrl;
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      let detectedText = null;
+
+      // 1. Try BarcodeDetector if available
+      if (this.barcodeDetector) {
+        try {
+          const barcodes = await this.barcodeDetector.detect(img);
+          if (barcodes.length > 0 && barcodes[0].rawValue) {
+            detectedText = barcodes[0].rawValue;
+          }
+        } catch (err) {
+          // Fallback to jsQR
         }
-      } catch (err) {
+      }
+
+      // 2. jsQR engine fallback
+      if (!detectedText) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        ctx.drawImage(img, 0, 0);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imgData.data, imgData.width, imgData.height);
+        if (code && code.data) {
+          detectedText = code.data;
+        }
+      }
+
+      URL.revokeObjectURL(objectUrl);
+
+      if (detectedText) {
+        this.executeCheckIn(detectedText, 'Tải ảnh QR');
+      } else {
         this.showFeedback({
           success: false,
-          message: 'Lỗi khi xử lý ảnh QR: ' + err.message
+          message: 'Không phát hiện thấy mã QR hợp lệ trong ảnh tải lên! Hãy thử ảnh rõ nét hơn hoặc nhập mã thẻ/MSSV thủ công.'
         });
       }
-    } else {
+    } catch (err) {
+      console.error('Lỗi khi xử lý ảnh QR:', err);
       this.showFeedback({
         success: false,
-        message: 'Trình duyệt hiện tại chưa hỗ trợ quét ảnh trực tiếp. Vui lòng bật camera trực tiếp hoặc nhập mã thẻ thủ công bên dưới!'
+        message: 'Lỗi khi xử lý ảnh QR: ' + (err.message || 'Không thể đọc tệp')
       });
     }
     e.target.value = '';
@@ -503,5 +642,7 @@ export class SmartQRScanner {
 
   destroy() {
     this.stopCamera();
+    this.scanCanvas = null;
+    this.scanCtx = null;
   }
 }

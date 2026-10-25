@@ -1053,8 +1053,10 @@
 
 .scanner-controls-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   margin-top: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 .file-input-label {
   cursor: pointer;

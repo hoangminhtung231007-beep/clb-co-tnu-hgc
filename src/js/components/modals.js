@@ -2171,39 +2171,43 @@ export const modalManager = {
         <!-- Tab 1: Member Login -->
         <div id="loginMemberSection" style="display: ${defaultTab === 'member' ? 'block' : 'none'};">
           <div class="form-group mb-3">
-            <label class="form-label d-flex justify-between align-center">
-              <span>Mã Thẻ hoặc MSSV:</span>
-              <span class="badge badge-gold" style="font-size: 0.72rem; padding: 2px 8px; font-weight: 600;">Hỗ trợ cả 2 cách</span>
-            </label>
-            <input type="text" id="loginMemberInput" class="form-input" placeholder="Nhập Mã thẻ (VD: TNU-HGC-001) hoặc MSSV (VD: 2251010026)..." value="" autocomplete="username">
-            <div class="text-xs text-muted mt-1.5" style="line-height: 1.45;">
-              💡 <em>Kỳ thủ có thể nhập <strong>1. Mã Thẻ CLB</strong> (VD: <code>TNU-HGC-001</code>) hoặc <strong>2. Mã Số Sinh Viên (MSSV)</strong> (VD: <code>2251010026</code>) — hệ thống đều tự động nhận diện và đăng nhập được!</em>
-            </div>
+            <label class="form-label" for="loginMemberInput">Mã Thẻ hoặc MSSV:</label>
+            <input type="text" id="loginMemberInput" class="form-input" placeholder="Nhập Mã thẻ hoặc MSSV..." value="" autocomplete="username">
           </div>
-          ${members.length > 0 ? `
-            <div class="form-group mb-3" style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.12); padding: 8px 10px; border-radius: 6px;">
-              <label class="form-label text-xs text-muted mb-1">⚡ Hoặc chọn nhanh từ danh sách thành viên (Tùy chọn):</label>
-              <select id="loginMemberSelect" class="form-select form-select-sm">
-                <option value="">-- Bấm vào đây để chọn nhanh kỳ thủ nếu muốn --</option>
-                ${members.map((m) => `
-                  <option value="${m.id}">
-                    ${m.name} | Mã: ${m.id} | MSSV: ${m.studentId || 'Chưa cập nhật'}
-                  </option>
-                `).join('')}
-              </select>
-            </div>
-          ` : ''}
+
           <div class="form-group mb-4">
-            <label class="form-label">Mật khẩu (Ngày tháng năm sinh):</label>
+            <label class="form-label" for="loginMemberPass">Mật khẩu (Ngày tháng năm sinh):</label>
             <input type="password" id="loginMemberPass" class="form-input" placeholder="Nhập ngày tháng năm sinh (VD: 23102007)..." value="" autocomplete="current-password">
           </div>
-          <button type="button" class="btn btn-gold btn-md" id="btnSubmitMemberLogin" style="width: 100%; font-weight: 700; padding: 10px;">
+
+          <button type="button" class="btn btn-gold btn-md" id="btnSubmitMemberLogin" style="width: 100%; font-weight: 700; padding: 11px;">
             Đăng Nhập Thành Viên
           </button>
+
           <div class="text-center mt-3 text-xs text-muted">
             Chưa có thẻ thành viên? 
             <a href="#" id="linkOpenRegisterFromLogin" class="text-gold font-bold" style="text-decoration: underline;">Đăng ký tham gia CLB ngay</a>
           </div>
+
+          ${members.length > 0 ? `
+            <div class="mt-3 pt-2 text-center" style="border-top: 1px solid rgba(255,255,255,0.06);">
+              <details style="cursor: pointer; display: inline-block; text-align: left; max-width: 100%;">
+                <summary class="text-xs text-muted" style="outline: none; user-select: none;">
+                  ⚡ Chọn nhanh kỳ thủ (Dành cho thử nghiệm)
+                </summary>
+                <div class="mt-2">
+                  <select id="loginMemberSelect" class="form-select form-select-sm">
+                    <option value="">-- Chọn kỳ thủ để tự điền thông tin --</option>
+                    ${members.map((m) => `
+                      <option value="${m.id}">
+                        ${m.name} (Mã: ${m.id} • MSSV: ${m.studentId || 'Chưa cập nhật'})
+                      </option>
+                    `).join('')}
+                  </select>
+                </div>
+              </details>
+            </div>
+          ` : ''}
         </div>
 
         <!-- Tab 2: Admin Login -->

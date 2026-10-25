@@ -2188,26 +2188,6 @@ export const modalManager = {
             Chưa có thẻ thành viên? 
             <a href="#" id="linkOpenRegisterFromLogin" class="text-gold font-bold" style="text-decoration: underline;">Đăng ký tham gia CLB ngay</a>
           </div>
-
-          ${members.length > 0 ? `
-            <div class="mt-3 pt-2 text-center" style="border-top: 1px solid rgba(255,255,255,0.06);">
-              <details style="cursor: pointer; display: inline-block; text-align: left; max-width: 100%;">
-                <summary class="text-xs text-muted" style="outline: none; user-select: none;">
-                  ⚡ Chọn nhanh kỳ thủ (Dành cho thử nghiệm)
-                </summary>
-                <div class="mt-2">
-                  <select id="loginMemberSelect" class="form-select form-select-sm">
-                    <option value="">-- Chọn kỳ thủ để tự điền thông tin --</option>
-                    ${members.map((m) => `
-                      <option value="${m.id}">
-                        ${m.name} (Mã: ${m.id} • MSSV: ${m.studentId || 'Chưa cập nhật'})
-                      </option>
-                    `).join('')}
-                  </select>
-                </div>
-              </details>
-            </div>
-          ` : ''}
         </div>
 
         <!-- Tab 2: Admin Login -->

@@ -2170,23 +2170,32 @@ export const modalManager = {
 
         <!-- Tab 1: Member Login -->
         <div id="loginMemberSection" style="display: ${defaultTab === 'member' ? 'block' : 'none'};">
+          <div class="form-group mb-3">
+            <label class="form-label d-flex justify-between align-center">
+              <span>Mã Thẻ hoặc MSSV:</span>
+              <span class="badge badge-gold" style="font-size: 0.72rem; padding: 2px 8px; font-weight: 600;">Hỗ trợ cả 2 cách</span>
+            </label>
+            <input type="text" id="loginMemberInput" class="form-input" placeholder="Nhập Mã thẻ (VD: TNU-HGC-001) hoặc MSSV (VD: 2251010026)..." value="" autocomplete="username">
+            <div class="text-xs text-muted mt-1.5" style="line-height: 1.45;">
+              💡 <em>Kỳ thủ có thể nhập <strong>1. Mã Thẻ CLB</strong> (VD: <code>TNU-HGC-001</code>) hoặc <strong>2. Mã Số Sinh Viên (MSSV)</strong> (VD: <code>2251010026</code>) — hệ thống đều tự động nhận diện và đăng nhập được!</em>
+            </div>
+          </div>
           ${members.length > 0 ? `
-            <div class="form-group mb-3">
-              <label class="form-label">Chọn kỳ thủ đăng nhập:</label>
-              <select id="loginMemberSelect" class="form-select">
-                ${members.slice(0, 10).map((m) => `
-                  <option value="${m.id}">${m.name} (${m.id}) - ${m.roleTitle || 'Thành viên'}</option>
+            <div class="form-group mb-3" style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.12); padding: 8px 10px; border-radius: 6px;">
+              <label class="form-label text-xs text-muted mb-1">⚡ Hoặc chọn nhanh từ danh sách thành viên (Tùy chọn):</label>
+              <select id="loginMemberSelect" class="form-select form-select-sm">
+                <option value="">-- Bấm vào đây để chọn nhanh kỳ thủ nếu muốn --</option>
+                ${members.map((m) => `
+                  <option value="${m.id}">
+                    ${m.name} | Mã: ${m.id} | MSSV: ${m.studentId || 'Chưa cập nhật'}
+                  </option>
                 `).join('')}
               </select>
             </div>
           ` : ''}
-          <div class="form-group mb-3">
-            <label class="form-label">${members.length > 0 ? 'Mã Thẻ hoặc MSSV:' : 'Nhập Mã Thẻ hoặc MSSV:'}</label>
-            <input type="text" id="loginMemberInput" class="form-input" placeholder="VD: Mã thẻ hoặc MSSV..." value="${members[0]?.id || ''}">
-          </div>
           <div class="form-group mb-4">
             <label class="form-label">Mật khẩu (Ngày tháng năm sinh):</label>
-            <input type="password" id="loginMemberPass" class="form-input" placeholder="Nhập ngày tháng năm sinh..." value="" autocomplete="current-password">
+            <input type="password" id="loginMemberPass" class="form-input" placeholder="Nhập ngày tháng năm sinh (VD: 23102007)..." value="" autocomplete="current-password">
           </div>
           <button type="button" class="btn btn-gold btn-md" id="btnSubmitMemberLogin" style="width: 100%; font-weight: 700; padding: 10px;">
             Đăng Nhập Thành Viên
@@ -2269,20 +2278,19 @@ export const modalManager = {
       if (btnSubMember) {
         btnSubMember.onclick = () => {
           sound.playClick();
-          const targetId = (memberInput ? memberInput.value : '').trim().toLowerCase();
-          if (!targetId) {
-            modalManager.showAlert('Vui lòng nhập Mã thẻ hoặc Mã số sinh viên (MSSV)!');
+          const rawInput = (memberInput ? memberInput.value : '').trim();
+          if (!rawInput) {
+            modalManager.showAlert('Vui lòng nhập Mã thẻ CLB hoặc Mã số sinh viên (MSSV)!');
+            memberInput && memberInput.focus();
             return;
           }
 
-          const found = members.find((m) => {
-            const mId = (m.id || '').toLowerCase();
-            const sId = (m.studentId || '').toLowerCase();
-            return mId === targetId || sId === targetId;
-          });
+          // Smart dual lookup: accepts either Member Card ID or Student ID (MSSV)
+          const found = store.getMemberById(rawInput);
 
           if (!found) {
             modalManager.showAlert('Không tìm thấy kỳ thủ với Mã thẻ hoặc MSSV này! Vui lòng kiểm tra lại thông tin.');
+            memberInput && memberInput.focus();
             return;
           }
 
@@ -2302,7 +2310,8 @@ export const modalManager = {
           store.setActiveMember(found.id);
           store.setRole('member');
           this.close();
-          modalManager.showAlert(`Đăng nhập thành công! Chào mừng ${found.name} (${found.roleTitle || 'Thành viên'}).`);
+          const idInfo = found.studentId ? `Mã thẻ: ${found.id} • MSSV: ${found.studentId}` : `Mã thẻ: ${found.id}`;
+          modalManager.showAlert(`Đăng nhập thành công! Chào mừng ${found.name} (${idInfo}).`);
           if (window.app) window.app.navigateTo('member-pass');
         };
       }

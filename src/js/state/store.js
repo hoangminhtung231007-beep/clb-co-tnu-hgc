@@ -223,8 +223,45 @@ class Store {
     return this.getMemberById(this.state.currentSession.activeMemberId) || this.state.members[0] || null;
   }
 
-  getMemberById(id) {
-    return this.state.members.find((m) => m.id === id);
+  getMemberById(idOrStudentId) {
+    if (!idOrStudentId) return null;
+    const q = String(idOrStudentId).trim();
+    if (!q) return null;
+
+    // Fast-path: exact id match
+    const exact = this.state.members.find((m) => m && m.id === q);
+    if (exact) return exact;
+
+    const qLower = q.toLowerCase();
+    const qClean = q.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const qDigits = q.replace(/\D/g, '');
+
+    return this.state.members.find((m) => {
+      if (!m) return false;
+
+      // 1. Check Mã Thẻ (id)
+      const mId = (m.id || '').toLowerCase();
+      const mIdClean = (m.id || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      if (mId === qLower || mIdClean === qClean) return true;
+
+      // Short numeric code e.g. "001" or "1" matching TNU-HGC-001
+      if (qDigits && (mId.endsWith(`-${qDigits}`) || mId.endsWith(`-${qDigits.padStart(3, '0')}`))) return true;
+
+      // 2. Check MSSV (studentId)
+      const sId = (m.studentId || '').toLowerCase();
+      const sIdClean = (m.studentId || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      const sIdDigits = (m.studentId || '').replace(/\D/g, '');
+      if (sId === qLower || sIdClean === qClean) return true;
+
+      // Numeric part of MSSV (e.g. user enters "2251010026" while database has "HGC2251010026")
+      if (qDigits && sIdDigits && qDigits.length >= 6 && (sIdDigits === qDigits || sIdDigits.endsWith(qDigits))) return true;
+
+      // 3. Fallback: Check Phone
+      const phoneDigits = (m.phone || '').replace(/\D/g, '');
+      if (qDigits && phoneDigits && qDigits.length >= 9 && phoneDigits === qDigits) return true;
+
+      return false;
+    }) || null;
   }
 
   // --- Members CRUD ---

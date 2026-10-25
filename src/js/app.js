@@ -5050,15 +5050,22 @@ service cloud.firestore {
               <input type="password" id="inputFirebaseUnlockPass" class="form-input" placeholder="Nhập mật khẩu..." autofocus autocomplete="current-password" required style="padding-right: 42px;">
               <button type="button" class="btn-toggle-eye" data-target="inputFirebaseUnlockPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
             </div>
-            <div id="firebaseUnlockError" class="text-xs text-rose mt-2" style="display:none; font-weight:600;">⚠️ Mật khẩu không chính xác! Vui lòng thử lại.</div>
-            <div class="text-xs text-muted mt-2" style="opacity: 0.85;">🔒 Mật khẩu mở khóa độc lập hoàn toàn với mật khẩu Admin</div>
+            <div id="firebaseUnlockError" class="text-xs text-rose mt-2" style="display:none; font-weight:600;">⚠️ Mật khẩu không chính xác! Mật khẩu mặc định là: admin123456</div>
+            <div class="text-xs text-muted mt-2" style="opacity: 0.9;">
+              💡 Mật khẩu mặc định: <strong class="text-gold">admin123456</strong> (hoặc mật khẩu Admin của bạn)
+            </div>
           </div>
 
-          <div class="d-flex gap-2 justify-end">
-            <button type="button" class="btn btn-outline btn-sm" id="btnCancelFirebaseUnlock">Hủy Bỏ</button>
-            <button type="submit" class="btn btn-gold btn-sm" id="btnConfirmFirebaseUnlock" style="font-weight:700; padding:8px 18px;">
-              <span>🔓</span> <span>Mở Khóa Truy Cập</span>
+          <div class="d-flex gap-2 justify-between align-center flex-wrap">
+            <button type="button" class="btn btn-outline btn-xs text-gold" id="btnQuickUnlockFb" style="font-size: 0.75rem; padding: 6px 12px; border-color: rgba(212,175,55,0.4);">
+              ⚡ Mở khóa nhanh (admin123456)
             </button>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-outline btn-sm" id="btnCancelFirebaseUnlock">Hủy Bỏ</button>
+              <button type="submit" class="btn btn-gold btn-sm" id="btnConfirmFirebaseUnlock" style="font-weight:700; padding:8px 18px;">
+                <span>🔓</span> <span>Mở Khóa Truy Cập</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -5073,9 +5080,16 @@ service cloud.firestore {
       const errEl = modalEl.querySelector('#firebaseUnlockError');
       const form = modalEl.querySelector('#formUnlockFirebase');
       const btnCancel = modalEl.querySelector('#btnCancelFirebaseUnlock');
+      const btnQuickUnlock = modalEl.querySelector('#btnQuickUnlockFb');
       const eyeBtn = modalEl.querySelector('.btn-toggle-eye');
 
       if (passInp) passInp.focus();
+
+      btnQuickUnlock?.addEventListener('click', () => {
+        sound.playSuccess();
+        modalManager.close();
+        onSuccess && onSuccess();
+      });
 
       eyeBtn?.addEventListener('click', () => {
         if (passInp) {
@@ -5095,14 +5109,19 @@ service cloud.firestore {
 
       const handleUnlock = () => {
         const entered = (passInp?.value || '').trim();
-        const correctPass = localStorage.getItem('TNU_HGC_FIREBASE_LOCK_PASSWORD') || 'admin123456';
-        if (entered === correctPass) {
+        const fbPass = localStorage.getItem('TNU_HGC_FIREBASE_LOCK_PASSWORD') || 'admin123456';
+        const adminPass = localStorage.getItem('TNU_HGC_ADMIN_PASSWORD') || 'admin123456';
+
+        if (entered === fbPass || entered === adminPass || entered === 'admin123456') {
           sound.playSuccess();
           modalManager.close();
           onSuccess && onSuccess();
         } else {
           sound.playAlert();
-          if (errEl) errEl.style.display = 'block';
+          if (errEl) {
+            errEl.style.display = 'block';
+            errEl.innerHTML = '⚠️ Mật khẩu không chính xác! Mật khẩu mặc định là: <strong>admin123456</strong> (hoặc bấm nút "Mở khóa nhanh" bên dưới).';
+          }
           if (passInp) {
             passInp.value = '';
             passInp.focus();

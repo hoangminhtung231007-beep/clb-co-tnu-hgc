@@ -1127,17 +1127,51 @@ class Store {
   // ==========================================
   // SWISS-SYSTEM TOURNAMENT OPERATIONS
   // ==========================================
-  initSwissTournament(eventId, { totalRounds = 3, playerIds = [] } = {}) {
+  initSwissTournament(eventId, { totalRounds = 3, playerIds = [], playersList = [] } = {}) {
     const event = this.state.events.find((e) => e.id === eventId);
     if (!event) throw new Error('Không tìm thấy giải đấu.');
 
     let players = [];
-    if (Array.isArray(playerIds) && playerIds.length >= 2) {
-      players = this.state.members.filter((m) => playerIds.includes(m.id));
+    if (Array.isArray(playersList) && playersList.length >= 2) {
+      players = playersList.map((p, idx) => ({
+        id: p.id || `P-${Date.now().toString().slice(-4)}-${idx + 1}`,
+        name: p.name || p.fullName || `Kỳ thủ ${idx + 1}`,
+        gender: p.gender || 'Nam',
+        unit: p.unit || p.faculty || p.class || 'CLB Cờ',
+        phone: p.phone || '',
+        studentId: p.studentId || p.phone || '',
+        elo: parseInt(p.elo) || parseInt(p.eloRating) || 1200
+      }));
+    } else if (Array.isArray(playerIds) && playerIds.length >= 2) {
+      players = this.state.members.filter((m) => playerIds.includes(m.id)).map((p) => ({
+        id: p.id,
+        name: p.name || p.fullName,
+        gender: p.gender || 'Nam',
+        unit: p.university || p.class || p.faculty || 'CLB Cờ',
+        phone: p.phone || '',
+        studentId: p.studentId || '',
+        elo: p.eloRating || 1200
+      }));
     } else if (Array.isArray(event.registeredMembers) && event.registeredMembers.length >= 2) {
-      players = this.state.members.filter((m) => event.registeredMembers.includes(m.id));
+      players = this.state.members.filter((m) => event.registeredMembers.includes(m.id)).map((p) => ({
+        id: p.id,
+        name: p.name || p.fullName,
+        gender: p.gender || 'Nam',
+        unit: p.university || p.class || p.faculty || 'CLB Cờ',
+        phone: p.phone || '',
+        studentId: p.studentId || '',
+        elo: p.eloRating || 1200
+      }));
     } else {
-      players = this.state.members.slice(0, 16);
+      players = this.state.members.slice(0, 16).map((p) => ({
+        id: p.id,
+        name: p.name || p.fullName,
+        gender: p.gender || 'Nam',
+        unit: p.university || p.class || p.faculty || 'CLB Cờ',
+        phone: p.phone || '',
+        studentId: p.studentId || '',
+        elo: p.eloRating || 1200
+      }));
     }
 
     if (players.length < 2) {
@@ -1148,12 +1182,7 @@ class Store {
       id: `SWISS-${eventId}`,
       title: event.title,
       totalRounds: parseInt(totalRounds) || 3,
-      players: players.map((p) => ({
-        id: p.id,
-        name: p.name || p.fullName,
-        studentId: p.studentId,
-        elo: p.eloRating || 1200
-      }))
+      players: players
     });
 
     // Bốc thăm vòng 1 ngay lập tức
@@ -1161,6 +1190,7 @@ class Store {
 
     event.swissData = tournament.toJSON();
     event.type = 'tournament';
+    this.saveState();
     this.notify();
     return event.swissData;
   }

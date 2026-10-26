@@ -42,6 +42,9 @@ export const modalManager = {
       dialogEl.style.maxWidth = '780px';
     } else if (contentHtml.includes('eval-modal-content')) {
       dialogEl.style.maxWidth = '1020px';
+    } else if (contentHtml.includes('swiss-setup-modal') || contentHtml.includes('swiss-admin-modal') || contentHtml.includes('swiss-public-modal')) {
+      dialogEl.style.maxWidth = '980px';
+      dialogEl.style.width = '96%';
     } else {
       dialogEl.style.maxWidth = '';
     }
@@ -2916,27 +2919,297 @@ export const modalManager = {
     const state = store.getState();
     const members = state.members || [];
 
+    const escapeHtml = (str) => {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+
+    // Khởi tạo danh sách người tham gia
+    let currentParticipants = [];
+    if (Array.isArray(event.swissParticipants) && event.swissParticipants.length > 0) {
+      currentParticipants = JSON.parse(JSON.stringify(event.swissParticipants));
+    } else if (Array.isArray(event.registeredMembers) && event.registeredMembers.length > 0) {
+      currentParticipants = event.registeredMembers.map((mId, idx) => {
+        const m = members.find((x) => x.id === mId) || {};
+        return {
+          id: m.id || `P-${Date.now().toString().slice(-4)}-${idx + 1}`,
+          stt: idx + 1,
+          name: m.name || m.fullName || `Kỳ thủ ${idx + 1}`,
+          gender: m.gender || 'Nam',
+          unit: m.university || m.faculty || m.class || 'CLB Cờ TNU',
+          phone: m.phone || '',
+          active: true
+        };
+      });
+    } else if (members.length > 0) {
+      currentParticipants = members.slice(0, 16).map((m, idx) => ({
+        id: m.id || `P-${Date.now().toString().slice(-4)}-${idx + 1}`,
+        stt: idx + 1,
+        name: m.name || m.fullName || '',
+        gender: m.gender || 'Nam',
+        unit: m.university || m.faculty || m.class || 'CLB Cờ TNU',
+        phone: m.phone || '',
+        active: true
+      }));
+    } else {
+      currentParticipants = [
+        { id: `P-1`, stt: 1, name: '', gender: 'Nam', unit: '', phone: '', active: true },
+        { id: `P-2`, stt: 2, name: '', gender: 'Nam', unit: '', phone: '', active: true },
+        { id: `P-3`, stt: 3, name: '', gender: 'Nam', unit: '', phone: '', active: true },
+        { id: `P-4`, stt: 4, name: '', gender: 'Nam', unit: '', phone: '', active: true }
+      ];
+    }
+
+    // Hàm đồng bộ dữ liệu người dùng gõ trên bảng vào currentParticipants
+    const syncInputsFromDOM = (modalEl) => {
+      if (!modalEl) return;
+      const rows = modalEl.querySelectorAll('.swiss-player-row');
+      rows.forEach((row, idx) => {
+        const id = row.getAttribute('data-id');
+        let p = currentParticipants.find((x) => String(x.id) === String(id));
+        if (!p) {
+          p = { id, active: true };
+          currentParticipants.push(p);
+        }
+        const nameInput = row.querySelector('.swiss-p-name');
+        const genderSelect = row.querySelector('.swiss-p-gender');
+        const unitInput = row.querySelector('.swiss-p-unit');
+        const phoneInput = row.querySelector('.swiss-p-phone');
+        const activeChk = row.querySelector('.swiss-p-active');
+        if (nameInput) p.name = nameInput.value;
+        if (genderSelect) p.gender = genderSelect.value;
+        if (unitInput) p.unit = unitInput.value;
+        if (phoneInput) p.phone = phoneInput.value;
+        if (activeChk) p.active = activeChk.checked;
+        p.stt = idx + 1;
+      });
+      event.swissParticipants = currentParticipants;
+    };
+
+    // Hàm phân tích dữ liệu CSV hoặc Paste từ Excel
+    const parseParticipantText = (rawText) => {
+      if (!rawText || typeof rawText !== 'string') return [];
+      const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+      const parsed = [];
+
+      lines.forEach((line) => {
+        let cols = [];
+        if (line.includes('\t')) {
+          cols = line.split('\t').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+        } else if (line.includes(';') && !line.includes(',')) {
+          cols = line.split(';').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+        } else {
+          cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((c) => c.trim().replace(/^["']|["']$/g, ''));
+        }
+
+        if (cols.length === 0) return;
+
+        // Bỏ qua dòng tiêu đề nếu có
+        const firstCol = (cols[0] || '').toLowerCase();
+        const secondCol = (cols[1] || '').toLowerCase();
+        if (
+          firstCol.includes('stt') ||
+          firstCol.includes('họ') ||
+          firstCol.includes('tên') ||
+          firstCol.includes('name') ||
+          secondCol.includes('họ') ||
+          secondCol.includes('tên')
+        ) {
+          return;
+        }
+
+        let name = '';
+        let gender = 'Nam';
+        let unit = '';
+        let phone = '';
+
+        // Nếu cột 1 là số thứ tự (STT) thì dịch cột
+        if (/^\d+$/.test(cols[0]) && cols.length > 1) {
+          name = cols[1] || '';
+          gender = cols[2] || 'Nam';
+          unit = cols[3] || '';
+          phone = cols[4] || '';
+        } else {
+          name = cols[0] || '';
+          gender = cols[1] || 'Nam';
+          unit = cols[2] || '';
+          phone = cols[3] || '';
+        }
+
+        if (!name || !name.trim()) return;
+
+        const gLower = gender.toLowerCase();
+        if (gLower.includes('nữ') || gLower.includes('nu') || gLower.includes('female') || gLower === 'f') {
+          gender = 'Nữ';
+        } else {
+          gender = 'Nam';
+        }
+
+        parsed.push({
+          id: `P-${Date.now().toString().slice(-5)}-${parsed.length + 1}`,
+          stt: parsed.length + 1,
+          name: name.trim(),
+          gender: gender,
+          unit: unit ? unit.trim() : '',
+          phone: phone ? phone.trim() : '',
+          active: true
+        });
+      });
+
+      return parsed;
+    };
+
+    // Hàm tải file mẫu CSV có BOM UTF-8
+    const downloadParticipantTemplate = () => {
+      const headers = 'STT,Họ và tên,Giới tính,Đơn vị,SĐT/Zalo\r\n';
+      const sampleRows = [
+        '1,Nguyễn Văn An,Nam,K58 CNTT - ĐH CNTT&TT,0912345678',
+        '2,Trần Thị Mai,Nữ,K59 Kinh Tế - ĐH Kinh Tế & QTKD,0987654321',
+        '3,Lê Hoàng Nam,Nam,K60 Sư Phạm - ĐH Sư Phạm,0971122334',
+        '4,Phạm Quốc Bảo,Nam,K57 Kỹ Thuật Công Nghiệp,0903344556',
+        '5,Vũ Thị Hằng,Nữ,K58 Đa Khoa - ĐH Y Dược,0965566778',
+        '6,Đặng Minh Quang,Nam,K59 Nông Lâm - ĐH Nông Lâm,0942233445'
+      ].join('\r\n');
+
+      const csvContent = '\uFEFF' + headers + sampleRows;
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Mau_Danh_Sach_Ky_Thu_Tham_Gia.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    // Hàm xuất bảng xếp hạng ra CSV
+    const exportSwissStandingsCsv = (swissData, tournamentTitle) => {
+      const standings = swissData?.standings || [];
+      let csv = '\uFEFFHạng,Họ và tên,Giới tính,Đơn vị,Điểm (Pts),Hệ số Buchholz,Số ván thắng\r\n';
+      standings.forEach((p, idx) => {
+        const row = [
+          idx + 1,
+          `"${(p.name || '').replace(/"/g, '""')}"`,
+          p.gender || 'Nam',
+          `"${(p.unit || '').replace(/"/g, '""')}"`,
+          p.score,
+          p.buchholz,
+          p.wins || 0
+        ].join(',');
+        csv += row + '\r\n';
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cleanTitle = (tournamentTitle || 'Giai_Co').replace(/[^\w\d-_]/g, '_');
+      a.download = `Bang_Xep_Hang_${cleanTitle}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    // Hàm render HTML từng hàng của bảng danh sách kỳ thủ
+    const renderTableRowsHtml = () => {
+      if (currentParticipants.length === 0) {
+        return `
+          <tr>
+            <td colspan="7" class="text-center text-muted p-4">
+              Chưa có kỳ thủ nào. Bấm <strong>➕ Thêm kỳ thủ</strong>, <strong>👥 Lấy từ CLB</strong> hoặc <strong>📤 Đẩy Dữ Liệu Vào</strong>.
+            </td>
+          </tr>
+        `;
+      }
+
+      return currentParticipants.map((p, idx) => `
+        <tr class="swiss-player-row" data-id="${p.id}">
+          <td style="text-align: center; vertical-align: middle;">
+            <input type="checkbox" class="swiss-p-active" ${p.active !== false ? 'checked' : ''} title="Tham gia thi đấu" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--gold-primary);">
+          </td>
+          <td style="text-align: center; vertical-align: middle;" class="font-bold text-gold swiss-p-stt">${idx + 1}</td>
+          <td style="vertical-align: middle;">
+            <input type="text" class="form-control form-control-sm swiss-p-name text-white font-medium" value="${escapeHtml(p.name || '')}" placeholder="Họ và tên kỳ thủ..." style="font-size: 0.8rem; padding: 5px 8px; background: rgba(0,0,0,0.3);">
+          </td>
+          <td style="text-align: center; vertical-align: middle;">
+            <select class="form-control form-control-sm swiss-p-gender" style="font-size: 0.8rem; padding: 5px 6px; background: rgba(0,0,0,0.3);">
+              <option value="Nam" ${p.gender === 'Nam' ? 'selected' : ''}>Nam</option>
+              <option value="Nữ" ${p.gender === 'Nữ' ? 'selected' : ''}>Nữ</option>
+            </select>
+          </td>
+          <td style="vertical-align: middle;">
+            <input type="text" class="form-control form-control-sm swiss-p-unit" value="${escapeHtml(p.unit || '')}" placeholder="Khoa / Lớp / Trường..." style="font-size: 0.8rem; padding: 5px 8px; background: rgba(0,0,0,0.3);">
+          </td>
+          <td style="vertical-align: middle;">
+            <input type="text" class="form-control form-control-sm swiss-p-phone" value="${escapeHtml(p.phone || '')}" placeholder="SĐT / Zalo..." style="font-size: 0.8rem; padding: 5px 8px; background: rgba(0,0,0,0.3);">
+          </td>
+          <td style="text-align: center; vertical-align: middle;">
+            <button type="button" class="btn btn-outline btn-xs btn-del-player-row" data-id="${p.id}" title="Xóa dòng" style="padding: 2px 7px; color: #fb7185; border-color: rgba(244,63,94,0.3);">✕</button>
+          </td>
+        </tr>
+      `).join('');
+    };
+
     const renderModalContent = () => {
       const curEvent = store.getState().events.find((e) => e.id === event.id) || event;
       const swiss = curEvent.swissData;
 
       if (!swiss) {
+        const activeCount = currentParticipants.filter((p) => p.active !== false && p.name && p.name.trim()).length;
+
         return `
           <div class="swiss-setup-modal p-2">
-            <div class="mb-3">
-              <span class="badge badge-gold">CẤU HÌNH HỆ THỤY SĨ (SWISS SYSTEM)</span>
-              <h3 class="text-lg font-bold text-white mt-1">${curEvent.title}</h3>
-              <p class="text-xs text-muted">Bốc thăm vòng đấu theo điểm số chuẩn FIDE, không loại trừ, tự động đảo màu quân Trắng/Đen.</p>
+            <div class="mb-3 d-flex justify-between align-start flex-wrap gap-2">
+              <div>
+                <span class="badge badge-gold">CẤU HÌNH HỆ THỤY SĨ (SWISS SYSTEM)</span>
+                <h3 class="text-lg font-bold text-white mt-1">${escapeHtml(curEvent.title)}</h3>
+                <p class="text-xs text-muted mb-0">Hệ Thụy Sĩ FIDE chuẩn: không loại trực tiếp, bốc thăm theo điểm số, cân bằng màu quân Trắng/Đen.</p>
+              </div>
+              <div class="d-flex gap-1.5 flex-wrap">
+                <button type="button" class="btn btn-outline btn-xs" id="btnDownloadSwissTemplate" style="border-color: #38bdf8; color: #38bdf8; font-weight: 600;" title="Tải file mẫu Excel (.csv) để nhập thông tin kỳ thủ">
+                  📥 Tải Bảng Mẫu Excel/CSV
+                </button>
+                <label class="btn btn-outline btn-xs mb-0" style="border-color: #34d399; color: #34d399; font-weight: 600; cursor: pointer;" title="Đẩy file CSV đã nhập danh sách kỳ thủ vào bảng">
+                  📤 Đẩy Dữ Liệu Vào
+                  <input type="file" id="swissImportFileInput" accept=".csv, .txt, .tsv" style="display: none;">
+                </label>
+                <button type="button" class="btn btn-outline btn-xs" id="btnTogglePasteArea" style="border-color: #fbbf24; color: #fbbf24; font-weight: 600;" title="Dán trực tiếp từ bảng tính Excel / Google Sheets">
+                  📋 Dán Từ Excel
+                </button>
+              </div>
             </div>
 
+            <!-- Khung dán dữ liệu trực tiếp từ Excel -->
+            <div id="swissPasteContainer" class="card p-3 mb-3" style="display: none; background: rgba(56, 189, 248, 0.06); border: 1px dashed rgba(56, 189, 248, 0.4);">
+              <label class="form-label text-xs font-bold text-cyan mb-1">
+                📋 Dán Trực Tiếp Từ Excel hoặc Google Sheets (Copy các cột: STT, Họ và tên, Giới tính, Đơn vị, SĐT):
+              </label>
+              <textarea id="swissPasteInput" class="form-control font-mono mb-2" rows="4" placeholder="Dán nội dung sao chép từ Excel/Sheets vào đây...&#10;Ví dụ:&#10;1	Nguyễn Văn An	Nam	K58 CNTT	0912345678&#10;2	Trần Thị Mai	Nữ	K59 Kinh Tế	0987654321" style="font-size: 0.8rem;"></textarea>
+              <div class="d-flex justify-between align-center flex-wrap gap-2">
+                <span class="text-xs text-muted">Hỗ trợ nhận dạng tự động dấu Tab, Dấu phẩy (,) hoặc Chấm phẩy (;)</span>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-xs btn-outline" id="btnClosePasteArea">Hủy</button>
+                  <button type="button" class="btn btn-xs btn-cyan" id="btnApplyPasteData">✅ Nạp Vào Bảng</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cấu hình tổng số vòng đấu -->
             <div class="card p-3 mb-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(212,175,55,0.2);">
-              <div class="form-group mb-3">
+              <div class="form-group mb-1">
                 <label class="form-label text-gold font-bold text-xs d-flex align-center gap-1.5">
                   <span>✍️ Tổng Số Vòng Đấu (Trọng tài tự viết số ván):</span>
                 </label>
                 <div class="d-flex align-center gap-2 mb-2">
                   <input type="number" class="form-control font-mono font-bold text-gold" id="swissTotalRoundsInput" value="5" min="1" max="50" step="1" style="width: 130px; font-size: 1.15rem; padding: 6px 12px;" placeholder="VD: 5">
-                  <span class="text-xs text-muted">Ván / Vòng đấu (Trọng tài nhập số ván tùy chỉnh theo điều lệ)</span>
+                  <span class="text-xs text-muted">Ván / Vòng đấu (Trọng tài nhập số ván tùy chỉnh theo điều lệ giải)</span>
                 </div>
                 <div class="d-flex gap-1.5 flex-wrap align-center">
                   <span class="text-xs text-dim mr-1">Gợi ý nhanh:</span>
@@ -2946,29 +3219,52 @@ export const modalManager = {
                   <button type="button" class="btn btn-outline btn-xs btn-preset-rounds" data-rounds="9">9 ván</button>
                 </div>
               </div>
+            </div>
 
-              <div class="form-group mb-2">
-                <div class="d-flex justify-between align-center mb-1">
-                  <label class="form-label text-white font-bold text-xs">Danh Sách Kỳ Thủ Tham Gia (${members.length} thành viên)</label>
-                  <button type="button" class="btn btn-xs btn-outline" id="btnSwissSelectAll">Chọn tất cả</button>
+            <!-- Bảng danh sách kỳ thủ tham gia -->
+            <div class="card p-3 mb-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08);">
+              <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
+                <div class="d-flex align-center gap-2">
+                  <label class="form-label text-white font-bold text-xs mb-0">
+                    📋 Danh Sách Kỳ Thủ Tham Gia (<span id="swissActiveCount" class="text-gold font-bold">${activeCount}</span> / <span id="swissTotalCount">${currentParticipants.length}</span> kỳ thủ thi đấu)
+                  </label>
                 </div>
-                <div style="max-height: 200px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px; background: rgba(0,0,0,0.2);">
-                  ${members.map((m) => `
-                    <label class="d-flex align-center gap-2 mb-1 p-1 hover-bg" style="cursor: pointer; border-radius: 4px;">
-                      <input type="checkbox" class="swiss-player-chk" value="${m.id}" checked>
-                      <span class="text-xs text-white font-medium">${m.name}</span>
-                      <span class="text-xs text-dim">(${m.studentId || 'Kỳ thủ'})</span>
-                    </label>
-                  `).join('')}
+                <div class="d-flex gap-1.5 flex-wrap">
+                  <button type="button" class="btn btn-xs btn-outline" id="btnSwissToggleAll">Chọn tất cả</button>
+                  <button type="button" class="btn btn-xs btn-outline" id="btnSwissAddRow" style="color: #38bdf8; border-color: rgba(56,189,248,0.3);">➕ Thêm kỳ thủ</button>
+                  <button type="button" class="btn btn-xs btn-outline" id="btnSwissLoadClubMembers" title="Nạp danh sách từ hội viên CLB">👥 Lấy từ CLB</button>
+                  <button type="button" class="btn btn-xs btn-outline" id="btnSwissClearAll" style="color: #fb7185; border-color: rgba(244,63,94,0.3);">🗑️ Xóa hết</button>
                 </div>
+              </div>
+
+              <div class="table-responsive" style="max-height: 380px; overflow-y: auto; overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;">
+                <table class="data-table swiss-participants-table" style="font-size: 0.8rem; margin-bottom: 0;">
+                  <thead style="position: sticky; top: 0; background: #181c24; z-index: 5; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+                    <tr>
+                      <th style="width: 45px; text-align: center;">Đấu</th>
+                      <th style="width: 45px; text-align: center;">STT</th>
+                      <th style="min-width: 170px;">Họ và tên</th>
+                      <th style="width: 90px; text-align: center;">Giới tính</th>
+                      <th style="min-width: 160px;">Đơn vị (Khoa/Lớp/Trường)</th>
+                      <th style="min-width: 130px;">SĐT / Zalo</th>
+                      <th style="width: 45px; text-align: center;">Xóa</th>
+                    </tr>
+                  </thead>
+                  <tbody id="swissParticipantsTableBody">
+                    ${renderTableRowsHtml()}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div class="d-flex justify-end gap-2">
-              <button type="button" class="btn btn-outline btn-sm" id="btnCancelSwiss">Đóng</button>
-              <button type="button" class="btn btn-gold btn-sm" id="btnStartSwissTournament">
-                ⚔️ Bắt Đầu & Bốc Thăm Vòng 1
-              </button>
+            <div class="d-flex justify-between align-center flex-wrap gap-2">
+              <span class="text-xs text-muted">💡 Trọng tài có thể chỉnh sửa trực tiếp trên từng ô hoặc bấm "Đẩy Dữ Liệu Vào" từ file Excel/CSV.</span>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline btn-sm" id="btnCancelSwiss">Đóng</button>
+                <button type="button" class="btn btn-gold btn-sm font-bold" id="btnStartSwissTournament">
+                  ⚔️ Bắt Đầu & Bốc Thăm Vòng 1
+                </button>
+              </div>
             </div>
           </div>
         `;
@@ -2989,7 +3285,7 @@ export const modalManager = {
                   ✏️ Sửa Số Ván (${swiss.totalRounds})
                 </button>
               </div>
-              <h3 class="text-lg font-bold text-white mt-1">${curEvent.title}</h3>
+              <h3 class="text-lg font-bold text-white mt-1">${escapeHtml(curEvent.title)}</h3>
             </div>
             <div class="d-flex gap-2">
               ${!isFinished && swiss.currentRound < swiss.totalRounds ? `
@@ -3026,7 +3322,8 @@ export const modalManager = {
                     <tr>
                       <td class="font-bold text-gold">${m.isBye ? 'BYE' : `Bàn ${m.board}`}</td>
                       <td>
-                        <span class="font-bold text-white">${m.whiteName}</span>
+                        <span class="font-bold text-white">${escapeHtml(m.whiteName)}</span>
+                        ${m.whiteUnit ? `<span class="text-xs text-dim ml-1">(${escapeHtml(m.whiteUnit)})</span>` : ''}
                         <span class="badge" style="background: #ffffff; color: #000; font-size: 10px; margin-left: 4px; padding: 1px 4px;">Trắng</span>
                       </td>
                       <td style="text-align: center;">
@@ -3042,7 +3339,8 @@ export const modalManager = {
                       </td>
                       <td>
                         ${m.isBye ? `<span class="text-muted font-italic">Nghỉ ván</span>` : `
-                          <span class="font-bold text-white">${m.blackName}</span>
+                          <span class="font-bold text-white">${escapeHtml(m.blackName)}</span>
+                          ${m.blackUnit ? `<span class="text-xs text-dim ml-1">(${escapeHtml(m.blackUnit)})</span>` : ''}
                           <span class="badge" style="background: #1e293b; color: #cbd5e1; border: 1px solid #475569; font-size: 10px; margin-left: 4px; padding: 1px 4px;">Đen</span>
                         `}
                       </td>
@@ -3054,32 +3352,45 @@ export const modalManager = {
           </div>
 
           <div class="card p-3" style="background: rgba(255,255,255,0.02);">
-            <div class="d-flex justify-between align-center mb-2">
-              <h4 class="font-bold text-gold text-xs" style="letter-spacing: 0.5px;">
-                📊 BẢNG XẾP HẠNG HỆ THỤY SĨ (BUCHHOLZ STANDINGS)
-              </h4>
-              <span class="text-xs text-muted">Xếp theo: Điểm số ➔ Hệ số Buchholz ➔ Số ván thắng</span>
+            <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
+              <div>
+                <h4 class="font-bold text-gold text-xs mb-0" style="letter-spacing: 0.5px;">
+                  📊 BẢNG XẾP HẠNG HỆ THỤY SĨ (BUCHHOLZ STANDINGS)
+                </h4>
+                <span class="text-xs text-muted">Xếp theo: Điểm số ➔ Hệ số Buchholz ➔ Số ván thắng</span>
+              </div>
+              <button type="button" class="btn btn-outline btn-xs" id="btnExportSwissStandings" style="font-size: 11px; border-color: #38bdf8; color: #38bdf8;">
+                📥 Xuất Bảng Xếp Hạng (CSV)
+              </button>
             </div>
 
             <div class="table-responsive">
               <table class="data-table" style="font-size: 0.78rem;">
                 <thead>
                   <tr>
-                    <th style="width: 45px;">Hạng</th>
-                    <th>Kỳ Thủ</th>
-                    <th style="text-align: center;">Điểm (Pts)</th>
-                    <th style="text-align: center;">Buchholz</th>
-                    <th style="text-align: center;">Thắng</th>
+                    <th style="width: 45px; text-align: center;">Hạng</th>
+                    <th>Họ và tên</th>
+                    <th style="text-align: center; width: 75px;">Giới tính</th>
+                    <th>Đơn vị</th>
+                    <th style="text-align: center; width: 80px;">Điểm</th>
+                    <th style="text-align: center; width: 85px;">Buchholz</th>
+                    <th style="text-align: center; width: 65px;">Thắng</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${(swiss.standings || []).map((p, idx) => `
                     <tr>
-                      <td class="font-bold ${idx === 0 ? 'text-gold' : idx === 1 ? 'text-cyan' : idx === 2 ? 'text-emerald' : 'text-muted'}">
+                      <td class="font-bold text-center ${idx === 0 ? 'text-gold' : idx === 1 ? 'text-cyan' : idx === 2 ? 'text-emerald' : 'text-muted'}">
                         ${idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : (idx + 1)}
                       </td>
                       <td>
-                        <strong class="text-white">${p.name}</strong>
+                        <strong class="text-white">${escapeHtml(p.name)}</strong>
+                      </td>
+                      <td style="text-align: center;">
+                        <span class="badge ${p.gender === 'Nữ' ? 'badge-pink' : 'badge-outline'}" style="font-size: 10px;">${escapeHtml(p.gender || 'Nam')}</span>
+                      </td>
+                      <td class="text-dim" style="font-size: 0.75rem;">
+                        ${escapeHtml(p.unit || '-')}
                       </td>
                       <td style="text-align: center;">
                         <span class="badge badge-gold font-bold" style="font-size: 0.82rem;">${p.score}</span>
@@ -3102,12 +3413,188 @@ export const modalManager = {
       const modalEl = document.getElementById('globalAppModal');
       if (!modalEl) return;
 
-      modalEl.querySelector('#btnSwissSelectAll')?.addEventListener('click', () => {
-        const chks = modalEl.querySelectorAll('.swiss-player-chk');
-        const anyUnchecked = Array.from(chks).some((c) => !c.checked);
-        chks.forEach((c) => (c.checked = anyUnchecked));
+      const updateCounts = () => {
+        const activeCount = currentParticipants.filter((p) => p.active !== false && p.name && p.name.trim()).length;
+        const totalCount = currentParticipants.length;
+        const countSpan = modalEl.querySelector('#swissActiveCount');
+        const totalSpan = modalEl.querySelector('#swissTotalCount');
+        if (countSpan) countSpan.textContent = activeCount;
+        if (totalSpan) totalSpan.textContent = totalCount;
+      };
+
+      const refreshTableBody = () => {
+        const tbody = modalEl.querySelector('#swissParticipantsTableBody');
+        if (tbody) {
+          tbody.innerHTML = renderTableRowsHtml();
+          updateCounts();
+        }
+      };
+
+      // Tải bảng mẫu CSV
+      modalEl.querySelector('#btnDownloadSwissTemplate')?.addEventListener('click', () => {
+        sound.playClick();
+        downloadParticipantTemplate();
       });
 
+      // Nhập file CSV/TXT
+      modalEl.querySelector('#swissImportFileInput')?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        sound.playClick();
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const content = evt.target.result;
+            const parsed = parseParticipantText(content);
+            if (parsed.length === 0) {
+              modalManager.showAlert('Không tìm thấy dữ liệu kỳ thủ hợp lệ trong file!');
+              return;
+            }
+            syncInputsFromDOM(modalEl);
+            currentParticipants = parsed;
+            refreshTableBody();
+            modalManager.showAlert(`✅ Đã nạp thành công ${parsed.length} kỳ thủ từ file "${file.name}"!`);
+          } catch (err) {
+            modalManager.showAlert('Lỗi đọc file: ' + err.message);
+          }
+        };
+        reader.readAsText(file, 'utf-8');
+        e.target.value = '';
+      });
+
+      // Bật/tắt khung dán từ Excel
+      modalEl.querySelector('#btnTogglePasteArea')?.addEventListener('click', () => {
+        sound.playClick();
+        const pasteContainer = modalEl.querySelector('#swissPasteContainer');
+        if (pasteContainer) {
+          pasteContainer.style.display = pasteContainer.style.display === 'none' ? 'block' : 'none';
+        }
+      });
+
+      modalEl.querySelector('#btnClosePasteArea')?.addEventListener('click', () => {
+        sound.playClick();
+        const pasteContainer = modalEl.querySelector('#swissPasteContainer');
+        if (pasteContainer) pasteContainer.style.display = 'none';
+      });
+
+      // Áp dụng dữ liệu dán từ Excel
+      modalEl.querySelector('#btnApplyPasteData')?.addEventListener('click', () => {
+        sound.playClick();
+        const pasteInput = modalEl.querySelector('#swissPasteInput');
+        const text = pasteInput?.value || '';
+        if (!text.trim()) {
+          modalManager.showAlert('Vui lòng dán dữ liệu sao chép từ Excel hoặc Google Sheets trước khi bấm nạp!');
+          return;
+        }
+        const parsed = parseParticipantText(text);
+        if (parsed.length === 0) {
+          modalManager.showAlert('Không nhận dạng được thông tin kỳ thủ từ nội dung dán. Vui lòng kiểm tra lại!');
+          return;
+        }
+        syncInputsFromDOM(modalEl);
+        currentParticipants = parsed;
+        refreshTableBody();
+        const pasteContainer = modalEl.querySelector('#swissPasteContainer');
+        if (pasteContainer) pasteContainer.style.display = 'none';
+        modalManager.showAlert(`✅ Đã nạp thành công ${parsed.length} kỳ thủ từ dữ liệu dán!`);
+      });
+
+      // Chọn / bỏ chọn tất cả
+      modalEl.querySelector('#btnSwissToggleAll')?.addEventListener('click', () => {
+        sound.playClick();
+        syncInputsFromDOM(modalEl);
+        const anyUnchecked = currentParticipants.some((p) => p.active === false);
+        currentParticipants.forEach((p) => (p.active = anyUnchecked));
+        refreshTableBody();
+      });
+
+      // Thêm kỳ thủ mới (dòng trống)
+      modalEl.querySelector('#btnSwissAddRow')?.addEventListener('click', () => {
+        sound.playClick();
+        syncInputsFromDOM(modalEl);
+        currentParticipants.push({
+          id: `P-${Date.now().toString().slice(-5)}-${currentParticipants.length + 1}`,
+          stt: currentParticipants.length + 1,
+          name: '',
+          gender: 'Nam',
+          unit: '',
+          phone: '',
+          active: true
+        });
+        refreshTableBody();
+        const rows = modalEl.querySelectorAll('.swiss-player-row');
+        const lastRow = rows[rows.length - 1];
+        if (lastRow) {
+          const inp = lastRow.querySelector('.swiss-p-name');
+          if (inp) inp.focus();
+        }
+      });
+
+      // Nạp danh sách từ hội viên CLB
+      modalEl.querySelector('#btnSwissLoadClubMembers')?.addEventListener('click', () => {
+        sound.playClick();
+        syncInputsFromDOM(modalEl);
+        if (members.length === 0) {
+          modalManager.showAlert('CLB hiện chưa có thành viên nào trong danh bạ.');
+          return;
+        }
+        modalManager.showConfirm(
+          `Nạp toàn bộ ${members.length} thành viên CLB vào danh sách thi đấu?`,
+          () => {
+            currentParticipants = members.map((m, idx) => ({
+              id: m.id || `P-${Date.now().toString().slice(-4)}-${idx + 1}`,
+              stt: idx + 1,
+              name: m.name || m.fullName || '',
+              gender: m.gender || 'Nam',
+              unit: m.university || m.faculty || m.class || 'CLB Cờ TNU',
+              phone: m.phone || '',
+              active: true
+            }));
+            refreshTableBody();
+            modalManager.showAlert(`✅ Đã nạp ${currentParticipants.length} thành viên từ CLB!`);
+          }
+        );
+      });
+
+      // Xóa tất cả các dòng
+      modalEl.querySelector('#btnSwissClearAll')?.addEventListener('click', () => {
+        sound.playClick();
+        modalManager.showConfirm(
+          'Bạn có chắc chắn muốn xóa toàn bộ danh sách kỳ thủ trong bảng?',
+          () => {
+            currentParticipants = [
+              { id: `P-1`, stt: 1, name: '', gender: 'Nam', unit: '', phone: '', active: true },
+              { id: `P-2`, stt: 2, name: '', gender: 'Nam', unit: '', phone: '', active: true }
+            ];
+            refreshTableBody();
+          },
+          null,
+          { title: 'XÓA TOÀN BỘ DANH SÁCH', confirmText: 'Xóa danh sách', danger: true }
+        );
+      });
+
+      // Xử lý nút xóa từng dòng
+      modalEl.querySelector('#swissParticipantsTableBody')?.addEventListener('click', (e) => {
+        const delBtn = e.target.closest('.btn-del-player-row');
+        if (delBtn) {
+          sound.playClick();
+          syncInputsFromDOM(modalEl);
+          const pId = delBtn.getAttribute('data-id');
+          currentParticipants = currentParticipants.filter((x) => String(x.id) !== String(pId));
+          currentParticipants.forEach((p, i) => (p.stt = i + 1));
+          refreshTableBody();
+        }
+      });
+
+      // Lắng nghe thay đổi checkbox tích chọn thi đấu
+      modalEl.querySelector('#swissParticipantsTableBody')?.addEventListener('change', (e) => {
+        if (e.target.classList.contains('swiss-p-active')) {
+          syncInputsFromDOM(modalEl);
+          updateCounts();
+        }
+      });
+
+      // Gợi ý số vòng đấu
       modalEl.querySelectorAll('.btn-preset-rounds').forEach((btn) => {
         btn.addEventListener('click', () => {
           sound.playClick();
@@ -3117,23 +3604,37 @@ export const modalManager = {
         });
       });
 
+      // Bắt đầu giải đấu & bốc thăm Vòng 1
       modalEl.querySelector('#btnStartSwissTournament')?.addEventListener('click', () => {
         sound.playClick();
+        syncInputsFromDOM(modalEl);
         const rounds = parseInt(modalEl.querySelector('#swissTotalRoundsInput')?.value);
         if (isNaN(rounds) || rounds < 1) {
           modalManager.showAlert('Vui lòng nhập tổng số vòng đấu hợp lệ (ít nhất 1 ván)!');
           return;
         }
-        const checked = Array.from(modalEl.querySelectorAll('.swiss-player-chk:checked')).map((c) => c.value);
 
-        if (checked.length < 2) {
-          modalManager.showAlert('Vui lòng chọn ít nhất 2 kỳ thủ để bắt đầu giải đấu!');
+        const activePlayers = currentParticipants
+          .filter((p) => p.active !== false && p.name && p.name.trim() !== '')
+          .map((p, idx) => ({
+            id: p.id || `P-${Date.now().toString().slice(-4)}-${idx + 1}`,
+            name: p.name.trim(),
+            gender: p.gender || 'Nam',
+            unit: p.unit ? p.unit.trim() : 'CLB Cờ TNU',
+            phone: p.phone ? p.phone.trim() : '',
+            studentId: p.phone ? p.phone.trim() : '',
+            elo: 1200
+          }));
+
+        if (activePlayers.length < 2) {
+          modalManager.showAlert('Vui lòng nhập họ tên và tích chọn ít nhất 2 kỳ thủ để bắt đầu giải đấu!');
           return;
         }
 
         try {
-          store.initSwissTournament(event.id, { totalRounds: rounds, playerIds: checked });
-          modalManager.showAlert(`✅ Đã khởi tạo giải đấu ${rounds} ván và bốc thăm Vòng 1 Hệ Thụy Sĩ thành công!`);
+          event.swissParticipants = currentParticipants;
+          store.initSwissTournament(event.id, { totalRounds: rounds, playersList: activePlayers });
+          modalManager.showAlert(`✅ Đã khởi tạo giải đấu ${rounds} ván với ${activePlayers.length} kỳ thủ và bốc thăm Vòng 1 thành công!`);
           if (typeof onUpdate === 'function') onUpdate();
           this.open(`Quản Trị Thi Đấu Hệ Thụy Sĩ • ${event.title}`, renderModalContent(), null, null);
           bindModalEvents();
@@ -3142,6 +3643,7 @@ export const modalManager = {
         }
       });
 
+      // Trọng tài sửa số ván giữa chừng
       modalEl.querySelector('#btnEditSwissTotalRoundsMid')?.addEventListener('click', () => {
         sound.playClick();
         const curEv = store.getState().events.find((e) => e.id === event.id);
@@ -3171,6 +3673,7 @@ export const modalManager = {
         }
       });
 
+      // Nhập kết quả ván đấu
       modalEl.querySelectorAll('.btn-swiss-res').forEach((btn) => {
         btn.addEventListener('click', () => {
           sound.playClick();
@@ -3188,6 +3691,7 @@ export const modalManager = {
         });
       });
 
+      // Bốc thăm vòng tiếp theo
       modalEl.querySelector('#btnNextSwissRound')?.addEventListener('click', () => {
         sound.playClick();
         try {
@@ -3201,6 +3705,16 @@ export const modalManager = {
         }
       });
 
+      // Xuất bảng xếp hạng ra file CSV
+      modalEl.querySelector('#btnExportSwissStandings')?.addEventListener('click', () => {
+        sound.playClick();
+        const curEv = store.getState().events.find((e) => e.id === event.id);
+        if (curEv?.swissData) {
+          exportSwissStandingsCsv(curEv.swissData, curEv.title);
+        }
+      });
+
+      // Đặt lại giải đấu
       modalEl.querySelector('#btnResetSwissData')?.addEventListener('click', () => {
         sound.playClick();
         modalManager.showConfirm(
@@ -3220,6 +3734,7 @@ export const modalManager = {
         );
       });
 
+      // Đóng modal
       modalEl.querySelector('#btnCancelSwiss')?.addEventListener('click', () => {
         this.close();
       });
@@ -3240,6 +3755,16 @@ export const modalManager = {
     const curRoundData = (swiss.rounds || []).find((r) => r.roundNumber === swiss.currentRound);
     const isFinished = swiss.status === 'completed' || (swiss.currentRound >= swiss.totalRounds && (curRoundData?.matches || []).every((m) => m.result !== null));
 
+    const escapeHtml = (str) => {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+
     const contentHtml = `
       <div class="swiss-public-modal p-2">
         <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
@@ -3247,7 +3772,7 @@ export const modalManager = {
             <span class="badge ${isFinished ? 'badge-emerald' : 'badge-gold'}">
               ${isFinished ? '🏁 GIẢI ĐẤU ĐÃ HOÀN TẤT' : `🟢 VÒNG ${swiss.currentRound} / ${swiss.totalRounds}`}
             </span>
-            <h3 class="text-lg font-bold text-white mt-1">${event.title}</h3>
+            <h3 class="text-lg font-bold text-white mt-1">${escapeHtml(event.title)}</h3>
           </div>
           <span class="text-xs text-muted">Hệ Thụy Sĩ FIDE Chuẩn</span>
         </div>
@@ -3271,7 +3796,8 @@ export const modalManager = {
                     <tr style="${isUserMatch ? 'background: rgba(212,175,55,0.12); border-left: 3px solid var(--gold-primary);' : ''}">
                       <td class="font-bold text-gold">${m.isBye ? 'BYE' : `Bàn ${m.board}`}</td>
                       <td>
-                        <strong class="${m.whiteId === activeMember?.id ? 'text-gold' : 'text-white'}">${m.whiteName}</strong>
+                        <strong class="${m.whiteId === activeMember?.id ? 'text-gold' : 'text-white'}">${escapeHtml(m.whiteName)}</strong>
+                        ${m.whiteUnit ? `<span class="text-xs text-dim ml-1">(${escapeHtml(m.whiteUnit)})</span>` : ''}
                         <span class="badge" style="background: #ffffff; color: #000; font-size: 10px; margin-left: 4px; padding: 1px 4px;">Trắng</span>
                       </td>
                       <td style="text-align: center;">
@@ -3281,7 +3807,8 @@ export const modalManager = {
                       </td>
                       <td>
                         ${m.isBye ? `<span class="text-muted font-italic">Nghỉ ván (+1đ)</span>` : `
-                          <strong class="${m.blackId === activeMember?.id ? 'text-gold' : 'text-white'}">${m.blackName}</strong>
+                          <strong class="${m.blackId === activeMember?.id ? 'text-gold' : 'text-white'}">${escapeHtml(m.blackName)}</strong>
+                          ${m.blackUnit ? `<span class="text-xs text-dim ml-1">(${escapeHtml(m.blackUnit)})</span>` : ''}
                           <span class="badge" style="background: #1e293b; color: #cbd5e1; border: 1px solid #475569; font-size: 10px; margin-left: 4px; padding: 1px 4px;">Đen</span>
                         `}
                       </td>
@@ -3299,11 +3826,13 @@ export const modalManager = {
             <table class="data-table" style="font-size: 0.78rem;">
               <thead>
                 <tr>
-                  <th style="width: 45px;">Hạng</th>
+                  <th style="width: 45px; text-align: center;">Hạng</th>
                   <th>Kỳ Thủ</th>
-                  <th style="text-align: center;">Điểm (Pts)</th>
-                  <th style="text-align: center;">Buchholz</th>
-                  <th style="text-align: center;">Thắng</th>
+                  <th style="text-align: center; width: 75px;">Giới tính</th>
+                  <th>Đơn vị</th>
+                  <th style="text-align: center; width: 80px;">Điểm</th>
+                  <th style="text-align: center; width: 85px;">Buchholz</th>
+                  <th style="text-align: center; width: 65px;">Thắng</th>
                 </tr>
               </thead>
               <tbody>
@@ -3311,12 +3840,18 @@ export const modalManager = {
                   const isUser = activeMember && p.id === activeMember.id;
                   return `
                     <tr style="${isUser ? 'background: rgba(212,175,55,0.12);' : ''}">
-                      <td class="font-bold ${idx === 0 ? 'text-gold' : idx === 1 ? 'text-cyan' : idx === 2 ? 'text-emerald' : 'text-muted'}">
+                      <td class="font-bold text-center ${idx === 0 ? 'text-gold' : idx === 1 ? 'text-cyan' : idx === 2 ? 'text-emerald' : 'text-muted'}">
                         ${idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : (idx + 1)}
                       </td>
                       <td>
-                        <strong class="${isUser ? 'text-gold' : 'text-white'}">${p.name}</strong>
+                        <strong class="${isUser ? 'text-gold' : 'text-white'}">${escapeHtml(p.name)}</strong>
                         ${isUser ? '<span class="badge badge-gold" style="font-size:9px; margin-left:4px;">Bạn</span>' : ''}
+                      </td>
+                      <td style="text-align: center;">
+                        <span class="badge ${p.gender === 'Nữ' ? 'badge-pink' : 'badge-outline'}" style="font-size: 10px;">${escapeHtml(p.gender || 'Nam')}</span>
+                      </td>
+                      <td class="text-dim" style="font-size: 0.75rem;">
+                        ${escapeHtml(p.unit || '-')}
                       </td>
                       <td style="text-align: center;">
                         <span class="badge badge-gold font-bold">${p.score}</span>

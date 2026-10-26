@@ -24,6 +24,9 @@ export class SwissTournament {
     this.players = (options.players || []).map((p) => ({
       id: p.id,
       name: p.name || p.fullName || 'Kỳ thủ',
+      gender: p.gender || 'Nam',
+      unit: p.unit || p.faculty || p.class || '',
+      phone: p.phone || '',
       studentId: p.studentId || '',
       elo: p.elo || 1200,
       score: p.score !== undefined ? p.score : 0,
@@ -111,6 +114,10 @@ export class SwissTournament {
     }));
   }
 
+  generateRound1() {
+    return this.generateNextRound();
+  }
+
   /**
    * Bốc thăm tạo cặp đấu cho vòng tiếp theo (Swiss Pairing Algorithm)
    */
@@ -172,8 +179,10 @@ export class SwissTournament {
         isBye: true,
         whiteId: byePlayer.id,
         whiteName: byePlayer.name,
+        whiteUnit: byePlayer.unit || '',
         blackId: null,
         blackName: 'Nghỉ ván (Bye +1đ)',
+        blackUnit: '',
         result: '1-0', // Tự động cộng 1 điểm
         note: 'Kỳ thủ được miễn đấu vòng này (Bye +1đ)'
       });
@@ -240,8 +249,10 @@ export class SwissTournament {
           isBye: false,
           whiteId: whitePlayer.id,
           whiteName: whitePlayer.name,
+          whiteUnit: whitePlayer.unit || '',
           blackId: blackPlayer.id,
           blackName: blackPlayer.name,
+          blackUnit: blackPlayer.unit || '',
           result: null, // null, '1-0', '0-1', '0.5-0.5'
           note: ''
         });

@@ -1,8 +1,8 @@
 import { INITIAL_DATA } from './mockData.js';
 import { CHESS_MOTTOS, getMottoByIndex } from './chessMottos.js';
 import { firebaseService } from '../services/firebaseService.js';
-import { SwissTournament } from '../utils/swissSystem.js';
-export { CHESS_MOTTOS, getMottoByIndex, firebaseService, SwissTournament };
+import { SwissTournament, exportSwissStandingsCsv } from '../utils/swissSystem.js';
+export { CHESS_MOTTOS, getMottoByIndex, firebaseService, SwissTournament, exportSwissStandingsCsv };
 
 export const ALUMNI_MESSAGES = [
   'Chúc CLB và Ban Điều Hành mới luôn giữ vững ngọn lửa đam mê, đoàn kết và đưa phong trào cờ Phân hiệu ngày càng lớn mạnh, gặt hái thêm nhiều vinh quang!',
@@ -1203,8 +1203,37 @@ class Store {
     const tournament = SwissTournament.fromJSON(event.swissData);
     const newRound = tournament.generateNextRound();
     event.swissData = tournament.toJSON();
+    this.saveState();
     this.notify();
     return newRound;
+  }
+
+  setSwissMatchResultSilently(eventId, roundNumber, matchId, result) {
+    const event = this.state.events.find((e) => e.id === eventId);
+    if (!event || !event.swissData) return null;
+
+    const round = (event.swissData.rounds || []).find((r) => r.roundNumber === roundNumber);
+    if (!round) return null;
+
+    const match = (round.matches || []).find((m) => m.id === matchId);
+    if (!match) return null;
+
+    match.result = result;
+    // Lưu trạng thái ngầm, KHÔNG gọi notify() để tránh gây giật/chớp màn hình
+    this.saveState();
+    return match;
+  }
+
+  finalizeSwissTournament(eventId) {
+    const event = this.state.events.find((e) => e.id === eventId);
+    if (!event || !event.swissData) throw new Error('Không tìm thấy giải đấu.');
+
+    const tournament = SwissTournament.fromJSON(event.swissData);
+    tournament.finalizeTournament();
+    event.swissData = tournament.toJSON();
+    this.saveState();
+    this.notify();
+    return event.swissData;
   }
 
   recordSwissMatchResult(eventId, roundNumber, matchId, result) {
@@ -1214,6 +1243,7 @@ class Store {
     const tournament = SwissTournament.fromJSON(event.swissData);
     tournament.recordResult(roundNumber, matchId, result);
     event.swissData = tournament.toJSON();
+    this.saveState();
     this.notify();
     return event.swissData;
   }

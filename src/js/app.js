@@ -7,6 +7,7 @@ import { memberCardComponent } from './components/memberCard.js';
 import { modalManager } from './components/modals.js';
 import { firebaseService } from './services/firebaseService.js';
 import { getFirebaseConfig, saveFirebaseConfig, clearFirebaseConfig } from './config/firebaseConfig.js';
+import { exportSwissStandingsCsv } from './utils/swissSystem.js';
 
 class App {
   constructor() {
@@ -3732,8 +3733,12 @@ class App {
           ` : `
             ${(() => {
               const curRoundData = (swiss.rounds || []).find((r) => r.roundNumber === swiss.currentRound);
+              const standings = swiss.standings || [];
+              const isCompleted = swiss.status === 'completed';
+              const isFinalRound = swiss.currentRound >= swiss.totalRounds;
+
               return `
-                <div class="card p-3 mb-4">
+                <div class="card p-3 mb-3">
                   <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
                     <div>
                       <div class="d-flex align-center gap-2 flex-wrap mb-1">
@@ -3744,7 +3749,7 @@ class App {
                           ✏️ Sửa Số Ván (${swiss.totalRounds})
                         </button>
                       </div>
-                      <p class="text-xs text-muted">Nhấn kết quả để hệ thống tự động cộng điểm và cập nhật thứ hạng</p>
+                      <p class="text-xs text-muted mb-0">💡 Nhấn chọn kết quả ván đấu (lưu tức thì, không chớp màn hình). Điểm số và thứ hạng sẽ được tính khi bấm "Bốc Thăm Vòng Tiếp" hoặc "Xác Nhận Kết Quả".</p>
                     </div>
                     <span class="badge badge-gold font-mono">${(curRoundData?.matches || []).length} bàn đấu</span>
                   </div>
@@ -3791,50 +3796,224 @@ class App {
                   </div>
                 </div>
 
-                <div class="card p-3">
-                  <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
+                <!-- KHU VỰC THAO TÁC TIẾP TỤC / XÁC NHẬN KẾT QUẢ -->
+                ${!isFinalRound ? `
+                  <div class="card p-3 mb-3 d-flex justify-between align-center flex-wrap gap-2" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08);">
                     <div>
-                      <h3 class="font-bold text-gold text-base">
-                        📊 Bảng Xếp Hạng Hệ Thụy Sĩ (Buchholz Standings)
-                      </h3>
-                      <p class="text-xs text-muted">Xếp theo: Điểm số ➔ Hệ số phụ Buchholz ➔ Số ván thắng</p>
+                      <span class="text-sm font-bold text-white">Hoàn thành Vòng ${swiss.currentRound}?</span>
+                      <p class="text-xs text-muted mb-0">Sau khi đã chọn kết quả các bàn đấu, nhấn nút bên cạnh để tính điểm và bốc thăm vòng tiếp theo.</p>
+                    </div>
+                    <button type="button" class="btn btn-gold font-bold" id="btnGenerateNextRoundSwiss">
+                      🔄 Bốc Thăm Vòng ${swiss.currentRound + 1}
+                    </button>
+                  </div>
+                ` : `
+                  <div class="card p-3 mb-3" style="background: linear-gradient(135deg, rgba(212,175,55,0.16), rgba(15,23,42,0.95)); border: 2px solid var(--gold-primary);">
+                    <div class="d-flex justify-between align-center flex-wrap gap-3">
+                      <div>
+                        <div class="d-flex align-center gap-2 mb-1">
+                          <span class="badge ${isCompleted ? 'badge-emerald' : 'badge-gold'} font-bold">
+                            ${isCompleted ? '🏁 ĐÃ XÁC NHẬN KẾT QUẢ' : `🏁 VÒNG CUỐI CÙNG (${swiss.totalRounds}/${swiss.totalRounds})`}
+                          </span>
+                          <h4 class="font-bold text-white text-base mb-0">
+                            ${isCompleted ? 'KẾT QUẢ GIẢI ĐẤU ĐÃ ĐƯỢC CHỐT' : 'XÁC NHẬN KẾT QUẢ GIẢI ĐẤU'}
+                          </h4>
+                        </div>
+                        <p class="text-xs text-muted mb-0">
+                          ${isCompleted 
+                            ? 'Bảng xếp hạng chung cuộc theo đúng 5 tiêu chí Swiss-Manager đã được tính toán chính xác bên dưới.' 
+                            : 'Sau khi chọn kết quả cho tất cả các bàn đấu của vòng cuối cùng, nhấn nút bên cạnh để chốt và hiển thị kết quả cuối cùng luôn.'}
+                        </p>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-gold font-bold" id="btnFinalizeSwissTournament" style="font-size: 0.95rem; padding: 8px 20px;">
+                          ${isCompleted ? '🏆 Tính Lại / Chốt Kết Quả' : '🏆 Xác Nhận Kết Quả Chung Cuộc'}
+                        </button>
+                      </div>
                     </div>
                   </div>
+                `}
 
-                  <div class="table-responsive">
-                    <table class="data-table">
-                      <thead>
-                        <tr>
-                          <th style="width: 50px;">Hạng</th>
-                          <th>Kỳ Thủ</th>
-                          <th style="text-align: center;">Điểm (Pts)</th>
-                          <th style="text-align: center;">Hệ Số Buchholz</th>
-                          <th style="text-align: center;">Số Ván Thắng</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${(swiss.standings || []).map((p, idx) => `
+                <!-- KẾT QUẢ CHUNG CUỘC HOẶC BẢNG XẾP HẠNG TẠM THỜI -->
+                ${isCompleted ? `
+                  <div class="card p-4 mb-4" style="background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(30,41,59,0.95)); border: 2px solid var(--gold-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.4);">
+                    <div class="text-center mb-4">
+                      <span class="badge badge-gold" style="font-size: 0.75rem; letter-spacing: 1px;">KẾT QUẢ CHUNG CUỘC</span>
+                      <h2 class="font-bold text-gold text-2xl mt-1 mb-1">🏆 BẢNG VÀNG DANH DỰ</h2>
+                      <p class="text-xs text-muted mb-0">Vinh danh các kỳ thủ xuất sắc nhất giải đấu [${curEvent.title}]</p>
+                    </div>
+
+                    <!-- Bục vinh quang Top 3 -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;" class="mb-4">
+                      ${standings[0] ? `
+                        <div style="flex: 1; min-width: 220px; max-width: 280px; background: rgba(212,175,55,0.15); border: 2px solid var(--gold-primary); border-radius: 12px; padding: 20px; text-align: center;">
+                          <div style="font-size: 2.8rem; margin-bottom: 4px;">🥇</div>
+                          <span class="badge badge-gold font-bold" style="font-size: 0.75rem;">QUÁN QUÂN</span>
+                          <h3 class="font-bold text-gold text-lg mt-2 mb-1">${standings[0].name}</h3>
+                          <p class="text-xs text-dim mb-2">${standings[0].unit || 'CLB Cờ TNU'}</p>
+                          <div class="d-flex justify-center gap-2 mt-2">
+                            <span class="badge badge-outline text-gold font-bold">${standings[0].score} Điểm</span>
+                            <span class="badge badge-outline text-cyan">BH: ${standings[0].buchholz}</span>
+                          </div>
+                        </div>
+                      ` : ''}
+
+                      ${standings[1] ? `
+                        <div style="flex: 1; min-width: 220px; max-width: 280px; background: rgba(56,189,248,0.08); border: 1.5px solid #38bdf8; border-radius: 12px; padding: 20px; text-align: center;">
+                          <div style="font-size: 2.8rem; margin-bottom: 4px;">🥈</div>
+                          <span class="badge badge-outline text-cyan font-bold" style="font-size: 0.75rem; border-color: #38bdf8;">Á QUÂN</span>
+                          <h3 class="font-bold text-white text-lg mt-2 mb-1">${standings[1].name}</h3>
+                          <p class="text-xs text-dim mb-2">${standings[1].unit || 'CLB Cờ TNU'}</p>
+                          <div class="d-flex justify-center gap-2 mt-2">
+                            <span class="badge badge-outline font-bold">${standings[1].score} Điểm</span>
+                            <span class="badge badge-outline text-cyan">BH: ${standings[1].buchholz}</span>
+                          </div>
+                        </div>
+                      ` : ''}
+
+                      ${standings[2] ? `
+                        <div style="flex: 1; min-width: 220px; max-width: 280px; background: rgba(16,185,129,0.08); border: 1.5px solid #10b981; border-radius: 12px; padding: 20px; text-align: center;">
+                          <div style="font-size: 2.8rem; margin-bottom: 4px;">🥉</div>
+                          <span class="badge badge-outline text-emerald font-bold" style="font-size: 0.75rem; border-color: #10b981;">QUÝ QUÂN</span>
+                          <h3 class="font-bold text-white text-lg mt-2 mb-1">${standings[2].name}</h3>
+                          <p class="text-xs text-dim mb-2">${standings[2].unit || 'CLB Cờ TNU'}</p>
+                          <div class="d-flex justify-center gap-2 mt-2">
+                            <span class="badge badge-outline font-bold">${standings[2].score} Điểm</span>
+                            <span class="badge badge-outline text-cyan">BH: ${standings[2].buchholz}</span>
+                          </div>
+                        </div>
+                      ` : ''}
+                    </div>
+
+                    <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
+                      <div>
+                        <h4 class="font-bold text-gold text-sm mb-0">
+                          📊 BẢNG KẾT QUẢ CHUNG CUỘC (5 TIÊU CHÍ SWISS-MANAGER)
+                        </h4>
+                        <p class="text-xs text-muted mb-0">
+                          Trình tự: 1. Điểm ván [1] ➔ 2. Đối kháng (DE) [81] ➔ 3. Buchholz [37] ➔ 4. Điểm ván Đen [76] ➔ 5. Số ván thắng [68]
+                        </p>
+                      </div>
+                      <button type="button" class="btn btn-outline btn-xs" id="btnExportFinalStandingsCsv" style="border-color: #38bdf8; color: #38bdf8;">
+                        📥 Xuất Bảng Kết Quả (CSV)
+                      </button>
+                    </div>
+
+                    <div class="table-responsive">
+                      <table class="data-table" style="font-size: 0.82rem;">
+                        <thead>
                           <tr>
-                            <td class="font-bold ${idx === 0 ? 'text-gold' : idx === 1 ? 'text-cyan' : idx === 2 ? 'text-emerald' : 'text-muted'}">
-                              ${idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : (idx + 1)}
-                            </td>
-                            <td>
-                              <strong class="text-white">${p.name}</strong>
-                              <span class="text-xs text-muted font-mono" style="margin-left: 4px;">(${p.studentId || 'Kỳ thủ'})</span>
-                            </td>
-                            <td style="text-align: center;">
-                              <span class="badge badge-gold font-bold" style="font-size: 0.85rem;">${p.score}</span>
-                            </td>
-                            <td style="text-align: center; color: var(--accent-cyan); font-weight: 700;">
-                              ${p.buchholz}
-                            </td>
-                            <td style="text-align: center;">${p.wins || 0}</td>
+                            <th style="width: 50px; text-align: center;">Hạng</th>
+                            <th>Kỳ Thủ</th>
+                            <th style="text-align: center; width: 70px;">Giới tính</th>
+                            <th>Đơn vị</th>
+                            <th style="text-align: center; width: 85px;" title="Điểm (điểm ván) [1]">Điểm (Pts)</th>
+                            <th style="text-align: center; width: 85px;" title="Đối kháng trực tiếp [81]">Đối Kháng</th>
+                            <th style="text-align: center; width: 85px;" title="Hệ số Buchholz [37]">Buchholz</th>
+                            <th style="text-align: center; width: 85px;" title="Điểm ván riêng cho Trắng và Đen (Điểm ván Đen) [76]">Điểm Đen</th>
+                            <th style="text-align: center; width: 70px;" title="Số ván thắng [68]">Thắng</th>
                           </tr>
-                        `).join('')}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          ${standings.map((p, idx) => `
+                            <tr>
+                              <td class="font-bold text-center ${idx === 0 ? 'text-gold' : idx === 1 ? 'text-cyan' : idx === 2 ? 'text-emerald' : 'text-muted'}">
+                                ${idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : (idx + 1)}
+                              </td>
+                              <td>
+                                <strong class="text-white">${p.name}</strong>
+                                <span class="text-xs text-muted font-mono" style="margin-left: 4px;">(${p.studentId || p.phone || 'KT'})</span>
+                              </td>
+                              <td style="text-align: center;">
+                                <span class="badge ${p.gender === 'Nữ' ? 'badge-pink' : 'badge-outline'}" style="font-size: 10px;">${p.gender || 'Nam'}</span>
+                              </td>
+                              <td class="text-dim">${p.unit || '-'}</td>
+                              <td style="text-align: center;">
+                                <span class="badge badge-gold font-bold" style="font-size: 0.85rem;">${p.score}</span>
+                              </td>
+                              <td style="text-align: center; color: var(--gold-secondary); font-weight: 600;">
+                                ${p.playedAgainstTied ? p.directEncounterScore : '-'}
+                              </td>
+                              <td style="text-align: center; color: var(--accent-cyan); font-weight: 700;">
+                                ${p.buchholz}
+                              </td>
+                              <td style="text-align: center; color: #a78bfa; font-weight: 600;">
+                                ${p.blackPoints || 0}
+                              </td>
+                              <td style="text-align: center; font-weight: 600;">
+                                ${p.wins || 0}
+                              </td>
+                            </tr>
+                          `).join('')}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
+                ` : `
+                  <div class="card p-3">
+                    <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
+                      <div>
+                        <h3 class="font-bold text-gold text-base mb-1">
+                          📊 Bảng Xếp Hạng Hệ Thụy Sĩ (Swiss-Manager)
+                        </h3>
+                        <p class="text-xs text-muted mb-0">Trình tự: 1. Điểm ván [1] ➔ 2. Đối kháng (DE) [81] ➔ 3. Buchholz [37] ➔ 4. Điểm ván Đen [76] ➔ 5. Số ván thắng [68]</p>
+                      </div>
+                      <button type="button" class="btn btn-outline btn-xs" id="btnExportFinalStandingsCsv" style="border-color: #38bdf8; color: #38bdf8;">
+                        📥 Xuất Bảng (CSV)
+                      </button>
+                    </div>
+
+                    <div class="table-responsive">
+                      <table class="data-table" style="font-size: 0.82rem;">
+                        <thead>
+                          <tr>
+                            <th style="width: 50px; text-align: center;">Hạng</th>
+                            <th>Kỳ Thủ</th>
+                            <th style="text-align: center; width: 70px;">Giới tính</th>
+                            <th>Đơn vị</th>
+                            <th style="text-align: center; width: 85px;">Điểm (Pts)</th>
+                            <th style="text-align: center; width: 85px;">Đối Kháng</th>
+                            <th style="text-align: center; width: 85px;">Buchholz</th>
+                            <th style="text-align: center; width: 85px;">Điểm Đen</th>
+                            <th style="text-align: center; width: 70px;">Thắng</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${standings.map((p, idx) => `
+                            <tr>
+                              <td class="font-bold text-center ${idx === 0 ? 'text-gold' : idx === 1 ? 'text-cyan' : idx === 2 ? 'text-emerald' : 'text-muted'}">
+                                ${idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : (idx + 1)}
+                              </td>
+                              <td>
+                                <strong class="text-white">${p.name}</strong>
+                                <span class="text-xs text-muted font-mono" style="margin-left: 4px;">(${p.studentId || p.phone || 'KT'})</span>
+                              </td>
+                              <td style="text-align: center;">
+                                <span class="badge ${p.gender === 'Nữ' ? 'badge-pink' : 'badge-outline'}" style="font-size: 10px;">${p.gender || 'Nam'}</span>
+                              </td>
+                              <td class="text-dim">${p.unit || '-'}</td>
+                              <td style="text-align: center;">
+                                <span class="badge badge-gold font-bold" style="font-size: 0.85rem;">${p.score}</span>
+                              </td>
+                              <td style="text-align: center; color: var(--gold-secondary); font-weight: 600;">
+                                ${p.playedAgainstTied ? p.directEncounterScore : '-'}
+                              </td>
+                              <td style="text-align: center; color: var(--accent-cyan); font-weight: 700;">
+                                ${p.buchholz}
+                              </td>
+                              <td style="text-align: center; color: #a78bfa; font-weight: 600;">
+                                ${p.blackPoints || 0}
+                              </td>
+                              <td style="text-align: center; font-weight: 600;">
+                                ${p.wins || 0}
+                              </td>
+                            </tr>
+                          `).join('')}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                `}
               `;
             })()}
           `}
@@ -3899,12 +4078,50 @@ class App {
       if (curEvent) {
         try {
           store.generateNextSwissRound(curEvent.id);
-          modalManager.showAlert('✅ Bốc thăm Vòng tiếp theo thành công! Hệ thống đã gửi thông báo đến các kỳ thủ.');
+          modalManager.showAlert('✅ Bốc thăm Vòng tiếp theo thành công! Hệ thống đã tính lại điểm và cập nhật bảng xếp hạng.');
           this.renderAdminSwiss(container);
           this.renderNotificationsList();
         } catch (err) {
           modalManager.showAlert('Chưa thể bốc thăm: ' + err.message);
         }
+      }
+    });
+
+    container.querySelector('#btnFinalizeSwissTournament')?.addEventListener('click', () => {
+      sound.playClick();
+      if (!curEvent || !curEvent.swissData) return;
+      const swissData = curEvent.swissData;
+      const curRoundData = (swissData.rounds || []).find((r) => r.roundNumber === swissData.currentRound);
+      const unrecorded = (curRoundData?.matches || []).filter((m) => !m.isBye && !m.result);
+      if (unrecorded.length > 0) {
+        modalManager.showAlert(`⚠️ Vẫn còn ${unrecorded.length} bàn đấu ở Vòng ${swissData.currentRound} chưa có kết quả! Vui lòng chọn kết quả cho tất cả các bàn trước khi xác nhận.`);
+        return;
+      }
+
+      modalManager.showConfirm(
+        `Xác nhận chốt kết quả giải đấu [${curEvent.title}] và hiển thị Bảng vàng danh dự cùng Bảng xếp hạng chung cuộc?`,
+        () => {
+          try {
+            store.finalizeSwissTournament(curEvent.id);
+            if (typeof confetti === 'function') {
+              confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+            }
+            modalManager.showAlert('🎉 ĐÃ XÁC NHẬN KẾT QUẢ CHUNG CUỘC THÀNH CÔNG! Bảng vàng danh dự đã được công bố.');
+            this.renderAdminSwiss(container);
+            this.renderNotificationsList();
+          } catch (err) {
+            modalManager.showAlert('Lỗi: ' + err.message);
+          }
+        },
+        null,
+        { title: '🏆 XÁC NHẬN KẾT QUẢ CHUNG CUỘC', confirmText: 'Chốt & Công Bố Kết Quả' }
+      );
+    });
+
+    container.querySelector('#btnExportFinalStandingsCsv')?.addEventListener('click', () => {
+      sound.playClick();
+      if (curEvent?.swissData) {
+        exportSwissStandingsCsv(curEvent.swissData, curEvent.title);
       }
     });
 
@@ -3930,10 +4147,20 @@ class App {
         sound.playClick();
         const matchId = btn.getAttribute('data-match-id');
         const res = btn.getAttribute('data-res');
-        if (curEvent && swiss && matchId && res) {
-          store.recordSwissMatchResult(curEvent.id, swiss.currentRound, matchId, res);
-          this.renderAdminSwiss(container);
-          this.renderNotificationsList();
+        if (curEvent && curEvent.swissData && matchId && res) {
+          // Lưu kết quả ngầm (không gọi re-render -> KHÔNG CHỚP MÀN HÌNH, CHƯA TÍNH ĐIỂM)
+          store.setSwissMatchResultSilently(curEvent.id, curEvent.swissData.currentRound, matchId, res);
+
+          // Cập nhật trạng thái nút trực tiếp trên DOM
+          const parentCell = btn.closest('td') || btn.parentElement;
+          if (parentCell) {
+            parentCell.querySelectorAll('.btn-live-res').forEach((b) => {
+              b.classList.remove('btn-gold');
+              b.classList.add('btn-outline');
+            });
+            btn.classList.remove('btn-outline');
+            btn.classList.add('btn-gold');
+          }
         }
       });
     });

@@ -3090,18 +3090,21 @@ export const modalManager = {
       URL.revokeObjectURL(url);
     };
 
-    // Hàm xuất bảng xếp hạng ra CSV
+    // Hàm xuất bảng xếp hạng ra CSV chuẩn 5 tiêu chí Swiss-Manager
     const exportSwissStandingsCsv = (swissData, tournamentTitle) => {
       const standings = swissData?.standings || [];
-      let csv = '\uFEFFHạng,Họ và tên,Giới tính,Đơn vị,Điểm (Pts),Hệ số Buchholz,Số ván thắng\r\n';
+      let csv = '\uFEFFHạng,Họ và tên,Giới tính,Đơn vị,Điểm ván (Pts),Đối kháng (DE),Hệ số Buchholz (BH),Điểm ván Đen,Số ván thắng (WIN)\r\n';
       standings.forEach((p, idx) => {
+        const deDisplay = p.playedAgainstTied ? p.directEncounterScore : '-';
         const row = [
           idx + 1,
           `"${(p.name || '').replace(/"/g, '""')}"`,
           p.gender || 'Nam',
           `"${(p.unit || '').replace(/"/g, '""')}"`,
           p.score,
+          deDisplay,
           p.buchholz,
+          p.blackPoints || 0,
           p.wins || 0
         ].join(',');
         csv += row + '\r\n';
@@ -3270,7 +3273,11 @@ export const modalManager = {
                 <button type="button" class="btn btn-gold btn-sm" id="btnNextSwissRound">
                   🔄 Bốc Thăm Vòng ${swiss.currentRound + 1}
                 </button>
-              ` : ''}
+              ` : `
+                <button type="button" class="btn btn-gold btn-sm font-bold" id="btnFinalizeSwissInModal">
+                  ${isFinished ? '🏆 Tính Lại / Chốt Kết Quả' : '🏆 Xác Nhận Kết Quả Chung Cuộc'}
+                </button>
+              `}
               <button type="button" class="btn btn-outline btn-sm" id="btnResetSwissData" title="Khởi tạo lại giải đấu này" style="color: #fb7185; border-color: rgba(244,63,94,0.3);">
                 🗑️ Đặt Lại
               </button>
@@ -3278,11 +3285,11 @@ export const modalManager = {
           </div>
 
           <div class="card p-3 mb-3" style="background: rgba(255,255,255,0.03);">
-            <div class="d-flex justify-between align-center mb-2">
+            <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
               <h4 class="font-bold text-white text-xs" style="letter-spacing: 0.5px;">
                 ⚔️ CẶP ĐẤU VÒNG ${swiss.currentRound} (${(curRoundData?.matches || []).length} bàn)
               </h4>
-              <span class="text-xs text-muted">Nhấn kết quả để ghi nhận điểm</span>
+              <span class="text-xs text-muted">💡 Chọn kết quả (lưu tức thì, không chớp màn hình. Điểm sẽ tính khi bốc hoặc xác nhận)</span>
             </div>
 
             <div class="table-responsive">
@@ -3329,13 +3336,49 @@ export const modalManager = {
             </div>
           </div>
 
+          <!-- BỤC VINH QUANG TOP 3 NẾU ĐÃ HOÀN TẤT GIẢI -->
+          ${isFinished && (swiss.standings || []).length > 0 ? `
+            <div class="card p-3 mb-3 text-center" style="background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(30,41,59,0.9)); border: 2px solid var(--gold-primary);">
+              <span class="badge badge-gold font-bold mb-1">🏆 BẢNG VÀNG DANH DỰ CHUNG CUỘC</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 8px;">
+                ${swiss.standings[0] ? `
+                  <div style="flex: 1; min-width: 180px; max-width: 220px; background: rgba(212,175,55,0.15); border: 1.5px solid var(--gold-primary); border-radius: 8px; padding: 12px;">
+                    <div style="font-size: 2rem;">🥇</div>
+                    <span class="badge badge-gold" style="font-size: 9px;">QUÁN QUÂN</span>
+                    <h4 class="font-bold text-gold text-sm mt-1 mb-0">${escapeHtml(swiss.standings[0].name)}</h4>
+                    <p class="text-xs text-dim mb-1">${escapeHtml(swiss.standings[0].unit || '-')}</p>
+                    <span class="badge badge-outline text-gold font-bold">${swiss.standings[0].score} Điểm</span>
+                  </div>
+                ` : ''}
+                ${swiss.standings[1] ? `
+                  <div style="flex: 1; min-width: 180px; max-width: 220px; background: rgba(56,189,248,0.08); border: 1px solid #38bdf8; border-radius: 8px; padding: 12px;">
+                    <div style="font-size: 2rem;">🥈</div>
+                    <span class="badge badge-outline text-cyan" style="font-size: 9px; border-color: #38bdf8;">Á QUÂN</span>
+                    <h4 class="font-bold text-white text-sm mt-1 mb-0">${escapeHtml(swiss.standings[1].name)}</h4>
+                    <p class="text-xs text-dim mb-1">${escapeHtml(swiss.standings[1].unit || '-')}</p>
+                    <span class="badge badge-outline text-cyan font-bold">${swiss.standings[1].score} Điểm</span>
+                  </div>
+                ` : ''}
+                ${swiss.standings[2] ? `
+                  <div style="flex: 1; min-width: 180px; max-width: 220px; background: rgba(16,185,129,0.08); border: 1px solid #10b981; border-radius: 8px; padding: 12px;">
+                    <div style="font-size: 2rem;">🥉</div>
+                    <span class="badge badge-outline text-emerald" style="font-size: 9px; border-color: #10b981;">QUÝ QUÂN</span>
+                    <h4 class="font-bold text-white text-sm mt-1 mb-0">${escapeHtml(swiss.standings[2].name)}</h4>
+                    <p class="text-xs text-dim mb-1">${escapeHtml(swiss.standings[2].unit || '-')}</p>
+                    <span class="badge badge-outline text-emerald font-bold">${swiss.standings[2].score} Điểm</span>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          ` : ''}
+
           <div class="card p-3" style="background: rgba(255,255,255,0.02);">
             <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
               <div>
                 <h4 class="font-bold text-gold text-xs mb-0" style="letter-spacing: 0.5px;">
-                  📊 BẢNG XẾP HẠNG HỆ THỤY SĨ (BUCHHOLZ STANDINGS)
+                  📊 BẢNG XẾP HẠNG HỆ THỤY SĨ (5 TIÊU CHÍ SWISS-MANAGER)
                 </h4>
-                <span class="text-xs text-muted">Xếp theo: Điểm số ➔ Hệ số Buchholz ➔ Số ván thắng</span>
+                <span class="text-xs text-muted">Trình tự: 1. Điểm ván [1] ➔ 2. Đối kháng (DE) [81] ➔ 3. Buchholz [37] ➔ 4. Điểm ván Đen [76] ➔ 5. Số ván thắng [68]</span>
               </div>
               <button type="button" class="btn btn-outline btn-xs" id="btnExportSwissStandings" style="font-size: 11px; border-color: #38bdf8; color: #38bdf8;">
                 📥 Xuất Bảng Xếp Hạng (CSV)
@@ -3348,11 +3391,13 @@ export const modalManager = {
                   <tr>
                     <th style="width: 45px; text-align: center;">Hạng</th>
                     <th>Họ và tên</th>
-                    <th style="text-align: center; width: 75px;">Giới tính</th>
+                    <th style="text-align: center; width: 70px;">Giới tính</th>
                     <th>Đơn vị</th>
-                    <th style="text-align: center; width: 80px;">Điểm</th>
-                    <th style="text-align: center; width: 85px;">Buchholz</th>
-                    <th style="text-align: center; width: 65px;">Thắng</th>
+                    <th style="text-align: center; width: 75px;" title="Điểm ván [1]">Điểm</th>
+                    <th style="text-align: center; width: 75px;" title="Đối kháng trực tiếp [81]">Đối Kháng</th>
+                    <th style="text-align: center; width: 80px;" title="Hệ số Buchholz [37]">Buchholz</th>
+                    <th style="text-align: center; width: 75px;" title="Điểm ván Đen [76]">Điểm Đen</th>
+                    <th style="text-align: center; width: 60px;" title="Số ván thắng [68]">Thắng</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3373,8 +3418,14 @@ export const modalManager = {
                       <td style="text-align: center;">
                         <span class="badge badge-gold font-bold" style="font-size: 0.82rem;">${p.score}</span>
                       </td>
+                      <td style="text-align: center; color: var(--gold-secondary); font-weight: 600;">
+                        ${p.playedAgainstTied ? p.directEncounterScore : '-'}
+                      </td>
                       <td style="text-align: center; color: var(--accent-cyan); font-weight: 600;">
                         ${p.buchholz}
+                      </td>
+                      <td style="text-align: center; color: #a78bfa; font-weight: 600;">
+                        ${p.blackPoints || 0}
                       </td>
                       <td style="text-align: center;">${p.wins || 0}</td>
                     </tr>
@@ -3568,7 +3619,7 @@ export const modalManager = {
         }
       });
 
-      // Nhập kết quả ván đấu
+      // Nhập kết quả ván đấu (lưu ngầm không chớp màn hình, chưa tính điểm)
       modalEl.querySelectorAll('.btn-swiss-res').forEach((btn) => {
         btn.addEventListener('click', () => {
           sound.playClick();
@@ -3578,10 +3629,19 @@ export const modalManager = {
           const roundNum = curEv?.swissData?.currentRound;
 
           if (roundNum && matchId && res) {
-            store.recordSwissMatchResult(event.id, roundNum, matchId, res);
-            if (typeof onUpdate === 'function') onUpdate();
-            this.open(`Quản Trị Thi Đấu Hệ Thụy Sĩ • ${event.title}`, renderModalContent(), null, null);
-            bindModalEvents();
+            // Lưu kết quả ngầm (không gọi re-open modal -> KHÔNG CHỚP MÀN HÌNH, CHƯA TÍNH ĐIỂM)
+            store.setSwissMatchResultSilently(event.id, roundNum, matchId, res);
+
+            // Cập nhật trạng thái nút trực tiếp trên DOM
+            const parentCell = btn.closest('td') || btn.parentElement;
+            if (parentCell) {
+              parentCell.querySelectorAll('.btn-swiss-res').forEach((b) => {
+                b.classList.remove('btn-gold');
+                b.classList.add('btn-outline');
+              });
+              btn.classList.remove('btn-outline');
+              btn.classList.add('btn-gold');
+            }
           }
         });
       });
@@ -3591,12 +3651,39 @@ export const modalManager = {
         sound.playClick();
         try {
           store.generateNextSwissRound(event.id);
-          modalManager.showAlert('✅ Bốc thăm Vòng tiếp theo thành công!');
+          modalManager.showAlert('✅ Bốc thăm Vòng tiếp theo thành công! Hệ thống đã tính lại điểm và cập nhật bảng xếp hạng.');
           if (typeof onUpdate === 'function') onUpdate();
           this.open(`Quản Trị Thi Đấu Hệ Thụy Sĩ • ${event.title}`, renderModalContent(), null, null);
           bindModalEvents();
         } catch (err) {
           modalManager.showAlert('Chưa thể bốc thăm: ' + err.message);
+        }
+      });
+
+      // Xác nhận kết quả chung cuộc giải đấu
+      modalEl.querySelector('#btnFinalizeSwissInModal')?.addEventListener('click', () => {
+        sound.playClick();
+        const curEv = store.getState().events.find((e) => e.id === event.id);
+        const swissData = curEv?.swissData;
+        if (!swissData) return;
+        const curRound = (swissData.rounds || []).find((r) => r.roundNumber === swissData.currentRound);
+        const unrecorded = (curRound?.matches || []).filter((m) => !m.isBye && !m.result);
+        if (unrecorded.length > 0) {
+          modalManager.showAlert(`⚠️ Vẫn còn ${unrecorded.length} bàn đấu ở Vòng ${swissData.currentRound} chưa có kết quả! Vui lòng chọn kết quả cho tất cả các bàn trước khi xác nhận.`);
+          return;
+        }
+
+        try {
+          store.finalizeSwissTournament(event.id);
+          if (typeof confetti === 'function') {
+            confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+          }
+          modalManager.showAlert('🎉 ĐÃ XÁC NHẬN KẾT QUẢ CHUNG CUỘC THÀNH CÔNG! Bảng vàng danh dự và bảng xếp hạng đã được công bố.');
+          if (typeof onUpdate === 'function') onUpdate();
+          this.open(`Quản Trị Thi Đấu Hệ Thụy Sĩ • ${event.title}`, renderModalContent(), null, null);
+          bindModalEvents();
+        } catch (err) {
+          modalManager.showAlert('Lỗi: ' + err.message);
         }
       });
 
@@ -3672,6 +3759,41 @@ export const modalManager = {
           <span class="text-xs text-muted">Hệ Thụy Sĩ FIDE Chuẩn</span>
         </div>
 
+        ${isFinished && (swiss.standings || []).length > 0 ? `
+          <div class="card p-3 mb-3 text-center" style="background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(30,41,59,0.9)); border: 2px solid var(--gold-primary);">
+            <span class="badge badge-gold font-bold mb-1">🏆 BẢNG VÀNG DANH DỰ CHUNG CUỘC</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 8px;">
+              ${swiss.standings[0] ? `
+                <div style="flex: 1; min-width: 170px; max-width: 220px; background: rgba(212,175,55,0.15); border: 1.5px solid var(--gold-primary); border-radius: 8px; padding: 12px;">
+                  <div style="font-size: 2rem;">🥇</div>
+                  <span class="badge badge-gold" style="font-size: 9px;">QUÁN QUÂN</span>
+                  <h4 class="font-bold text-gold text-sm mt-1 mb-0">${escapeHtml(swiss.standings[0].name)}</h4>
+                  <p class="text-xs text-dim mb-1">${escapeHtml(swiss.standings[0].unit || '-')}</p>
+                  <span class="badge badge-outline text-gold font-bold">${swiss.standings[0].score} Điểm</span>
+                </div>
+              ` : ''}
+              ${swiss.standings[1] ? `
+                <div style="flex: 1; min-width: 170px; max-width: 220px; background: rgba(56,189,248,0.08); border: 1px solid #38bdf8; border-radius: 8px; padding: 12px;">
+                  <div style="font-size: 2rem;">🥈</div>
+                  <span class="badge badge-outline text-cyan" style="font-size: 9px; border-color: #38bdf8;">Á QUÂN</span>
+                  <h4 class="font-bold text-white text-sm mt-1 mb-0">${escapeHtml(swiss.standings[1].name)}</h4>
+                  <p class="text-xs text-dim mb-1">${escapeHtml(swiss.standings[1].unit || '-')}</p>
+                  <span class="badge badge-outline text-cyan font-bold">${swiss.standings[1].score} Điểm</span>
+                </div>
+              ` : ''}
+              ${swiss.standings[2] ? `
+                <div style="flex: 1; min-width: 170px; max-width: 220px; background: rgba(16,185,129,0.08); border: 1px solid #10b981; border-radius: 8px; padding: 12px;">
+                  <div style="font-size: 2rem;">🥉</div>
+                  <span class="badge badge-outline text-emerald" style="font-size: 9px; border-color: #10b981;">QUÝ QUÂN</span>
+                  <h4 class="font-bold text-white text-sm mt-1 mb-0">${escapeHtml(swiss.standings[2].name)}</h4>
+                  <p class="text-xs text-dim mb-1">${escapeHtml(swiss.standings[2].unit || '-')}</p>
+                  <span class="badge badge-outline text-emerald font-bold">${swiss.standings[2].score} Điểm</span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        ` : ''}
+
         <div class="card p-3 mb-3" style="background: rgba(255,255,255,0.03);">
           <h4 class="font-bold text-white text-xs mb-2">⚔️ CẶP ĐẤU VÒNG ${swiss.currentRound}</h4>
           <div class="table-responsive">
@@ -3716,18 +3838,25 @@ export const modalManager = {
         </div>
 
         <div class="card p-3" style="background: rgba(255,255,255,0.02);">
-          <h4 class="font-bold text-gold text-xs mb-2">📊 BẢNG XẾP HẠNG HỆ THỤY SĨ</h4>
+          <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
+            <div>
+              <h4 class="font-bold text-gold text-xs mb-0">📊 BẢNG XẾP HẠNG HỆ THỤY SĨ (5 TIÊU CHÍ)</h4>
+              <span class="text-xs text-muted">Trình tự: 1. Điểm ván [1] ➔ 2. Đối kháng (DE) [81] ➔ 3. Buchholz [37] ➔ 4. Điểm ván Đen [76] ➔ 5. Số ván thắng [68]</span>
+            </div>
+          </div>
           <div class="table-responsive">
             <table class="data-table" style="font-size: 0.78rem;">
               <thead>
                 <tr>
                   <th style="width: 45px; text-align: center;">Hạng</th>
                   <th>Kỳ Thủ</th>
-                  <th style="text-align: center; width: 75px;">Giới tính</th>
+                  <th style="text-align: center; width: 70px;">Giới tính</th>
                   <th>Đơn vị</th>
-                  <th style="text-align: center; width: 80px;">Điểm</th>
-                  <th style="text-align: center; width: 85px;">Buchholz</th>
-                  <th style="text-align: center; width: 65px;">Thắng</th>
+                  <th style="text-align: center; width: 75px;">Điểm</th>
+                  <th style="text-align: center; width: 75px;">Đối Kháng</th>
+                  <th style="text-align: center; width: 80px;">Buchholz</th>
+                  <th style="text-align: center; width: 75px;">Điểm Đen</th>
+                  <th style="text-align: center; width: 60px;">Thắng</th>
                 </tr>
               </thead>
               <tbody>
@@ -3751,8 +3880,14 @@ export const modalManager = {
                       <td style="text-align: center;">
                         <span class="badge badge-gold font-bold">${p.score}</span>
                       </td>
+                      <td style="text-align: center; color: var(--gold-secondary); font-weight:600;">
+                        ${p.playedAgainstTied ? p.directEncounterScore : '-'}
+                      </td>
                       <td style="text-align: center; color: var(--accent-cyan); font-weight:600;">
                         ${p.buchholz}
+                      </td>
+                      <td style="text-align: center; color: #a78bfa; font-weight:600;">
+                        ${p.blackPoints || 0}
                       </td>
                       <td style="text-align: center;">${p.wins || 0}</td>
                     </tr>

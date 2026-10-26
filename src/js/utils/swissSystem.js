@@ -32,33 +32,42 @@ export class SwissTournament {
       score: p.score !== undefined ? p.score : 0,
       buchholz: p.buchholz !== undefined ? p.buchholz : 0,
       wins: p.wins !== undefined ? p.wins : 0,
+      blackPoints: p.blackPoints !== undefined ? p.blackPoints : 0,
+      directEncounterScore: p.directEncounterScore !== undefined ? p.directEncounterScore : 0,
+      playedAgainstTied: p.playedAgainstTied || false,
       colorHistory: p.colorHistory || [], // ['W', 'B', 'W'...]
       opponentsPlayed: p.opponentsPlayed || [], // ['id1', 'id2'...]
       receivedBye: p.receivedBye || false
     }));
+    this.standings = options.standings || null;
   }
 
   /**
-   * Tính toán Bảng xếp hạng tạm thời / chung cuộc theo hệ Thụy Sĩ
-   * Ưu tiên 1: Điểm số (Score)
-   * Ưu tiên 2: Hệ số Buchholz (Tổng điểm của các đối thủ đã thi đấu)
-   * Ưu tiên 3: Số ván thắng (Wins)
-   * Ưu tiên 4: Elo
+   * Tính toán Bảng xếp hạng tạm thời / chung cuộc theo chuẩn Swiss-Manager FIDE
+   * Căn cứ theo đúng trình tự 5 tiêu chí:
+   * 1. Điểm (điểm ván) [1]
+   * 2. Đối kháng trực tiếp (DE) (-) [81]
+   * 3. Hệ số Buchholz (với các tham số) (1,1,K,3,0,K) [37]
+   * 4. Điểm ván riêng cho Trắng và Đen (Điểm ván Đen) [76]
+   * 5. Số ván thắng (WIN) (GP,0,P) [68]
+   * 6. Elo dự phòng
    */
   computeStandings() {
     const playerMap = new Map();
     this.players.forEach((p) => playerMap.set(p.id, p));
 
-    // Tính lại điểm và số ván thắng từ lịch sử các vòng đấu
+    // 1. Tính lại điểm, số ván thắng, điểm ván Đen từ lịch sử các vòng đấu
     this.players.forEach((p) => {
       let score = 0;
       let wins = 0;
+      let blackPoints = 0;
       const opponents = [];
 
       this.rounds.forEach((rnd) => {
         (rnd.matches || []).forEach((m) => {
           if (m.result === null || m.result === undefined) return;
 
+          // Ván Bye (miễn đấu: được tính 1 điểm & 1 ván thắng)
           if (m.isBye && m.whiteId === p.id) {
             score += 1;
             wins += 1;
@@ -78,8 +87,10 @@ export class SwissTournament {
             if (m.result === '0-1') {
               score += 1;
               wins += 1;
+              blackPoints += 1; // Thắng bằng quân Đen
             } else if (m.result === '0.5-0.5' || m.result === '1/2-1/2') {
               score += 0.5;
+              blackPoints += 0.5; // Hòa khi cầm quân Đen
             }
           }
         });
@@ -87,10 +98,11 @@ export class SwissTournament {
 
       p.score = score;
       p.wins = wins;
+      p.blackPoints = blackPoints;
       p.opponentsPlayed = opponents;
     });
 
-    // Tính hệ số Buchholz (Tổng điểm của các đối thủ)
+    // 2. Tính hệ số Buchholz (Tổng điểm của các đối thủ đã thi đấu cùng)
     this.players.forEach((p) => {
       let bScore = 0;
       (p.opponentsPlayed || []).forEach((oppId) => {
@@ -100,18 +112,66 @@ export class SwissTournament {
       p.buchholz = bScore;
     });
 
-    // Sắp xếp thứ hạng
+    // 3. Tính Đối kháng trực tiếp (Direct Encounter - DE) [81] giữa các kỳ thủ bằng điểm nhau
+    const scoreGroups = new Map();
+    this.players.forEach((p) => {
+      if (!scoreGroups.has(p.score)) scoreGroups.set(p.score, []);
+      scoreGroups.get(p.score).push(p);
+    });
+
+    scoreGroups.forEach((group) => {
+      if (group.length <= 1) {
+        group[0].directEncounterScore = 0;
+        group[0].playedAgainstTied = false;
+        return;
+      }
+      const groupIds = new Set(group.map((x) => x.id));
+      group.forEach((p) => {
+        let dePts = 0;
+        let playedTied = false;
+        this.rounds.forEach((rnd) => {
+          (rnd.matches || []).forEach((m) => {
+            if (!m.result || m.isBye) return;
+            if (m.whiteId === p.id && groupIds.has(m.blackId)) {
+              playedTied = true;
+              if (m.result === '1-0') dePts += 1;
+              else if (m.result === '0.5-0.5' || m.result === '1/2-1/2') dePts += 0.5;
+            } else if (m.blackId === p.id && groupIds.has(m.whiteId)) {
+              playedTied = true;
+              if (m.result === '0-1') dePts += 1;
+              else if (m.result === '0.5-0.5' || m.result === '1/2-1/2') dePts += 0.5;
+            }
+          });
+        });
+        p.directEncounterScore = dePts;
+        p.playedAgainstTied = playedTied;
+      });
+    });
+
+    // 4. Sắp xếp thứ hạng theo đúng 5 tiêu chí chuẩn Swiss-Manager:
+    // 1. Điểm ván (score) [1]
+    // 2. Đối kháng trực tiếp (DE) (-) [81]
+    // 3. Hệ số Buchholz [37]
+    // 4. Điểm ván riêng cho Trắng và Đen (Điểm ván Đen) [76]
+    // 5. Số ván thắng (WIN) [68]
+    // 6. Elo dự phòng
     const sorted = [...this.players].sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
+      if (b.directEncounterScore !== a.directEncounterScore) {
+        return b.directEncounterScore - a.directEncounterScore;
+      }
       if (b.buchholz !== a.buchholz) return b.buchholz - a.buchholz;
+      if (b.blackPoints !== a.blackPoints) return b.blackPoints - a.blackPoints;
       if (b.wins !== a.wins) return b.wins - a.wins;
       return (b.elo || 0) - (a.elo || 0);
     });
 
-    return sorted.map((p, idx) => ({
+    this.standings = sorted.map((p, idx) => ({
       rank: idx + 1,
       ...p
     }));
+
+    return this.standings;
   }
 
   generateRound1() {
@@ -147,10 +207,13 @@ export class SwissTournament {
     const nextRoundNum = this.currentRound + 1;
     let pool = [...this.players];
 
-    // Sắp xếp kỳ thủ theo điểm giảm dần, sau đó theo Buchholz và Elo
+    // Sắp xếp kỳ thủ theo đúng 5 tiêu chí: Điểm ➔ Đối kháng ➔ Buchholz ➔ Điểm Đen ➔ Số Thắng ➔ Elo
     pool.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
+      if (b.directEncounterScore !== a.directEncounterScore) return b.directEncounterScore - a.directEncounterScore;
       if (b.buchholz !== a.buchholz) return b.buchholz - a.buchholz;
+      if (b.blackPoints !== a.blackPoints) return b.blackPoints - a.blackPoints;
+      if (b.wins !== a.wins) return b.wins - a.wins;
       return (b.elo || 0) - (a.elo || 0);
     });
 
@@ -275,12 +338,10 @@ export class SwissTournament {
   }
 
   /**
-   * Ghi nhận kết quả trận đấu
-   * @param {number} roundNumber
-   * @param {string} matchId
-   * @param {'1-0'|'0-1'|'0.5-0.5'} result
+   * Ghi nhận kết quả trận đấu ngầm (không tính lại thứ hạng, phục vụ bấm nút không chớp màn hình)
+   * Thứ hạng và điểm số chỉ được tính khi bấm "Bốc thăm vòng tiếp" hoặc "Xác nhận kết quả".
    */
-  recordResult(roundNumber, matchId, result) {
+  setMatchResultSilently(roundNumber, matchId, result) {
     const round = this.rounds.find((r) => r.roundNumber === roundNumber);
     if (!round) throw new Error(`Không tìm thấy vòng đấu số ${roundNumber}`);
 
@@ -288,6 +349,23 @@ export class SwissTournament {
     if (!match) throw new Error(`Không tìm thấy bàn đấu ${matchId}`);
 
     match.result = result;
+    return match;
+  }
+
+  /**
+   * Xác nhận kết quả chung cuộc giải đấu
+   */
+  finalizeTournament() {
+    this.computeStandings();
+    this.status = 'completed';
+    return this.standings;
+  }
+
+  /**
+   * Ghi nhận kết quả trận đấu có tính điểm ngay (tùy chọn)
+   */
+  recordResult(roundNumber, matchId, result) {
+    this.setMatchResultSilently(roundNumber, matchId, result);
     this.computeStandings();
 
     // Kiểm tra nếu tất cả các trận của vòng cuối cùng đã xong -> kết thúc giải
@@ -300,7 +378,7 @@ export class SwissTournament {
       }
     }
 
-    return match;
+    return result;
   }
 
   /**
@@ -315,7 +393,7 @@ export class SwissTournament {
       status: this.status,
       rounds: this.rounds,
       players: this.players,
-      standings: this.computeStandings()
+      standings: this.standings || this.computeStandings()
     };
   }
 
@@ -325,4 +403,38 @@ export class SwissTournament {
   static fromJSON(data) {
     return new SwissTournament(data);
   }
+}
+
+/**
+ * Hàm xuất bảng xếp hạng ra file CSV chuẩn 5 tiêu chí Swiss-Manager
+ */
+export function exportSwissStandingsCsv(swissData, tournamentTitle) {
+  const standings = swissData?.standings || [];
+  let csv = '\uFEFFHạng,Họ và tên,Giới tính,Đơn vị,Điểm ván (Pts),Đối kháng (DE),Hệ số Buchholz (BH),Điểm ván Đen,Số ván thắng (WIN)\r\n';
+  standings.forEach((p, idx) => {
+    const deDisplay = p.playedAgainstTied ? p.directEncounterScore : '-';
+    const row = [
+      idx + 1,
+      `"${(p.name || '').replace(/"/g, '""')}"`,
+      p.gender || 'Nam',
+      `"${(p.unit || '').replace(/"/g, '""')}"`,
+      p.score,
+      deDisplay,
+      p.buchholz,
+      p.blackPoints || 0,
+      p.wins || 0
+    ].join(',');
+    csv += row + '\r\n';
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const cleanTitle = (tournamentTitle || 'Giai_Co').replace(/[^\w\d-_]/g, '_');
+  a.download = `Ket_Qua_${cleanTitle}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }

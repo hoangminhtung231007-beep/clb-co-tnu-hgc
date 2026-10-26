@@ -177,11 +177,7 @@ class App {
       btnAdminPortal.style.display = isAdmin ? 'inline-flex' : 'none';
     }
     if (navUserBadge) {
-      if (isAdmin) {
-        navUserBadge.innerHTML = `<button type="button" class="btn btn-outline btn-xs" style="font-size:0.75rem; padding: 4px 8px; cursor: pointer; border-radius: 20px; border-color: rgba(212,175,55,0.4); color: var(--gold-light); background: rgba(212,175,55,0.1); white-space: nowrap;" title="Buồng lái Quản trị viên"><span>👑</span> Quản Trị Viên</button>`;
-      } else {
-        navUserBadge.innerHTML = '';
-      }
+      navUserBadge.innerHTML = '';
     }
 
     // 3. Update Mobile Bottom Bar Center FAB (Đăng ký for Guest, Thẻ TV for Member)
@@ -2281,8 +2277,10 @@ class App {
           <!-- Admin Sidebar Navigation (Desktop only) -->
           ${!isMobile ? `
           <aside class="admin-sidebar">
-            <div class="admin-sidebar-header">
-              <span class="admin-sidebar-title">⚡ BUỒNG LÁI VẬN HÀNH</span>
+            <div class="admin-sidebar-header" style="display: flex; align-items: center; justify-content: center; padding: 10px 14px 14px;">
+              <div class="admin-role-badge" style="font-size: 0.8rem; padding: 5px 14px; border-radius: 20px; border: 1px solid rgba(212,175,55,0.45); color: var(--gold-light); background: rgba(212,175,55,0.12); white-space: nowrap; font-weight: 700; width: 100%; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <span>👑</span> Quản Trị Viên
+              </div>
             </div>
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-overview' ? 'active' : ''}" data-sub="admin-overview">
@@ -2293,21 +2291,21 @@ class App {
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-checkin' ? 'active' : ''}" data-sub="admin-checkin">
               <div class="admin-nav-left">
-                <span>📷</span> <span>Điểm danh QR</span>
+                <span>📷</span> <span>Điểm danh</span>
               </div>
               <span class="admin-nav-badge active-glow">LIVE</span>
             </div>
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-proofs' ? 'active' : ''}" data-sub="admin-proofs">
               <div class="admin-nav-left">
-                <span>📱</span> <span>Duyệt Minh Chứng Zalo</span>
+                <span>📱</span> <span>Xác nhận minh chứng</span>
               </div>
               <span class="admin-nav-badge active-glow">FANPAGE</span>
             </div>
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-users' ? 'active' : ''}" data-sub="admin-users">
               <div class="admin-nav-left">
-                <span>👥</span> <span>Thành viên - Kỳ thủ</span>
+                <span>👥</span> <span>Thành viên</span>
               </div>
               <span class="admin-nav-badge">${state.members.length}</span>
             </div>
@@ -2321,7 +2319,7 @@ class App {
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-swiss' ? 'active' : ''}" data-sub="admin-swiss">
               <div class="admin-nav-left">
-                <span>⚔️</span> <span>Xếp cặp đấu (Thụy Sĩ)</span>
+                <span>⚔️</span> <span>Xếp bảng</span>
               </div>
               <span class="admin-nav-badge">${(state.events || []).filter((e) => e.type === 'tournament' || e.swissData).length}</span>
             </div>
@@ -2361,11 +2359,11 @@ class App {
           <main class="admin-content-pane" id="adminSubContentPane">
             ${isMobile ? `
               <div class="admin-mobile-subnav mb-3 d-flex gap-1.5" style="overflow-x: auto; white-space: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch;">
-                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-checkin' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-checkin">📷 Quét QR</button>
-                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-proofs' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-proofs">📱 Duyệt Zalo</button>
+                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-checkin' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-checkin">📷 Điểm danh</button>
+                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-proofs' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-proofs">📱 Xác nhận minh chứng</button>
                 <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-overview' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-overview">📊 Tổng quan</button>
-                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-users' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-users">👥 Kỳ thủ (${state.members.length})</button>
-                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-swiss' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-swiss">⚔️ Thụy Sĩ</button>
+                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-users' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-users">👥 Thành viên (${state.members.length})</button>
+                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-swiss' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-swiss">⚔️ Xếp bảng</button>
                 <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-funds' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-funds">💰 Quỹ</button>
                 <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-events' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-events">🏆 Sự kiện</button>
               </div>
@@ -2657,7 +2655,7 @@ class App {
   }
 
   // ==========================================
-  // Admin Sub: Duyệt Minh Chứng Zalo (Fanpage)
+  // Admin Sub: Xác Nhận Minh Chứng (Fanpage)
   // ==========================================
   renderAdminProofs(container) {
     const state = store.getState();
@@ -2695,9 +2693,9 @@ class App {
     container.innerHTML = `
       <div class="admin-sub-proofs animate-fadeIn p-1">
         <div class="mb-3">
-          <span class="badge badge-gold font-bold">⚡ QUẢN TRỊ HOẠT ĐỘNG</span>
-          <h2 class="text-xl font-bold text-white mt-1">Cộng Điểm Hoạt Động (Minh Chứng Zalo)</h2>
-          <p class="text-muted text-xs mb-0">BĐH kiểm tra minh chứng thành viên gửi trên Zalo ➔ Nhập tên bài ➔ Tích chọn người nộp ➔ Xác nhận cộng điểm.</p>
+          <span class="badge badge-gold font-bold">⚡ XÁC NHẬN MINH CHỨNG</span>
+          <h2 class="text-xl font-bold text-white mt-1">Xác Nhận Minh Chứng Hoạt Động (Fanpage)</h2>
+          <p class="text-muted text-xs mb-0">BĐH theo dõi minh chứng thành viên gửi trên Zalo ➔ Nhập tên bài ➔ Tích chọn người nộp ➔ Xác nhận cộng điểm hoạt động.</p>
         </div>
 
         <div class="card p-3 mb-3">
@@ -2851,7 +2849,7 @@ class App {
         const res = store.approveFanpageProofs({
           campaignTitle: title,
           memberIds: ids,
-          note: 'Duyệt minh chứng Zalo thủ công'
+          note: 'Xác nhận minh chứng Zalo'
         });
         sound.playSuccess();
         modalManager.showAlert(`✅ Đã cộng +1 hoạt động cho ${res.approvedCount} thành viên thành công!`);
@@ -3663,7 +3661,7 @@ class App {
       <div class="admin-sub-swiss animate-fadeIn">
         <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
           <div>
-            <h2 class="text-xl font-bold">⚔️ Xếp Cặp Đấu (Hệ Thụy Sĩ)</h2>
+            <h2 class="text-xl font-bold">⚔️ Xếp Bảng (Hệ Thụy Sĩ)</h2>
             <p class="text-muted text-xs">Bốc thăm vòng đấu theo điểm số FIDE, nhập kết quả từng bàn và bảng xếp hạng Buchholz</p>
           </div>
           ${tournamentEvents.length > 0 ? `
@@ -4640,7 +4638,7 @@ class App {
           <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3">
             <div>
               <div class="d-flex align-center gap-2">
-                <span class="badge badge-gold">BUỒNG LÁI VẬN HÀNH • THỐNG KÊ</span>
+                <span class="badge badge-gold">QUẢN TRỊ VIÊN • THỐNG KÊ</span>
                 <span class="badge badge-cyan">📅 Giai đoạn: ${formatDateVn(sDate)} ➜ ${formatDateVn(eDate)}</span>
               </div>
               <h2 class="text-xl font-bold mt-1 text-white">Thống Kê, Đánh Giá & Báo Cáo Theo Giai Đoạn</h2>

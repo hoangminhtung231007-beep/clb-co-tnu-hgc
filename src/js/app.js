@@ -4109,8 +4109,8 @@ class App {
                 </td>
                 <td style="text-align: right;">
                   <div class="d-inline-flex gap-2 justify-end align-center">
-                    <button type="button" class="btn btn-outline btn-xs font-bold btn-open-personal-qr" data-member-id="${m.id}" title="Mở mã QR tích hợp sẵn số tiền và cú pháp chuyển khoản cho kỳ thủ này">
-                      📱 Mã QR Có Sẵn Tiền
+                    <button type="button" class="btn btn-outline btn-xs font-bold btn-open-personal-qr" data-member-id="${m.id}" title="Mở mã QR đóng quỹ cho kỳ thủ này">
+                      📱 Mã QR
                     </button>
                     <button type="button" class="btn btn-gold btn-xs font-bold btn-quick-mark-paid" data-member-id="${m.id}" title="Xác nhận đã thu (1 chạm)">
                       ⚡ Đã Thu

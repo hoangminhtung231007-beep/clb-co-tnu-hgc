@@ -155,7 +155,6 @@ export class SmartQRScanner {
             <div>
               <span class="badge badge-gold">MÁY QUÉT ĐIỂM DANH THÔNG MINH</span>
               <h3 class="text-base font-bold text-white mt-1">Chọn Mục Tiêu Điểm Danh</h3>
-              <p class="text-xs text-muted">Chọn loại hình điểm danh để hệ thống tự động cộng đúng chỉ số cho kỳ thủ</p>
             </div>
             <!-- 3 Mode Buttons -->
             <div class="d-flex gap-2 flex-wrap" id="checkInModeTabGroup">

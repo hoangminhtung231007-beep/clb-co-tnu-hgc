@@ -4678,11 +4678,13 @@ export const modalManager = {
           </div>
         </div>
 
-        <div class="d-flex flex-column gap-2">
-          <button type="button" class="btn btn-gold py-2 font-bold w-100" id="btnConfirmDirectSelfPay">
-            ⚡ TÔI ĐÃ CHUYỂN KHOẢN (TỰ ĐỘNG GHI NHẬN NGAY)
+        <div class="d-flex gap-2.5 justify-center align-center pt-2">
+          <button type="button" class="btn btn-outline btn-sm" id="btnCloseMemberQRModal" style="flex: 1; padding: 10px 16px; border-radius: 10px; font-weight: 600; color: #94a3b8; border-color: rgba(255,255,255,0.15);">
+            Đóng lại
           </button>
-          <button type="button" class="btn btn-outline btn-xs" id="btnCloseMemberQRModal">Đóng lại</button>
+          <button type="button" class="btn btn-gold btn-sm" id="btnConfirmDirectSelfPay" style="flex: 2; padding: 10px 20px; font-weight: 700; border-radius: 10px; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 16px rgba(212,175,55,0.35);">
+            <span style="font-size: 1.1rem;">⚡</span> Đã Thu
+          </button>
         </div>
       </div>
     `;

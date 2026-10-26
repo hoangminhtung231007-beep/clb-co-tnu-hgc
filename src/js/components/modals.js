@@ -2183,7 +2183,7 @@ export const modalManager = {
 
           <div class="form-group mb-4">
             <label class="form-label" for="loginMemberPass">Mật khẩu (Ngày tháng năm sinh):</label>
-            <input type="password" id="loginMemberPass" class="form-input" placeholder="Nhập ngày tháng năm sinh (VD: 23102007)..." value="" autocomplete="current-password">
+            <input type="password" id="loginMemberPass" class="form-input" placeholder="Nhập ngày tháng năm sinh..." value="" autocomplete="current-password">
           </div>
 
           <button type="button" class="btn btn-gold btn-md" id="btnSubmitMemberLogin" style="width: 100%; font-weight: 700; padding: 11px;">
@@ -2292,7 +2292,7 @@ export const modalManager = {
           }
 
           if (!this.verifyMemberDobPassword(inputPass, found)) {
-            modalManager.showAlert('Mật khẩu không chính xác! Mật khẩu đăng nhập là Ngày tháng năm sinh của bạn (Ví dụ: 23102007 hoặc 23/10/2007).');
+            modalManager.showAlert('Mật khẩu không chính xác! Mật khẩu đăng nhập là Ngày tháng năm sinh của bạn.');
             memberPassInput && memberPassInput.focus();
             return;
           }

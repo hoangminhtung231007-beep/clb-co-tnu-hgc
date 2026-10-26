@@ -102,7 +102,7 @@ class App {
 
     window.addEventListener('resize', () => {
       const isMobile = window.innerWidth <= 768;
-      if (isMobile && this.currentView === 'admin' && this.adminSubView !== 'admin-checkin') {
+      if (isMobile && this.currentView === 'admin' && !this.adminSubView) {
         this.adminSubView = 'admin-checkin';
         const dashboard = document.getElementById('mainViewport');
         if (dashboard) this.renderAdminDashboard(dashboard);
@@ -388,6 +388,22 @@ class App {
           }
         }
       });
+
+      // Thông báo minh chứng Fanpage được duyệt
+      (state.attendanceLogs || [])
+        .filter((log) => log.memberId === activeMember.id && log.categoryLabel === 'Lan Tỏa Fanpage')
+        .slice(0, 3)
+        .forEach((log) => {
+          notifications.push({
+            id: `notif_fp_${log.id}`,
+            icon: '📱',
+            title: 'Duyệt minh chứng Fanpage thành công!',
+            desc: `BĐH đã xác nhận minh chứng và cộng +1 hoạt động cho bạn: [${log.eventTitle}] (${log.timestamp}).`,
+            time: log.timestamp || 'Hoạt động',
+            badge: 'Lan Tỏa Fanpage',
+            targetView: 'member-pass'
+          });
+        });
     }
 
     // =========================================================================
@@ -1845,6 +1861,16 @@ class App {
   renderEvents(container) {
     const state = store.getState();
     const activeMember = store.getActiveMember();
+    const clubInfo = state.clubInfo || {};
+    const zaloLink = clubInfo.zaloGroupLink || 'https://zalo.me/g/ugejmj655';
+    const activeFpEvent = (state.events || []).find(
+      (e) => e.isFanpageActivity || (e.title || '').toLowerCase().includes('fanpage') || (e.title || '').toLowerCase().includes('chia sẻ')
+    );
+    const isApprovedForMe = activeMember && activeFpEvent
+      ? (state.attendanceLogs || []).some(
+          (log) => log.eventId === activeFpEvent.id && log.memberId === activeMember.id && log.status === 'success'
+        )
+      : false;
 
     container.innerHTML = `
       <div class="events-page-view animate-fadeIn">
@@ -1855,6 +1881,41 @@ class App {
             <p class="text-muted text-sm">Đăng ký tham gia trực tuyến và gửi phản hồi nâng cao chất lượng</p>
           </div>
           ${state.currentSession.role === 'admin' ? '<button class="btn btn-gold btn-sm" id="btnAddNewEventModal">+ Lên lịch sự kiện mới</button>' : ''}
+        </div>
+
+        <!-- Nhiệm vụ Lan Tỏa Fanpage & Zalo -->
+        <div class="card p-3 mb-4 animate-fadeIn" style="background: linear-gradient(135deg, rgba(212,175,55,0.08) 0%, rgba(2,132,199,0.08) 100%); border: 1px solid rgba(212,175,55,0.25); border-radius: 12px;">
+          <div class="d-flex justify-between align-center flex-wrap gap-2 mb-2">
+            <div class="d-flex align-center gap-2 flex-wrap">
+              <span class="badge badge-gold font-bold">📱 NHIỆM VỤ LAN TỎA FANPAGE</span>
+              <span class="badge badge-emerald font-bold">+1 Hoạt Động Rèn Luyện</span>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+              ${activeFpEvent?.postUrl ? `
+                <a href="${activeFpEvent.postUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-xs font-bold" style="border-color: #38bdf8; color: #38bdf8;">
+                  🌐 Mở Bài Viết Facebook ↗
+                </a>
+              ` : ''}
+              <a href="${zaloLink}" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-xs font-bold" style="box-shadow: 0 0 8px rgba(212,175,55,0.3);">
+                💬 Gửi Ảnh Vào Nhóm Zalo CLB ↗
+              </a>
+            </div>
+          </div>
+          <h3 class="text-base font-bold text-white mb-1">
+            📢 ${activeFpEvent ? activeFpEvent.title : 'Lan Tỏa Bài Viết Fanpage CLB Cờ TNU - HGC Lên Facebook Cá Nhân'}
+          </h3>
+          <p class="text-xs text-muted mb-2">
+            📌 <strong>Cách nhận điểm:</strong> Thành viên chia sẻ bài viết của Fanpage về trang cá nhân (chế độ Công khai). Sau đó chụp ảnh màn hình và gửi vào <strong>Nhóm Zalo CLB</strong> để Ban Điều Hành kiểm tra và cộng <strong>+1 Hoạt Động</strong> vào Thẻ thành viên của bạn!
+          </p>
+          ${activeMember ? `
+            <div class="d-flex align-center gap-2 flex-wrap">
+              ${isApprovedForMe ? `
+                <span class="badge badge-emerald font-bold" style="font-size: 11px;">✅ BĐH đã duyệt minh chứng bài này cho bạn (+1 hoạt động)!</span>
+              ` : `
+                <span class="badge badge-outline font-medium" style="font-size: 11px; color: #fbbf24; border-color: rgba(251,191,36,0.3);">⏳ Bạn chưa gửi ảnh bài này — Hãy chia sẻ và gửi vào Zalo để BĐH duyệt nhé!</span>
+              `}
+            </div>
+          ` : ''}
         </div>
 
         <div class="events-cards-grid">
@@ -2270,7 +2331,7 @@ class App {
   // ==========================================
   renderAdminDashboard(container) {
     const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
+    if (isMobile && !this.adminSubView) {
       this.adminSubView = 'admin-checkin';
     }
     const state = store.getState();
@@ -2296,6 +2357,13 @@ class App {
                 <span>📷</span> <span>Điểm danh QR</span>
               </div>
               <span class="admin-nav-badge active-glow">LIVE</span>
+            </div>
+
+            <div class="admin-nav-item ${this.adminSubView === 'admin-proofs' ? 'active' : ''}" data-sub="admin-proofs">
+              <div class="admin-nav-left">
+                <span>📱</span> <span>Duyệt Minh Chứng Zalo</span>
+              </div>
+              <span class="admin-nav-badge active-glow">FANPAGE</span>
             </div>
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-users' ? 'active' : ''}" data-sub="admin-users">
@@ -2351,7 +2419,20 @@ class App {
           ` : ''}
 
           <!-- Main Admin Content Pane -->
-          <main class="admin-content-pane" id="adminSubContentPane"></main>
+          <main class="admin-content-pane" id="adminSubContentPane">
+            ${isMobile ? `
+              <div class="admin-mobile-subnav mb-3 d-flex gap-1.5" style="overflow-x: auto; white-space: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch;">
+                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-checkin' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-checkin">📷 Quét QR</button>
+                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-proofs' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-proofs">📱 Duyệt Zalo</button>
+                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-overview' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-overview">📊 Tổng quan</button>
+                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-users' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-users">👥 Kỳ thủ (${state.members.length})</button>
+                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-swiss' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-swiss">⚔️ Thụy Sĩ</button>
+                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-funds' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-funds">💰 Quỹ</button>
+                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-events' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-events">🏆 Sự kiện</button>
+              </div>
+            ` : ''}
+            <div id="adminActualSubContent"></div>
+          </main>
         </div>
       </div>
     `;
@@ -2374,48 +2455,62 @@ class App {
       });
     });
 
+    // Bind mobile admin tabs
+    container.querySelectorAll('.btn-admin-mobile-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const sub = btn.getAttribute('data-sub');
+        this.adminSubView = sub;
+        this.renderAdminDashboard(container);
+      });
+    });
+
     const pane = container.querySelector('#adminSubContentPane');
     this.renderAdminSubView(pane);
   }
 
   renderAdminSubView(container) {
     if (!container) return;
+    const targetPane = container.querySelector('#adminActualSubContent') || container;
 
     switch (this.adminSubView) {
       case 'admin-overview':
-        this.renderAdminOverview(container);
+        this.renderAdminOverview(targetPane);
         break;
       case 'admin-checkin':
-        this.renderAdminCheckin(container);
+        this.renderAdminCheckin(targetPane);
+        break;
+      case 'admin-proofs':
+        this.renderAdminProofs(targetPane);
         break;
       case 'admin-users':
-        this.renderAdminUsers(container);
+        this.renderAdminUsers(targetPane);
         break;
       case 'admin-events':
-        this.renderAdminEvents(container);
+        this.renderAdminEvents(targetPane);
         break;
       case 'admin-swiss':
-        this.renderAdminSwiss(container);
+        this.renderAdminSwiss(targetPane);
         break;
       case 'admin-funds':
-        this.renderAdminFunds(container);
+        this.renderAdminFunds(targetPane);
         break;
       case 'admin-cms':
-        this.renderAdminCms(container);
+        this.renderAdminCms(targetPane);
         break;
       case 'admin-analytics':
-        this.renderAdminAnalytics(container);
+        this.renderAdminAnalytics(targetPane);
         break;
       case 'admin-firebase':
         if (!this.firebaseUnlocked) {
           this.adminSubView = 'admin-overview';
-          this.renderAdminOverview(container);
+          this.renderAdminOverview(targetPane);
         } else {
-          this.renderAdminFirebase(container);
+          this.renderAdminFirebase(targetPane);
         }
         break;
       default:
-        this.renderAdminOverview(container);
+        this.renderAdminOverview(targetPane);
     }
   }
 
@@ -2620,6 +2715,466 @@ class App {
         <td data-label="Trạng Thái"><span class="badge badge-emerald">✓ Hợp lệ</span></td>
       </tr>
     `;
+  }
+
+  // ==========================================
+  // Admin Sub: Duyệt Minh Chứng Zalo (Fanpage)
+  // ==========================================
+  renderAdminProofs(container) {
+    const state = store.getState();
+    const members = state.members || [];
+    const clubInfo = state.clubInfo || {};
+    const zaloLink = clubInfo.zaloGroupLink || 'https://zalo.me/g/ugejmj655';
+
+    // Tìm các sự kiện Fanpage đã có
+    const fpEvents = (state.events || []).filter((e) => e.isFanpageActivity || (e.title || '').toLowerCase().includes('fanpage') || (e.title || '').toLowerCase().includes('chia sẻ'));
+    const defaultTitle = fpEvents[0]?.title || 'Chia sẻ bài Fanpage: Khai mạc Giải Cờ TNU - HGC';
+    const defaultUrl = fpEvents[0]?.postUrl || '';
+
+    if (!this.proofState) {
+      this.proofState = {
+        campaignTitle: defaultTitle,
+        postUrl: defaultUrl,
+        selectedMemberIds: new Set(),
+        searchQuery: '',
+        filterTab: 'all' // all | pending | approved
+      };
+    }
+
+    const escapeHtml = (str) => {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+
+    // Tìm sự kiện hiện tại khớp với campaignTitle
+    const curTitleClean = (this.proofState.campaignTitle || '').trim().toLowerCase();
+    const matchedEvent = (state.events || []).find(
+      (e) => (e.title || '').trim().toLowerCase() === curTitleClean
+    );
+    const matchedEventId = matchedEvent ? matchedEvent.id : null;
+
+    // Danh sách memberId đã được duyệt cho sự kiện này
+    const approvedMemberIds = new Set();
+    if (matchedEventId) {
+      (state.attendanceLogs || []).forEach((log) => {
+        if (log.eventId === matchedEventId && log.status === 'success') {
+          approvedMemberIds.add(log.memberId);
+        }
+      });
+      if (Array.isArray(matchedEvent.registeredMembers)) {
+        matchedEvent.registeredMembers.forEach((id) => approvedMemberIds.add(id));
+      }
+    }
+
+    // Lọc danh sách theo Search và Tab
+    const query = (this.proofState.searchQuery || '').trim().toLowerCase();
+    const filteredMembers = members.filter((m) => {
+      const isApproved = approvedMemberIds.has(m.id);
+      if (this.proofState.filterTab === 'pending' && isApproved) return false;
+      if (this.proofState.filterTab === 'approved' && !isApproved) return false;
+
+      if (!query) return true;
+      const name = (m.name || m.fullName || '').toLowerCase();
+      const studentId = (m.studentId || '').toLowerCase();
+      const phone = (m.phone || '').toLowerCase();
+      const uni = (m.university || m.faculty || m.class || '').toLowerCase();
+      return name.includes(query) || studentId.includes(query) || phone.includes(query) || uni.includes(query);
+    });
+
+    const totalApprovedCount = members.filter((m) => approvedMemberIds.has(m.id)).length;
+    const totalPendingCount = members.length - totalApprovedCount;
+    const selectedCount = this.proofState.selectedMemberIds.size;
+
+    // Lịch sử duyệt gần đây
+    const recentLogs = (state.attendanceLogs || [])
+      .filter((log) => log.categoryLabel === 'Lan Tỏa Fanpage' || (log.method || '').includes('Zalo'))
+      .slice(0, 15);
+
+    container.innerHTML = `
+      <div class="admin-sub-proofs animate-fadeIn">
+        <!-- Header -->
+        <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
+          <div>
+            <div class="d-flex align-center gap-2 mb-1 flex-wrap">
+              <span class="badge badge-gold font-bold">📱 QUẢN TRỊ TRUYỀN THÔNG</span>
+              <span class="badge badge-emerald active-glow">+1 HOẠT ĐỘNG / LƯỢT</span>
+            </div>
+            <h2 class="text-xl font-bold text-white mt-1">Duyệt Minh Chứng Zalo • Lan Tỏa Fanpage</h2>
+            <p class="text-muted text-xs mb-0">Đối chiếu ảnh chụp màn hình chia sẻ bài viết gửi trong nhóm Zalo CLB ➔ Tích chọn thành viên để cộng +1 hoạt động rèn luyện.</p>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="${zaloLink}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm font-bold" style="border-color: #0284c7; color: #38bdf8;">
+              💬 Mở Nhóm Zalo CLB ↗
+            </a>
+            <button type="button" class="btn btn-outline btn-sm" id="btnOpenPostUrl">
+              🌐 Xem Bài Viết Facebook ↗
+            </button>
+          </div>
+        </div>
+
+        <!-- Box 1: Thiết Lập Đợt / Bài Viết Đang Duyệt -->
+        <div class="card p-3 mb-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(212,175,55,0.25);">
+          <div class="form-group mb-1">
+            <label class="form-label text-gold font-bold text-xs d-flex align-center gap-1.5 mb-1">
+              <span>✍️ Tên Bài Viết / Đợt Lan Tỏa Cần Duyệt:</span>
+            </label>
+            <div class="d-flex gap-2 mb-2 flex-wrap">
+              <input type="text" class="form-control text-white font-medium" id="inputProofCampaignTitle" value="${escapeHtml(this.proofState.campaignTitle)}" placeholder="Nhập tên bài viết Fanpage..." style="flex: 2; min-width: 250px;">
+              <input type="url" class="form-control text-dim font-mono text-xs" id="inputProofCampaignUrl" value="${escapeHtml(this.proofState.postUrl)}" placeholder="Dán link bài viết Facebook (tùy chọn)..." style="flex: 1; min-width: 200px;">
+            </div>
+            <div class="d-flex gap-1.5 flex-wrap align-center">
+              <span class="text-xs text-dim mr-1">Gợi ý nhanh:</span>
+              <button type="button" class="btn btn-outline btn-xs btn-preset-campaign" data-title="Chia sẻ bài: Khai mạc Giải Cờ TNU - HGC">Giải Cờ TNU</button>
+              <button type="button" class="btn btn-outline btn-xs btn-preset-campaign" data-title="Lan tỏa bài: Tuyển thành viên CLB Đợt 1">Tuyển Thành Viên</button>
+              <button type="button" class="btn btn-outline btn-xs btn-preset-campaign" data-title="Tương tác bài: Sinh hoạt định kỳ cuối tuần">Sinh Hoạt CLB</button>
+              <button type="button" class="btn btn-outline btn-xs btn-preset-campaign" data-title="Chia sẻ bài: Chúc mừng thành tích kỳ thủ">Khen Thưởng</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Box 2: Bảng Điều Khiển & Danh Sách Thành Viên -->
+        <div class="card p-3 mb-3">
+          <!-- Toolbar -->
+          <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
+            <!-- Search -->
+            <div style="flex: 1; min-width: 240px; max-width: 360px;">
+              <div class="search-input-wrap" style="position: relative;">
+                <input type="text" class="form-control form-control-sm" id="inputProofSearch" value="${escapeHtml(this.proofState.searchQuery)}" placeholder="🔍 Tìm tên, MSSV, khoa/lớp..." style="padding-left: 28px; font-size: 0.8rem;">
+                <span style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; opacity: 0.6;">🔍</span>
+              </div>
+            </div>
+
+            <!-- Filter tabs -->
+            <div class="d-flex gap-1 flex-wrap">
+              <button type="button" class="btn btn-xs ${this.proofState.filterTab === 'all' ? 'btn-gold' : 'btn-outline'} btn-proof-tab" data-tab="all">
+                Tất cả (${members.length})
+              </button>
+              <button type="button" class="btn btn-xs ${this.proofState.filterTab === 'pending' ? 'btn-gold' : 'btn-outline'} btn-proof-tab" data-tab="pending">
+                Chưa duyệt (${totalPendingCount})
+              </button>
+              <button type="button" class="btn btn-xs ${this.proofState.filterTab === 'approved' ? 'btn-gold' : 'btn-outline'} btn-proof-tab" data-tab="approved">
+                Đã duyệt (${totalApprovedCount})
+              </button>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="d-flex gap-1.5 flex-wrap align-center">
+              <button type="button" class="btn btn-xs btn-outline" id="btnSelectAllFiltered">☑️ Chọn tất cả</button>
+              <button type="button" class="btn btn-xs btn-outline" id="btnUnselectAll">⬜ Bỏ chọn</button>
+              <button type="button" class="btn btn-xs btn-gold font-bold" id="btnSubmitProofApprovals" style="box-shadow: 0 0 10px rgba(212,175,55,0.4);" ${selectedCount === 0 ? 'disabled' : ''}>
+                ⚡ Xác Nhận Minh Chứng (${selectedCount} bạn)
+              </button>
+            </div>
+          </div>
+
+          <!-- Bảng thành viên -->
+          <div class="table-responsive" style="max-height: 420px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;">
+            <table class="data-table" style="font-size: 0.8rem; margin-bottom: 0;">
+              <thead style="position: sticky; top: 0; background: #161a23; z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">
+                <tr>
+                  <th style="width: 45px; text-align: center;">Chọn</th>
+                  <th style="width: 45px; text-align: center;">STT</th>
+                  <th style="min-width: 170px;">Kỳ Thủ</th>
+                  <th style="width: 110px;">MSSV / Mã Thẻ</th>
+                  <th style="min-width: 140px;">Khoa / Lớp / Đơn vị</th>
+                  <th style="text-align: center; width: 95px;">Hoạt Động</th>
+                  <th style="text-align: center; width: 130px;">Trạng Thái Đợt Này</th>
+                  <th style="text-align: center; width: 85px;">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredMembers.length === 0 ? `
+                  <tr>
+                    <td colspan="8" class="text-center text-muted p-4">
+                      Không tìm thấy kỳ thủ nào phù hợp với điều kiện tìm kiếm.
+                    </td>
+                  </tr>
+                ` : filteredMembers.map((m, idx) => {
+                  const isApproved = approvedMemberIds.has(m.id);
+                  const isChecked = this.proofState.selectedMemberIds.has(m.id);
+                  return `
+                    <tr style="${isChecked ? 'background: rgba(212,175,55,0.08);' : ''}">
+                      <td style="text-align: center; vertical-align: middle;">
+                        <input type="checkbox" class="proof-member-chk" data-id="${m.id}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--gold-primary);">
+                      </td>
+                      <td style="text-align: center; vertical-align: middle;" class="text-dim font-bold">${idx + 1}</td>
+                      <td style="vertical-align: middle;">
+                        <strong class="text-white">${escapeHtml(m.name || m.fullName)}</strong>
+                        <div class="text-xs text-dim">${escapeHtml(m.roleTitle || 'Hội viên')}</div>
+                      </td>
+                      <td style="vertical-align: middle;" class="font-mono text-xs text-gold">
+                        ${escapeHtml(m.studentId || m.id || '-')}
+                      </td>
+                      <td style="vertical-align: middle;" class="text-xs text-muted">
+                        ${escapeHtml(m.university || m.faculty || m.class || 'CLB Cờ')}
+                      </td>
+                      <td style="text-align: center; vertical-align: middle;">
+                        <span class="badge badge-gold font-bold">${m.activitiesJoined || 0}</span>
+                      </td>
+                      <td style="text-align: center; vertical-align: middle;">
+                        ${isApproved ? `
+                          <span class="badge badge-emerald font-bold" style="font-size: 10px;">✅ Đã duyệt (+1)</span>
+                        ` : `
+                          <span class="badge badge-outline" style="font-size: 10px; color: #fbbf24; border-color: rgba(251,191,36,0.3);">⏳ Chưa duyệt</span>
+                        `}
+                      </td>
+                      <td style="text-align: center; vertical-align: middle;">
+                        ${isApproved ? `
+                          <button type="button" class="btn btn-outline btn-xs btn-revert-proof text-danger" data-member-id="${m.id}" data-event-id="${matchedEventId}" title="Hủy duyệt và trừ lại 1 hoạt động" style="padding: 2px 6px; font-size: 10px; color: #fb7185; border-color: rgba(244,63,94,0.3);">
+                            ✕ Hủy
+                          </button>
+                        ` : `
+                          <button type="button" class="btn btn-outline btn-xs btn-quick-approve" data-id="${m.id}" title="Duyệt nhanh bạn này" style="padding: 2px 6px; font-size: 10px; color: #34d399; border-color: rgba(52,211,153,0.3);">
+                            +1 Duyệt
+                          </button>
+                        `}
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Box 3: Nhật Ký Duyệt Minh Chứng Gần Nhất -->
+        <div class="card p-3">
+          <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
+            <h4 class="font-bold text-white text-xs mb-0" style="letter-spacing: 0.5px;">
+              📋 LỊCH SỬ DUYỆT MINH CHỨNG LAN TỎA FANPAGE GẦN NHẤT
+            </h4>
+            <span class="text-xs text-muted">Lưu tự động vào Nhật ký điểm danh tập trung</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" style="font-size: 0.76rem; margin-bottom: 0;">
+              <thead>
+                <tr>
+                  <th style="width: 150px;">Thời Gian</th>
+                  <th>Kỳ Thủ Được Duyệt</th>
+                  <th>Tên Bài Viết / Chiến Dịch</th>
+                  <th style="width: 120px; text-align: center;">Phương Thức</th>
+                  <th style="width: 120px; text-align: center;">Kết Quả</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${recentLogs.length === 0 ? `
+                  <tr>
+                    <td colspan="5" class="text-center text-muted p-3">
+                      Chưa có lượt duyệt minh chứng nào.
+                    </td>
+                  </tr>
+                ` : recentLogs.map((log) => `
+                  <tr>
+                    <td class="text-dim font-mono">${log.timestamp || '-'}</td>
+                    <td>
+                      <strong class="text-white">${escapeHtml(log.memberName)}</strong>
+                      <span class="text-dim text-xs">(${escapeHtml(log.studentId || '')})</span>
+                    </td>
+                    <td class="text-white">${escapeHtml(log.eventTitle)}</td>
+                    <td style="text-align: center;">
+                      <span class="badge badge-cyan" style="font-size: 10px;">${escapeHtml(log.method || 'BĐH Duyệt Zalo')}</span>
+                    </td>
+                    <td style="text-align: center;">
+                      <span class="badge badge-emerald font-bold" style="font-size: 10px;">${escapeHtml(log.impact || '+1 Hoạt Động')}</span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.bindAdminProofsEvents(container);
+  }
+
+  bindAdminProofsEvents(container) {
+    // Title input
+    const titleInput = container.querySelector('#inputProofCampaignTitle');
+    titleInput?.addEventListener('input', (e) => {
+      this.proofState.campaignTitle = e.target.value;
+    });
+
+    // Url input
+    const urlInput = container.querySelector('#inputProofCampaignUrl');
+    urlInput?.addEventListener('input', (e) => {
+      this.proofState.postUrl = e.target.value;
+    });
+
+    // Preset campaigns
+    container.querySelectorAll('.btn-preset-campaign').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const title = btn.getAttribute('data-title');
+        this.proofState.campaignTitle = title;
+        if (titleInput) titleInput.value = title;
+        this.renderAdminProofs(container);
+      });
+    });
+
+    // Open post URL
+    container.querySelector('#btnOpenPostUrl')?.addEventListener('click', () => {
+      const url = this.proofState.postUrl || 'https://www.facebook.com';
+      window.open(url, '_blank');
+    });
+
+    // Search input
+    const searchInput = container.querySelector('#inputProofSearch');
+    searchInput?.addEventListener('input', (e) => {
+      this.proofState.searchQuery = e.target.value;
+      this.renderAdminProofs(container);
+      const newInp = container.querySelector('#inputProofSearch');
+      if (newInp) {
+        newInp.focus();
+        newInp.selectionStart = newInp.selectionEnd = newInp.value.length;
+      }
+    });
+
+    // Filter tabs
+    container.querySelectorAll('.btn-proof-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        this.proofState.filterTab = btn.getAttribute('data-tab');
+        this.renderAdminProofs(container);
+      });
+    });
+
+    // Checkbox click
+    container.querySelectorAll('.proof-member-chk').forEach((chk) => {
+      chk.addEventListener('change', () => {
+        const mId = chk.getAttribute('data-id');
+        if (chk.checked) {
+          this.proofState.selectedMemberIds.add(mId);
+        } else {
+          this.proofState.selectedMemberIds.delete(mId);
+        }
+        const btnSubmit = container.querySelector('#btnSubmitProofApprovals');
+        if (btnSubmit) {
+          const count = this.proofState.selectedMemberIds.size;
+          btnSubmit.innerHTML = `⚡ Xác Nhận Minh Chứng (${count} bạn)`;
+          btnSubmit.disabled = count === 0;
+        }
+      });
+    });
+
+    // Select all filtered
+    container.querySelector('#btnSelectAllFiltered')?.addEventListener('click', () => {
+      sound.playClick();
+      container.querySelectorAll('.proof-member-chk').forEach((chk) => {
+        chk.checked = true;
+        const mId = chk.getAttribute('data-id');
+        this.proofState.selectedMemberIds.add(mId);
+      });
+      const btnSubmit = container.querySelector('#btnSubmitProofApprovals');
+      if (btnSubmit) {
+        const count = this.proofState.selectedMemberIds.size;
+        btnSubmit.innerHTML = `⚡ Xác Nhận Minh Chứng (${count} bạn)`;
+        btnSubmit.disabled = count === 0;
+      }
+    });
+
+    // Unselect all
+    container.querySelector('#btnUnselectAll')?.addEventListener('click', () => {
+      sound.playClick();
+      this.proofState.selectedMemberIds.clear();
+      container.querySelectorAll('.proof-member-chk').forEach((chk) => {
+        chk.checked = false;
+      });
+      const btnSubmit = container.querySelector('#btnSubmitProofApprovals');
+      if (btnSubmit) {
+        btnSubmit.innerHTML = `⚡ Xác Nhận Minh Chứng (0 bạn)`;
+        btnSubmit.disabled = true;
+      }
+    });
+
+    // Quick approve single
+    container.querySelectorAll('.btn-quick-approve').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const mId = btn.getAttribute('data-id');
+        const campaignTitle = (this.proofState.campaignTitle || 'Lan tỏa bài viết Fanpage').trim();
+        const postUrl = this.proofState.postUrl || '';
+
+        try {
+          store.approveFanpageProofs({
+            campaignTitle,
+            postUrl,
+            memberIds: [mId],
+            note: 'Duyệt nhanh Zalo: Chia sẻ Fanpage'
+          });
+          sound.playSuccess();
+          modalManager.showAlert(`✅ Đã duyệt minh chứng và cộng +1 hoạt động cho kỳ thủ!`);
+          this.proofState.selectedMemberIds.delete(mId);
+          this.renderAdminProofs(container);
+          this.renderNotificationsList();
+        } catch (err) {
+          modalManager.showAlert('Lỗi: ' + err.message);
+        }
+      });
+    });
+
+    // Revert proof
+    container.querySelectorAll('.btn-revert-proof').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const mId = btn.getAttribute('data-member-id');
+        const evId = btn.getAttribute('data-event-id');
+        modalManager.showConfirm(
+          'Bạn có chắc chắn muốn hủy lượt duyệt này và trừ lại 1 hoạt động của kỳ thủ?',
+          () => {
+            store.revertFanpageProof(evId, mId);
+            sound.playSuccess();
+            modalManager.showAlert('Đã hoàn tác lượt duyệt hoạt động!');
+            this.renderAdminProofs(container);
+            this.renderNotificationsList();
+          },
+          null,
+          { title: 'HOÀN TÁC MINH CHỨNG', confirmText: 'Xác nhận hủy', danger: true }
+        );
+      });
+    });
+
+    // Submit batch approval
+    container.querySelector('#btnSubmitProofApprovals')?.addEventListener('click', () => {
+      sound.playClick();
+      const ids = Array.from(this.proofState.selectedMemberIds);
+      if (ids.length === 0) {
+        modalManager.showAlert('Vui lòng tích chọn ít nhất 1 thành viên!');
+        return;
+      }
+      const campaignTitle = (this.proofState.campaignTitle || 'Lan tỏa bài viết Fanpage CLB Cờ').trim();
+      const postUrl = this.proofState.postUrl || '';
+
+      try {
+        const res = store.approveFanpageProofs({
+          campaignTitle,
+          postUrl,
+          memberIds: ids,
+          note: 'Duyệt minh chứng Zalo: Chia sẻ Fanpage'
+        });
+        sound.playSuccess();
+
+        let msg = `✅ Đã duyệt thành công và cộng +1 hoạt động cho ${res.approvedCount} thành viên!`;
+        if (res.alreadyCount > 0) {
+          msg += `\n(Có ${res.alreadyCount} bạn trước đó đã được duyệt cho bài này nên được bỏ qua).`;
+        }
+        modalManager.showAlert(msg);
+
+        // Clear selection
+        this.proofState.selectedMemberIds.clear();
+        this.renderAdminProofs(container);
+        this.renderNotificationsList();
+      } catch (err) {
+        modalManager.showAlert('Lỗi: ' + err.message);
+      }
+    });
   }
 
   // Admin Sub 3: Users & Alumni Management (4 Tabs)

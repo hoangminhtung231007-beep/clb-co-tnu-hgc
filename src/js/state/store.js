@@ -1438,17 +1438,17 @@ class Store {
   }
 
   // ==========================================
-  // ZALO PROOF & FANPAGE SHARING OPERATIONS
+  // ZALO PROOF & ACTIVITY OPERATIONS
   // ==========================================
-  approveFanpageProofs({ campaignTitle, postUrl = '', memberIds = [], note = 'Minh chứng Zalo: Chia sẻ Fanpage' } = {}) {
+  approveFanpageProofs({ campaignTitle, memberIds = [], note = 'Duyệt minh chứng Zalo' } = {}) {
     if (!Array.isArray(memberIds) || memberIds.length === 0) {
       throw new Error('Vui lòng chọn ít nhất 1 thành viên để duyệt minh chứng!');
     }
-    const cleanTitle = (campaignTitle || 'Lan tỏa bài viết Fanpage CLB Cờ').trim();
+    const cleanTitle = (campaignTitle || 'Hoạt động chia sẻ Fanpage').trim();
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} - ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
 
-    // Tìm hoặc tạo hoạt động trong state.events cho chiến dịch này
+    // Tìm hoặc tạo sự kiện hoạt động
     let event = this.state.events.find(
       (e) => (e.title || '').trim().toLowerCase() === cleanTitle.toLowerCase()
     );
@@ -1459,57 +1459,39 @@ class Store {
         type: 'activity',
         date: `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`,
         time: 'Cả ngày',
-        location: 'Fanpage CLB Cờ & Zalo',
-        description: `Hoạt động lan tỏa bài viết trên Fanpage chính thức của CLB Cờ TNU - HGC. Minh chứng nộp qua nhóm Zalo. ${postUrl ? `Link bài: ${postUrl}` : ''}`,
-        postUrl: postUrl,
+        location: 'Zalo & Fanpage CLB Cờ',
+        description: `Hoạt động: ${cleanTitle}. Ghi nhận minh chứng qua Zalo.`,
         maxParticipants: 500,
         currentRegistered: 0,
         registeredMembers: [],
         checkinActive: false,
-        status: 'ongoing',
-        isFanpageActivity: true
+        status: 'ongoing'
       };
       this.state.events.unshift(event);
-    } else {
-      if (postUrl && !event.postUrl) event.postUrl = postUrl;
-      event.isFanpageActivity = true;
     }
 
     const approvedMembers = [];
-    const alreadyApprovedMembers = [];
 
     memberIds.forEach((mId) => {
       const member = this.state.members.find((m) => m.id === mId);
       if (!member) return;
 
-      // Kiểm tra trùng lặp: đã được duyệt cho sự kiện này chưa
-      const alreadyLogged = (this.state.attendanceLogs || []).find(
-        (log) => log.eventId === event.id && log.memberId === member.id && log.status === 'success'
-      );
-
-      if (alreadyLogged) {
-        alreadyApprovedMembers.push(member);
-        return;
-      }
-
-      // Tăng số hoạt động tham gia
+      // Cộng dồn chỉ số hoạt động
       member.activitiesJoined = (member.activitiesJoined || 0) + 1;
 
-      // Thêm vào danh sách tham gia của sự kiện
       if (!Array.isArray(event.registeredMembers)) event.registeredMembers = [];
       if (!event.registeredMembers.includes(member.id)) {
         event.registeredMembers.push(member.id);
         event.currentRegistered = event.registeredMembers.length;
       }
 
-      // Ghi nhận vào attendanceLogs
       const logId = `ATT-FP-${Date.now().toString().slice(-4)}-${Math.random().toString(36).substr(2, 4)}`;
       this.state.attendanceLogs.unshift({
         id: logId,
         eventId: event.id,
         eventTitle: event.title,
         category: 'activity',
-        categoryLabel: 'Lan Tỏa Fanpage',
+        categoryLabel: 'Hoạt Động',
         memberId: member.id,
         memberName: member.name || member.fullName,
         studentId: member.studentId || '',
@@ -1518,7 +1500,7 @@ class Store {
         method: 'BĐH Duyệt Zalo',
         status: 'success',
         impact: '+1 Hoạt Động Tham Gia',
-        note: note || 'Minh chứng chia sẻ Fanpage'
+        note: note || 'Duyệt minh chứng Zalo'
       });
 
       approvedMembers.push(member);
@@ -1531,9 +1513,7 @@ class Store {
       success: true,
       event,
       approvedCount: approvedMembers.length,
-      alreadyCount: alreadyApprovedMembers.length,
-      approvedMembers,
-      alreadyApprovedMembers
+      approvedMembers
     };
   }
 
@@ -1541,16 +1521,14 @@ class Store {
     const member = this.state.members.find((m) => m.id === memberId);
     if (!member) return;
 
-    // Tìm và xóa log duyệt
     const logIdx = (this.state.attendanceLogs || []).findIndex(
-      (log) => log.eventId === eventId && log.memberId === memberId && log.categoryLabel === 'Lan Tỏa Fanpage'
+      (log) => log.eventId === eventId && log.memberId === memberId
     );
     if (logIdx !== -1) {
       this.state.attendanceLogs.splice(logIdx, 1);
       member.activitiesJoined = Math.max(0, (member.activitiesJoined || 0) - 1);
     }
 
-    // Xóa khỏi registeredMembers
     const event = this.state.events.find((e) => e.id === eventId);
     if (event && Array.isArray(event.registeredMembers)) {
       event.registeredMembers = event.registeredMembers.filter((id) => id !== memberId);

@@ -89,9 +89,10 @@ export const memberCardComponent = {
 
               <!-- Card Body (Ảnh đại diện 125px + 8 trường thông tin + Khối Smart QR Key lấp đầy khoảng trống) -->
               <div class="id-card-body id-front-body">
-                <!-- Cột 1: Ảnh đại diện -->
-                <div class="id-avatar-wrap">
+                <!-- Cột 1: Ảnh đại diện (Hỗ trợ bấm để đổi avatar) -->
+                <div class="id-avatar-wrap" id="cardAvatarWrap" title="Bấm vào đây để đổi avatar ảnh thẻ" style="cursor: pointer; position: relative;">
                   <img src="${member.avatar}" alt="${member.name}" class="id-avatar">
+                  <div class="id-avatar-change-hint" style="position: absolute; bottom: 6px; right: 6px; background: rgba(15,23,42,0.85); border: 1.5px solid var(--border-gold); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--gold-color); pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,0.6);" title="Đổi Avatar">📸</div>
                 </div>
 
                 <!-- Cột 2: Thông tin chi tiết -->
@@ -280,10 +281,13 @@ export const memberCardComponent = {
           </div>
         </div>
 
-        <!-- Card Actions: Chỉ còn nút Tải Thẻ Thành Viên -->
+        <!-- Card Actions: Tải Thẻ Thành Viên & Đổi Avatar -->
         <div class="card-action-bar">
           <button id="btnDownloadCard" class="btn btn-gold btn-sm">
             <span class="btn-icon">⬇</span> Tải Thẻ Thành Viên
+          </button>
+          <button id="btnChangeAvatarCard" class="btn btn-outline btn-sm" style="border-color: rgba(56, 189, 248, 0.5); color: #38bdf8; font-weight: 600;">
+            <span class="btn-icon">📸</span> Đổi Avatar
           </button>
         </div>
       </div>
@@ -309,6 +313,21 @@ export const memberCardComponent = {
       sound.playClick();
       flipInner.classList.toggle('is-flipped');
     });
+
+    // Chức năng Đổi Avatar Thẻ Thành Viên
+    const triggerChangeAvatar = (e) => {
+      if (e) e.stopPropagation();
+      sound.playClick();
+      modalManager.openChangeAvatarModal(member, (updatedMember) => {
+        memberCardComponent.render(containerEl, updatedMember);
+      });
+    };
+
+    const btnChangeAvatar = containerEl.querySelector('#btnChangeAvatarCard');
+    btnChangeAvatar?.addEventListener('click', triggerChangeAvatar);
+
+    const avatarWrap = containerEl.querySelector('#cardAvatarWrap');
+    avatarWrap?.addEventListener('click', triggerChangeAvatar);
 
     // Chức năng tải ảnh thẻ thành viên 2 mặt (Mặt trước & Mặt sau)
     const btnDownload = containerEl.querySelector('#btnDownloadCard');

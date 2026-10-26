@@ -45,6 +45,9 @@ export const modalManager = {
     } else if (contentHtml.includes('swiss-setup-modal') || contentHtml.includes('swiss-admin-modal') || contentHtml.includes('swiss-public-modal')) {
       dialogEl.style.maxWidth = '980px';
       dialogEl.style.width = '96%';
+    } else if (contentHtml.includes('change-avatar-modal-wrap')) {
+      dialogEl.style.maxWidth = '640px';
+      dialogEl.style.width = '95%';
     } else {
       dialogEl.style.maxWidth = '';
     }
@@ -4929,6 +4932,302 @@ export const modalManager = {
         };
       }
     }, 50);
+  },
+
+  // 17. Studio Đổi Ảnh Thẻ Thành Viên Chuẩn Tỷ Lệ
+  openChangeAvatarModal(member, onComplete = null) {
+    if (!member) return;
+    const latestMember = store.getMemberById(member.id) || member;
+    let currentRawSrc = latestMember.avatar || '/logo.png';
+    let finalAvatarExport = currentRawSrc;
+
+    const contentHtml = `
+      <div class="change-avatar-modal-wrap" style="max-width: 620px; margin: 0 auto;">
+        <!-- Banner hướng dẫn -->
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; display: flex; gap: 10px; align-items: center;">
+          <div style="font-size: 24px; flex-shrink: 0;">📸</div>
+          <div class="text-xs text-muted" style="line-height: 1.5;">
+            Khung ảnh chuẩn tỷ lệ thẻ thành viên (125 × 152 px). Bạn có thể tải ảnh từ điện thoại/máy tính hoặc dán link, sau đó <strong class="text-white">kéo thả / cuộn chuột</strong> để căn chỉnh góc đẹp nhất.
+          </div>
+        </div>
+
+        <!-- Chọn ảnh từ thiết bị hoặc URL -->
+        <div class="d-flex gap-2 mb-3 flex-wrap align-center">
+          <label class="btn btn-gold btn-sm" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin: 0;">
+            <span>📁 Chọn ảnh từ thiết bị</span>
+            <input type="file" id="changeAvatarFileInput" accept="image/*" style="display: none;">
+          </label>
+          <span class="text-xs text-muted">hoặc dán liên kết:</span>
+          <input type="url" id="changeAvatarUrlInput" class="form-input form-input-sm flex-1" style="min-width: 200px;" 
+                 value="${currentRawSrc && !currentRawSrc.startsWith('data:') ? currentRawSrc : ''}" placeholder="https://images.unsplash.com/...">
+        </div>
+
+        <!-- Khung Studio Cắt / Căn Chỉnh Ảnh Thẻ -->
+        <div style="background: radial-gradient(circle at 50% 50%, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%); border: 1.5px dashed rgba(212,175,55,0.45); border-radius: 14px; padding: 16px;">
+          <div style="display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap;">
+            
+            <!-- Khung Canvas tương tác chuẩn tỷ lệ thẻ 125x152 -->
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+              <div id="changeAvatarViewportFrame" style="position: relative; width: 150px; height: 182px; border-radius: 14px; overflow: hidden; border: 2.5px solid var(--border-gold); box-shadow: 0 6px 24px rgba(0,0,0,0.7); background: #0b1120; cursor: grab; user-select: none;">
+                <canvas id="changeAvatarCropCanvas" width="375" height="456" style="width: 150px; height: 182px; display: block;"></canvas>
+                <div style="position: absolute; inset: 0; pointer-events: none; border: 1px dashed rgba(212,175,55,0.4); border-radius: 14px;"></div>
+                <span style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; background: rgba(0,0,0,0.75); color: #f8fafc; padding: 2px 8px; border-radius: 10px; pointer-events: none; white-space: nowrap;">👆 Kéo để di chuyển</span>
+              </div>
+              <span class="badge badge-gold text-xs" style="font-size: 0.7rem; font-weight: 600;">Chuẩn khung thẻ 125 × 152</span>
+            </div>
+
+            <!-- Thanh trượt điều khiển Zoom, Trục X, Trục Y -->
+            <div style="flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 10px;">
+              <div>
+                <div class="d-flex justify-between text-xs mb-1">
+                  <span class="text-white font-medium">🔍 Thu phóng (Zoom):</span>
+                  <span id="changeAvatarZoomVal" class="text-gold font-mono font-bold">1.00x</span>
+                </div>
+                <input type="range" id="changeAvatarZoomSlider" min="0.5" max="3" step="0.02" value="1" class="form-range" style="width: 100%; accent-color: var(--gold-color);">
+              </div>
+
+              <div>
+                <div class="d-flex justify-between text-xs mb-1">
+                  <span class="text-white font-medium">↔️ Dịch chuyển ngang (Trục X):</span>
+                  <span id="changeAvatarPosXVal" class="text-cyan font-mono font-bold">0px</span>
+                </div>
+                <input type="range" id="changeAvatarPosXSlider" min="-180" max="180" step="1" value="0" class="form-range" style="width: 100%; accent-color: var(--cyan-color);">
+              </div>
+
+              <div>
+                <div class="d-flex justify-between text-xs mb-1">
+                  <span class="text-white font-medium">↕️ Dịch chuyển dọc (Trục Y):</span>
+                  <span id="changeAvatarPosYVal" class="text-cyan font-mono font-bold">0px</span>
+                </div>
+                <input type="range" id="changeAvatarPosYSlider" min="-180" max="180" step="1" value="0" class="form-range" style="width: 100%; accent-color: var(--cyan-color);">
+              </div>
+
+              <div class="d-flex gap-2 pt-1">
+                <button type="button" id="btnFitChangeAvatar" class="btn btn-outline btn-sm text-xs flex-1">📐 Căn vừa khung</button>
+                <button type="button" id="btnResetChangeAvatar" class="btn btn-outline btn-sm text-xs flex-1">🔄 Đặt lại góc</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.open(`📸 Đổi Ảnh Thẻ Thành Viên: ${latestMember.name}`, contentHtml, () => {
+      if (finalAvatarExport) {
+        const updated = store.updateMember(latestMember.id, { avatar: finalAvatarExport });
+        sound.playSuccess();
+        modalManager.showAlert(`Đã cập nhật ảnh đại diện thẻ thành công cho kỳ thủ [${latestMember.name}]!`);
+        if (typeof onComplete === 'function') {
+          onComplete(updated || { ...latestMember, avatar: finalAvatarExport });
+        }
+      }
+      return true;
+    }, '💾 Lưu Ảnh Thẻ Mới');
+
+    setTimeout(() => {
+      const modalEl = document.getElementById('globalAppModal');
+      if (!modalEl) return;
+
+      const canvas = modalEl.querySelector('#changeAvatarCropCanvas');
+      const ctx = canvas ? canvas.getContext('2d') : null;
+      const fileInput = modalEl.querySelector('#changeAvatarFileInput');
+      const urlInput = modalEl.querySelector('#changeAvatarUrlInput');
+      const zoomSlider = modalEl.querySelector('#changeAvatarZoomSlider');
+      const posXSlider = modalEl.querySelector('#changeAvatarPosXSlider');
+      const posYSlider = modalEl.querySelector('#changeAvatarPosYSlider');
+      const zoomLabel = modalEl.querySelector('#changeAvatarZoomVal');
+      const posXLabel = modalEl.querySelector('#changeAvatarPosXVal');
+      const posYLabel = modalEl.querySelector('#changeAvatarPosYVal');
+      const resetBtn = modalEl.querySelector('#btnResetChangeAvatar');
+      const fitBtn = modalEl.querySelector('#btnFitChangeAvatar');
+      const viewport = modalEl.querySelector('#changeAvatarViewportFrame');
+
+      let img = new Image();
+      img.crossOrigin = 'anonymous';
+      let zoom = 1.0;
+      let offsetX = 0;
+      let offsetY = 0;
+      let isDragging = false;
+      let startDragX = 0;
+      let startDragY = 0;
+
+      const updateFinalExport = () => {
+        try {
+          if (canvas && img.complete && img.naturalWidth) {
+            finalAvatarExport = canvas.toDataURL('image/jpeg', 0.92);
+          }
+        } catch (e) {
+          finalAvatarExport = currentRawSrc;
+        }
+      };
+
+      const draw = () => {
+        if (!ctx || !img.complete || !img.naturalWidth) return;
+        const cw = canvas.width; // 375
+        const ch = canvas.height; // 456
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, cw, ch);
+
+        const nw = img.naturalWidth;
+        const nh = img.naturalHeight;
+        const aspect = nw / nh;
+        const frameAspect = cw / ch;
+
+        let baseW, baseH;
+        if (aspect > frameAspect) {
+          baseH = ch;
+          baseW = ch * aspect;
+        } else {
+          baseW = cw;
+          baseH = cw / aspect;
+        }
+
+        const scaleDpi = cw / 150; // 2.5
+        const drawW = baseW * zoom;
+        const drawH = baseH * zoom;
+        const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
+        const drawY = (ch - drawH) / 2 + (offsetY * scaleDpi);
+
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        updateFinalExport();
+      };
+
+      const updateControls = () => {
+        if (zoomSlider) zoomSlider.value = zoom;
+        if (posXSlider) posXSlider.value = Math.round(offsetX);
+        if (posYSlider) posYSlider.value = Math.round(offsetY);
+        if (zoomLabel) zoomLabel.textContent = `${zoom.toFixed(2)}x`;
+        if (posXLabel) posXLabel.textContent = `${Math.round(offsetX)}px`;
+        if (posYLabel) posYLabel.textContent = `${Math.round(offsetY)}px`;
+      };
+
+      const loadSource = (src) => {
+        currentRawSrc = src;
+        finalAvatarExport = src;
+        img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          zoom = 1.0;
+          offsetX = 0;
+          offsetY = 0;
+          updateControls();
+          draw();
+        };
+        img.onerror = () => {
+          img = new Image();
+          img.onload = () => {
+            zoom = 1.0;
+            offsetX = 0;
+            offsetY = 0;
+            updateControls();
+            draw();
+          };
+          img.src = src;
+        };
+        img.src = src;
+      };
+
+      if (viewport) {
+        const onStart = (cx, cy) => {
+          isDragging = true;
+          startDragX = cx - offsetX;
+          startDragY = cy - offsetY;
+          viewport.style.cursor = 'grabbing';
+        };
+        const onMove = (cx, cy) => {
+          if (!isDragging) return;
+          offsetX = Math.max(-180, Math.min(180, cx - startDragX));
+          offsetY = Math.max(-180, Math.min(180, cy - startDragY));
+          updateControls();
+          draw();
+        };
+        const onEnd = () => {
+          if (isDragging) {
+            isDragging = false;
+            viewport.style.cursor = 'grab';
+          }
+        };
+
+        viewport.addEventListener('mousedown', (e) => onStart(e.clientX, e.clientY));
+        window.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', onEnd);
+
+        viewport.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 1) onStart(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        window.addEventListener('touchmove', (e) => {
+          if (isDragging && e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        window.addEventListener('touchend', onEnd);
+
+        viewport.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const delta = e.deltaY < 0 ? 0.06 : -0.06;
+          zoom = Math.max(0.5, Math.min(3.0, zoom + delta));
+          updateControls();
+          draw();
+        }, { passive: false });
+      }
+
+      zoomSlider?.addEventListener('input', (e) => {
+        zoom = parseFloat(e.target.value);
+        if (zoomLabel) zoomLabel.textContent = `${zoom.toFixed(2)}x`;
+        draw();
+      });
+
+      posXSlider?.addEventListener('input', (e) => {
+        offsetX = parseFloat(e.target.value);
+        if (posXLabel) posXLabel.textContent = `${Math.round(offsetX)}px`;
+        draw();
+      });
+
+      posYSlider?.addEventListener('input', (e) => {
+        offsetY = parseFloat(e.target.value);
+        if (posYLabel) posYLabel.textContent = `${Math.round(offsetY)}px`;
+        draw();
+      });
+
+      resetBtn?.addEventListener('click', () => {
+        sound.playClick();
+        zoom = 1.0;
+        offsetX = 0;
+        offsetY = 0;
+        updateControls();
+        draw();
+      });
+
+      fitBtn?.addEventListener('click', () => {
+        sound.playClick();
+        zoom = 1.0;
+        offsetX = 0;
+        offsetY = 0;
+        updateControls();
+        draw();
+      });
+
+      fileInput?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            loadSource(evt.target.result);
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      urlInput?.addEventListener('change', (e) => {
+        const val = e.target.value.trim();
+        if (val) {
+          loadSource(val);
+        }
+      });
+
+      // Initial load
+      loadSource(currentRawSrc);
+    }, 60);
   }
 };
 

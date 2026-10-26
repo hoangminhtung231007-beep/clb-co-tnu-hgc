@@ -342,6 +342,7 @@ class Store {
     const idx = this.state.members.findIndex((m) => m.id === id);
     if (idx !== -1) {
       this.state.members[idx] = { ...this.state.members[idx], ...updatedFields };
+      this.saveState();
       this.notify();
       return this.state.members[idx];
     }

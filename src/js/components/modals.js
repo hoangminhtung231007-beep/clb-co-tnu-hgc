@@ -3135,22 +3135,22 @@ export const modalManager = {
         <tr class="swiss-player-row" data-id="${p.id}">
           <td style="text-align: center; vertical-align: middle;" class="font-bold text-gold swiss-p-stt">${idx + 1}</td>
           <td style="vertical-align: middle;">
-            <input type="text" class="form-control form-control-sm swiss-p-name text-white font-medium" value="${escapeHtml(p.name || '')}" placeholder="Họ và tên..." style="font-size: 0.8rem; padding: 5px 8px; background: rgba(0,0,0,0.3);">
+            <input type="text" class="form-input form-input-sm swiss-p-name" value="${escapeHtml(p.name || '')}" placeholder="Họ và tên..." style="color: #ffffff !important; font-weight: 700; font-size: 0.88rem; padding: 7px 10px; background: rgba(15, 23, 42, 0.95); border: 1.5px solid rgba(212, 175, 55, 0.4); border-radius: 6px; width: 100%;">
           </td>
           <td style="text-align: center; vertical-align: middle;">
-            <select class="form-control form-control-sm swiss-p-gender" style="font-size: 0.8rem; padding: 5px 6px; background: rgba(0,0,0,0.3);">
-              <option value="Nam" ${p.gender === 'Nam' ? 'selected' : ''}>Nam</option>
-              <option value="Nữ" ${p.gender === 'Nữ' ? 'selected' : ''}>Nữ</option>
+            <select class="form-select form-select-sm swiss-p-gender" style="color: #ffffff !important; font-weight: 600; font-size: 0.85rem; padding: 7px 8px; background: #0f172a; border: 1.5px solid rgba(212, 175, 55, 0.4); border-radius: 6px; width: 100%;">
+              <option value="Nam" ${p.gender === 'Nam' ? 'selected' : ''} style="background: #0f172a; color: #ffffff;">Nam</option>
+              <option value="Nữ" ${p.gender === 'Nữ' ? 'selected' : ''} style="background: #0f172a; color: #ffffff;">Nữ</option>
             </select>
           </td>
           <td style="vertical-align: middle;">
-            <input type="text" class="form-control form-control-sm swiss-p-unit" value="${escapeHtml(p.unit || '')}" placeholder="Khoa / Lớp / Trường..." style="font-size: 0.8rem; padding: 5px 8px; background: rgba(0,0,0,0.3);">
+            <input type="text" class="form-input form-input-sm swiss-p-unit" value="${escapeHtml(p.unit || '')}" placeholder="Khoa / Lớp / Trường..." style="color: #f1f5f9 !important; font-size: 0.85rem; padding: 7px 10px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 6px; width: 100%;">
           </td>
           <td style="vertical-align: middle;">
-            <input type="text" class="form-control form-control-sm swiss-p-phone" value="${escapeHtml(p.phone || '')}" placeholder="SĐT / Zalo..." style="font-size: 0.8rem; padding: 5px 8px; background: rgba(0,0,0,0.3);">
+            <input type="text" class="form-input form-input-sm swiss-p-phone" value="${escapeHtml(p.phone || '')}" placeholder="SĐT / Zalo..." style="color: #f1f5f9 !important; font-size: 0.85rem; padding: 7px 10px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 6px; width: 100%;">
           </td>
           <td style="text-align: center; vertical-align: middle;">
-            <button type="button" class="btn btn-outline btn-xs btn-del-player-row" data-id="${p.id}" title="Xóa dòng" style="padding: 2px 7px; color: #fb7185; border-color: rgba(244,63,94,0.3);">✕</button>
+            <button type="button" class="btn btn-outline btn-xs btn-del-player-row" data-id="${p.id}" title="Xóa dòng" style="padding: 4px 8px; color: #fb7185; border-color: rgba(244,63,94,0.4); border-radius: 6px;">✕</button>
           </td>
         </tr>
       `).join('');
@@ -3178,7 +3178,7 @@ export const modalManager = {
                   <span>✍️ Tổng Số Vòng Đấu (Trọng tài tự viết số ván):</span>
                 </label>
                 <div class="d-flex align-center gap-2 mb-2">
-                  <input type="number" class="form-control font-mono font-bold text-gold" id="swissTotalRoundsInput" value="5" min="1" max="50" step="1" style="width: 130px; font-size: 1.15rem; padding: 6px 12px;" placeholder="VD: 5">
+                  <input type="number" class="form-input form-input-sm font-mono font-bold text-gold" id="swissTotalRoundsInput" value="5" min="1" max="50" step="1" style="width: 130px; font-size: 1.15rem; padding: 6px 12px; color: var(--gold-light) !important; background: rgba(15,23,42,0.95); border: 1.5px solid var(--border-gold);" placeholder="VD: 5">
                   <span class="text-xs text-muted">Ván / Vòng đấu (Trọng tài nhập số ván tùy chỉnh theo điều lệ giải)</span>
                 </div>
                 <div class="d-flex gap-1.5 flex-wrap align-center">

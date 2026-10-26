@@ -120,6 +120,7 @@ p {
   color: var(--text-muted);
 }
 
+.text-white { color: #ffffff !important; }
 .text-gold { color: var(--gold-light) !important; }
 .text-cyan { color: var(--accent-cyan) !important; }
 .text-emerald { color: var(--accent-emerald) !important; }

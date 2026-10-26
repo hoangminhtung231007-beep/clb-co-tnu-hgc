@@ -1140,7 +1140,7 @@ class App {
               Nơi Hội Tụ <span class="gradient-text">Bản Lĩnh - Trí Tuệ</span> & Văn Hóa Kỳ Thủ
             </h1>
             <p class="hero-description">
-              Hệ thống Cổng thông tin và buồng lái quản trị chính thức của CLB Cờ TNU - HGC, Đại học Thái Nguyên Phân hiệu tại Hà Giang. Tích hợp Thẻ thành viên điện tử Smart QR Key, bảng xếp hạng Elo nội bộ và điểm danh thông minh.
+              Hệ thống Cổng thông tin và buồng lái quản trị chính thức của CLB Cờ TNU - HGC, Đại học Thái Nguyên Phân hiệu tại Hà Giang.
             </p>
           </div>
         </section>

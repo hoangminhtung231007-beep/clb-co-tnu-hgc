@@ -48,7 +48,7 @@ class App {
     const sessionRole = store.getState().currentSession?.role;
     if (sessionRole === 'admin') {
       this.currentView = 'admin';
-      this.adminSubView = window.innerWidth <= 768 ? 'admin-checkin' : 'admin-overview';
+      this.adminSubView = window.innerWidth <= 768 ? 'admin-checkin' : (this.adminSubView || 'admin-overview');
     } else if (sessionRole === 'member') {
       this.currentView = 'member-pass';
     }
@@ -103,7 +103,7 @@ class App {
 
     window.addEventListener('resize', () => {
       const isMobile = window.innerWidth <= 768;
-      if (isMobile && this.currentView === 'admin' && !this.adminSubView) {
+      if (isMobile && this.currentView === 'admin' && this.adminSubView !== 'admin-checkin') {
         this.adminSubView = 'admin-checkin';
         const dashboard = document.getElementById('mainViewport');
         if (dashboard) this.renderAdminDashboard(dashboard);
@@ -206,20 +206,27 @@ class App {
     const role = state.currentSession.role;
     const activeMember = store.getActiveMember();
     const isGuest = role === 'guest';
+    const isAdmin = role === 'admin';
     const drawerOverlay = document.getElementById('mobileDrawerOverlay');
     if (!drawerOverlay) return;
 
-    // Highlight active link
+    // Highlight active link & control link visibility by role
     drawerOverlay.querySelectorAll('.mobile-drawer-item').forEach((item) => {
       const v = item.getAttribute('data-view');
       item.classList.toggle('active', v === this.currentView);
+      if (isAdmin) {
+        // Chế độ Admin trên điện thoại: Chỉ hiển thị duy nhất mục Quét QR Điểm Danh
+        item.style.display = (v === 'admin') ? 'flex' : 'none';
+      } else {
+        if (v === 'admin') {
+          item.style.display = 'none';
+        } else if (v === 'member-pass') {
+          item.style.display = isGuest ? 'none' : 'flex';
+        } else {
+          item.style.display = 'flex';
+        }
+      }
     });
-
-    // Hide or show Thẻ thành viên in drawer
-    const drawerPassItem = document.getElementById('drawerItemMemberPass');
-    if (drawerPassItem) {
-      drawerPassItem.style.display = isGuest ? 'none' : 'flex';
-    }
 
     // Render Auth Greeting Card in Drawer
     const authBox = document.getElementById('mobileDrawerAuth');
@@ -233,6 +240,19 @@ class App {
                 <div class="text-xs text-muted" style="margin-top:2px;">Đăng ký tham gia để cấp Thẻ Thành Viên</div>
               </div>
               <button class="btn btn-gold btn-xs" id="btnDrawerRegister" style="padding: 5px 12px; font-weight:700;">Đăng Ký</button>
+            </div>
+          </div>
+        `;
+      } else if (isAdmin) {
+        authBox.innerHTML = `
+          <div class="card p-3 mb-3" style="background: rgba(212,175,55,0.12); border: 1.5px solid var(--gold-primary);">
+            <div class="d-flex align-center gap-2">
+              <span style="font-size: 1.8rem;">👑</span>
+              <div style="flex:1; min-width:0;">
+                <div class="text-xs font-bold text-gold">Quản Trị Viên (Admin)</div>
+                <div class="text-xs text-dim">Chế độ Quét QR Điểm Danh Di Động</div>
+              </div>
+              <span class="badge badge-gold" style="font-size:10px;">SCANNER</span>
             </div>
           </div>
         `;
@@ -265,6 +285,12 @@ class App {
           <div class="text-center mt-2">
             <a href="#" id="btnDrawerAdminLink" class="text-dim hover-gold text-xs" style="font-size:11px;">🔒 Dành cho Quản trị viên</a>
           </div>
+        `;
+      } else if (isAdmin) {
+        footerBox.innerHTML = `
+          <button class="btn btn-outline btn-sm w-100" id="btnDrawerLogout" style="padding: 9px; font-weight: 600; border-color: rgba(244,63,94,0.3); color: #fb7185;">
+            <span>🚪</span> <span>Đăng Xuất Quản Trị</span>
+          </button>
         `;
       } else {
         footerBox.innerHTML = `
@@ -814,8 +840,9 @@ class App {
         sound.playClick();
         const curRole = store.getState().currentSession?.role;
         if (curRole === 'admin') {
-          this.adminSubView = 'admin-overview';
-          this.navigateTo('admin', 'admin-overview');
+          const isMobile = window.innerWidth <= 768;
+          this.adminSubView = isMobile ? 'admin-checkin' : (this.adminSubView || 'admin-overview');
+          this.navigateTo('admin', this.adminSubView);
         } else if (curRole === 'member') {
           this.navigateTo('member-pass');
         }
@@ -829,8 +856,9 @@ class App {
         e.preventDefault();
         sound.playClick();
         if (store.getState().currentSession?.role === 'admin') {
-          this.adminSubView = 'admin-overview';
-          this.navigateTo('admin', 'admin-overview');
+          const isMobile = window.innerWidth <= 768;
+          this.adminSubView = isMobile ? 'admin-checkin' : (this.adminSubView || 'admin-overview');
+          this.navigateTo('admin', this.adminSubView);
         } else {
           modalManager.openLoginModal('admin');
         }
@@ -2267,16 +2295,52 @@ class App {
   // ==========================================
   renderAdminDashboard(container) {
     const isMobile = window.innerWidth <= 768;
-    if (isMobile && !this.adminSubView) {
-      this.adminSubView = 'admin-checkin';
+    this.adminSubView = isMobile ? 'admin-checkin' : (this.adminSubView || 'admin-overview');
+
+    // NẾU Ở GIAO DIỆN ĐIỆN THOẠI (MOBILE): CHỈ HIỂN THỊ DUY NHẤT PHẦN QUÉT QR ĐIỂM DANH
+    if (isMobile) {
+      container.innerHTML = `
+        <div class="admin-dashboard-view admin-mobile-scanner-only animate-fadeIn" style="max-width: 600px; margin: 0 auto; padding: 4px;">
+          <!-- Top Sleek Header cho Admin trên điện thoại -->
+          <div class="card p-3 mb-3 d-flex justify-between align-center flex-wrap gap-2" style="background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(15,23,42,0.95)); border: 1.5px solid var(--gold-primary); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div class="d-flex align-center gap-2">
+              <div style="font-size: 1.6rem; line-height: 1;">👑</div>
+              <div>
+                <div class="d-flex align-center gap-1.5">
+                  <h3 class="font-bold text-gold text-sm mb-0">QUẢN TRỊ VIÊN</h3>
+                  <span class="badge badge-gold" style="font-size: 9px; padding: 1px 6px;">SCANNER</span>
+                </div>
+                <span class="text-xs text-dim">Chế độ Quét QR Điểm Danh Di Động</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline btn-xs" id="btnAdminMobileLogout" style="border-color: rgba(244,63,94,0.4); color: #fb7185; font-size: 11px; padding: 6px 12px; font-weight: 600; border-radius: 6px;">
+              🚪 Đăng xuất
+            </button>
+          </div>
+
+          <!-- Chứa duy nhất phần quét QR và nhật ký điểm danh -->
+          <div id="adminActualSubContent"></div>
+        </div>
+      `;
+
+      container.querySelector('#btnAdminMobileLogout')?.addEventListener('click', () => {
+        sound.playClick();
+        store.setRole('guest');
+        this.navigateTo('home');
+      });
+
+      const targetPane = container.querySelector('#adminActualSubContent');
+      this.renderAdminCheckin(targetPane);
+      return;
     }
+
+    // GIAO DIỆN DESKTOP: ĐẦY ĐỦ SIDEBAR VÀ CÁC SUBVIEWS QUẢN TRỊ
     const state = store.getState();
 
     container.innerHTML = `
-      <div class="admin-dashboard-view animate-fadeIn ${isMobile ? 'admin-mobile-scanner-only' : ''}">
+      <div class="admin-dashboard-view animate-fadeIn">
         <div class="admin-layout-container">
           <!-- Admin Sidebar Navigation (Desktop only) -->
-          ${!isMobile ? `
           <aside class="admin-sidebar">
             <div class="admin-sidebar-header" style="display: flex; align-items: center; justify-content: center; padding: 10px 14px 14px;">
               <div class="admin-role-badge" style="font-size: 0.8rem; padding: 5px 14px; border-radius: 20px; border: 1px solid rgba(212,175,55,0.45); color: var(--gold-light); background: rgba(212,175,55,0.12); white-space: nowrap; font-weight: 700; width: 100%; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;">
@@ -2354,21 +2418,9 @@ class App {
               </span>
             </div>
           </aside>
-          ` : ''}
 
           <!-- Main Admin Content Pane -->
           <main class="admin-content-pane" id="adminSubContentPane">
-            ${isMobile ? `
-              <div class="admin-mobile-subnav mb-3 d-flex gap-1.5" style="overflow-x: auto; white-space: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch;">
-                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-checkin' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-checkin">📷 Điểm danh</button>
-                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-proofs' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-proofs">📱 Xác nhận minh chứng</button>
-                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-overview' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-overview">📊 Tổng quan</button>
-                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-users' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-users">👥 Thành viên (${state.members.length})</button>
-                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-swiss' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-swiss">⚔️ Xếp bảng</button>
-                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-funds' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-funds">💰 Quỹ</button>
-                <button type="button" class="btn btn-xs ${this.adminSubView === 'admin-events' ? 'btn-gold' : 'btn-outline'} btn-admin-mobile-tab" data-sub="admin-events">🏆 Sự kiện</button>
-              </div>
-            ` : ''}
             <div id="adminActualSubContent"></div>
           </main>
         </div>
@@ -2393,16 +2445,6 @@ class App {
       });
     });
 
-    // Bind mobile admin tabs
-    container.querySelectorAll('.btn-admin-mobile-tab').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        sound.playClick();
-        const sub = btn.getAttribute('data-sub');
-        this.adminSubView = sub;
-        this.renderAdminDashboard(container);
-      });
-    });
-
     const pane = container.querySelector('#adminSubContentPane');
     this.renderAdminSubView(pane);
   }
@@ -2410,6 +2452,12 @@ class App {
   renderAdminSubView(container) {
     if (!container) return;
     const targetPane = container.querySelector('#adminActualSubContent') || container;
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      this.adminSubView = 'admin-checkin';
+      this.renderAdminCheckin(targetPane);
+      return;
+    }
 
     switch (this.adminSubView) {
       case 'admin-overview':

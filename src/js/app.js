@@ -575,7 +575,7 @@ class App {
     // 10. (ADMIN) CÓ ĐƠN ĐĂNG KÝ MỚI CHỜ DUYỆT
     // =========================================================================
     if (isAdmin) {
-      const pendingApps = (state.registrationApplications || []).filter((a) => a.status === 'pending');
+      const pendingApps = (state.pendingApplications || []).filter((a) => a.status === 'pending');
       if (pendingApps.length > 0) {
         notifications.push({
           id: `notif_pending_apps_${pendingApps.length}`,
@@ -740,6 +740,9 @@ class App {
       if (notif.targetView) {
         if (notif.targetView === 'admin' && notif.targetSubView) {
           this.adminSubView = notif.targetSubView;
+          if (notif.targetSubView === 'admin-users') {
+            this.adminUserSubTab = 'pending';
+          }
           this.navigateTo('admin', notif.targetSubView);
         } else {
           this.navigateTo(notif.targetView);
@@ -822,6 +825,9 @@ class App {
         if (targetView) {
           if (targetView === 'admin' && targetSubView) {
             this.adminSubView = targetSubView;
+            if (targetSubView === 'admin-users') {
+              this.adminUserSubTab = 'pending';
+            }
             this.navigateTo('admin', targetSubView);
           } else {
             this.navigateTo(targetView);
@@ -2348,7 +2354,9 @@ class App {
               <div class="admin-nav-left">
                 <span>👥</span> <span>Thành viên</span>
               </div>
-              <span class="admin-nav-badge">${state.members.length}</span>
+              ${(state.pendingApplications || []).length > 0 
+                ? `<span class="badge badge-rose" style="padding: 1px 7px; font-size: 0.72rem; border-radius: 10px;">${state.pendingApplications.length} đơn</span>` 
+                : `<span class="admin-nav-badge">${state.members.length}</span>`}
             </div>
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-events' ? 'active' : ''}" data-sub="admin-events">
@@ -2893,7 +2901,11 @@ class App {
     if (!pane) return;
     const state = store.getState();
     const pendingCount = (state.pendingApplications || []).length;
-    this.adminUserSubTab = this.adminUserSubTab || (pendingCount > 0 ? 'pending' : 'active');
+    if (!this._userSelectedUserSubTab && pendingCount > 0) {
+      this.adminUserSubTab = 'pending';
+    } else {
+      this.adminUserSubTab = this.adminUserSubTab || (pendingCount > 0 ? 'pending' : 'active');
+    }
 
     const activeCount = (state.members || []).length;
     const alumniBoardCount = (state.alumniBoard || []).length;
@@ -3169,6 +3181,7 @@ class App {
     pane.querySelectorAll('#adminUsersSubTabs button').forEach((btn) => {
       btn.addEventListener('click', () => {
         sound.playClick();
+        this._userSelectedUserSubTab = true;
         this.adminUserSubTab = btn.getAttribute('data-tab');
         this.renderAdminUsers(pane);
       });

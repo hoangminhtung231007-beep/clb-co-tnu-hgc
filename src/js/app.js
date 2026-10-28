@@ -954,20 +954,9 @@ class App {
     if (btnUpdateData) {
       btnUpdateData.addEventListener('click', () => {
         sound.playSuccess();
-        const origHtml = btnUpdateData.innerHTML;
-        btnUpdateData.innerHTML = `<span>⏳</span> Đang đồng bộ...`;
+        btnUpdateData.innerHTML = `<span>⏳</span> Đang tải lại hệ thống...`;
         btnUpdateData.disabled = true;
-
-        store.notify();
-        this.renderCurrentView();
-
-        setTimeout(() => {
-          btnUpdateData.innerHTML = `<span>✅</span> Đã cập nhật!`;
-          setTimeout(() => {
-            btnUpdateData.innerHTML = origHtml;
-            btnUpdateData.disabled = false;
-          }, 800);
-        }, 350);
+        window.location.reload();
       });
     }
 

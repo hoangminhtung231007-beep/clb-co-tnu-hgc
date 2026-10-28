@@ -281,10 +281,13 @@ export const memberCardComponent = {
           </div>
         </div>
 
-        <!-- Card Actions: Tải Thẻ Thành Viên & Đổi Avatar -->
-        <div class="card-action-bar">
+        <!-- Card Actions: Tải Thẻ Thành Viên, Nộp Quỹ & Đổi Avatar -->
+        <div class="card-action-bar" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
           <button id="btnDownloadCard" class="btn btn-gold btn-sm">
             <span class="btn-icon">⬇</span> Tải Thẻ Thành Viên
+          </button>
+          <button id="btnMemberPayFund" class="btn btn-sm" style="font-weight: 700; background: linear-gradient(135deg, #059669, #10b981); border: none; color: #ffffff; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); padding: 8px 16px;">
+            <span class="btn-icon">💳</span> Nộp Quỹ CLB
           </button>
           <button id="btnChangeAvatarCard" class="btn btn-outline btn-sm" style="border-color: rgba(56, 189, 248, 0.5); color: #38bdf8; font-weight: 600;">
             <span class="btn-icon">📸</span> Đổi Avatar
@@ -325,6 +328,16 @@ export const memberCardComponent = {
 
     const btnChangeAvatar = containerEl.querySelector('#btnChangeAvatarCard');
     btnChangeAvatar?.addEventListener('click', triggerChangeAvatar);
+
+    // Chức năng Nộp Quỹ CLB cá nhân hóa
+    const btnPayFund = containerEl.querySelector('#btnMemberPayFund');
+    btnPayFund?.addEventListener('click', (e) => {
+      if (e) e.stopPropagation();
+      sound.playClick();
+      modalManager.openMemberFundPaymentModal(member, () => {
+        memberCardComponent.render(containerEl, member);
+      });
+    });
 
     const avatarWrap = containerEl.querySelector('#cardAvatarWrap');
     avatarWrap?.addEventListener('click', triggerChangeAvatar);

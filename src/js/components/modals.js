@@ -4736,6 +4736,183 @@ export const modalManager = {
     }
   },
 
+  // 21B. Member Fund Payment Modal (Nộp Quỹ CLB từ Thẻ Thành Viên)
+  openMemberFundPaymentModal(member, onComplete) {
+    if (!member) return;
+    const state = store.getState();
+    const settings = store.getFundSettings();
+    const currentMonth = settings.month || '10/2026';
+    const currentTerm = settings.title || ('Quỹ Sinh Hoạt Tháng ' + currentMonth);
+    const amount = settings.amount || 40000;
+    const isAdmin = state.currentSession?.role === 'admin';
+
+    // Check if member has already paid for the current month/term
+    const existingRecord = (state.fundRecords || []).find(
+      (r) => r.memberId === member.id && (r.term === currentTerm || r.month === currentMonth)
+    );
+
+    let contentHtml = '';
+
+    if (existingRecord) {
+      // ĐÃ NỘP QUỸ THÀNH CÔNG
+      contentHtml = `
+        <div class="member-fund-paid-modal p-3 text-center" style="max-width: 480px;">
+          <div style="font-size: 3.2rem; margin-bottom: 8px;">🎉</div>
+          <span class="badge badge-emerald font-bold" style="font-size: 0.85rem; padding: 4px 14px;">● ĐÃ HOÀN THÀNH NỘP QUỸ</span>
+          <h3 class="text-xl font-bold text-white mt-2 mb-1">Cảm Ơn Kỳ Thủ: ${member.name}!</h3>
+          <p class="text-xs text-muted mb-3">Bạn đã hoàn thành nghĩa vụ đóng quỹ cho <strong>${currentTerm}</strong>.</p>
+
+          <!-- Thẻ biên nhận số -->
+          <div class="card p-3 text-left mb-3" style="background: rgba(14,23,46,0.85); border: 1.5px solid var(--border-gold); font-size: 12px; border-radius: 12px;">
+            <div class="d-flex justify-between align-center mb-2 pb-2" style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+              <span class="text-muted">Mã Biên Nhận Số:</span>
+              <strong class="font-mono text-gold font-bold">${existingRecord.id}</strong>
+            </div>
+            <div class="d-flex justify-between align-center mb-1.5">
+              <span class="text-muted">Kỳ thủ:</span>
+              <span class="text-white font-bold">${member.name} (${member.studentId || member.id})</span>
+            </div>
+            <div class="d-flex justify-between align-center mb-1.5">
+              <span class="text-muted">Số tiền đã nộp:</span>
+              <strong class="text-emerald font-mono font-bold" style="font-size: 1.15rem;">${(existingRecord.amount || amount).toLocaleString('vi-VN')} đ</strong>
+            </div>
+            <div class="d-flex justify-between align-center mb-1.5">
+              <span class="text-muted">Thời gian thu:</span>
+              <span class="text-white font-medium">${existingRecord.date || ''} ${existingRecord.time ? '• ' + existingRecord.time : ''}</span>
+            </div>
+            <div class="d-flex justify-between align-center mb-1.5">
+              <span class="text-muted">Hình thức nộp:</span>
+              <span class="badge badge-cyan font-medium">${existingRecord.method || 'VietQR Chuyển Khoản'}</span>
+            </div>
+            <div class="d-flex justify-between align-center">
+              <span class="text-muted">Người xác nhận:</span>
+              <span class="text-gold font-medium">${existingRecord.confirmedBy || 'Tự Động (VietQR)'}</span>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-outline btn-sm w-100" id="btnCloseFundPaidModal" style="padding: 10px; font-weight: 600; border-radius: 8px;">
+            Đóng Lại
+          </button>
+        </div>
+      `;
+    } else {
+      // CHƯA NỘP QUỸ -> HIỂN THỊ VIETQR TỰ ĐỘNG CÁ NHÂN HÓA
+      const studentIdClean = (member.studentId || member.phone || member.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
+      const transferSyntax = `${settings.syntaxPrefix || 'QUY T10'} ${studentIdClean}`;
+      const bankCode = settings.bankCode || 'MB';
+      const bankAccount = settings.bankAccount || '80402233445566';
+      const bankOwner = settings.bankOwner || 'HOANG MINH TUNG';
+      const qrUrl = `https://img.vietqr.io/image/${bankCode}-${bankAccount}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(transferSyntax)}&accountName=${encodeURIComponent(bankOwner)}`;
+
+      contentHtml = `
+        <div class="member-fund-unpaid-modal p-2 text-center" style="max-width: 480px;">
+          <div class="d-flex justify-between align-center mb-2">
+            <span class="badge" style="background: rgba(234,179,8,0.15); color: #facc15; border: 1px solid rgba(234,179,8,0.4); font-size: 11px; font-weight: 700;">
+              ⏳ CHƯA THU QUỸ THÁNG ${currentMonth}
+            </span>
+            <span class="font-mono text-xs text-muted">${member.id}</span>
+          </div>
+
+          <h3 class="text-lg font-bold text-white mb-1">Nộp Quỹ: ${currentTerm}</h3>
+          <p class="text-xs text-muted mb-3">Mở app Ngân hàng quét mã VietQR bên dưới (Đã tích hợp sẵn số tiền và cú pháp định danh)</p>
+
+          <!-- Khung thẻ VietQR chuẩn Napas247 -->
+          <div class="p-3 mb-3" style="background: #ffffff; border-radius: 14px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 290px; width: 100%;">
+            <div class="d-flex justify-between align-center mb-2 px-1" style="border-bottom: 1.5px solid #f1f5f9; padding-bottom: 6px;">
+              <span style="color: #0033a0; font-weight: 900; font-size: 13px; letter-spacing: 0.5px;">🏦 ${bankCode} BANK</span>
+              <span style="font-weight: 800; font-size: 12px;"><span style="color: #e11d48;">Viet</span><span style="color: #0033a0;">QR</span></span>
+            </div>
+            <img src="${qrUrl}" alt="VietQR Nộp Quỹ CLB" style="max-width: 240px; width: 100%; aspect-ratio: 1/1; border-radius: 6px; display: block; margin: 0 auto;">
+            <div style="color: #0f172a; font-size: 11px; font-weight: 800; margin-top: 8px;">
+              ⚡ QUÉT TỰ ĐỘNG ĐIỀN ĐỊNH DANH
+            </div>
+          </div>
+
+          <!-- Thông tin chuyển khoản chi tiết -->
+          <div class="card p-3 text-left mb-3" style="background: rgba(14,23,46,0.8); border: 1px solid var(--border-gold); font-size: 12px; border-radius: 10px;">
+            <div class="d-flex justify-between align-center mb-1.5">
+              <span class="text-muted">Kỳ thủ nộp:</span>
+              <strong class="text-white">${member.name} (${member.studentId || member.id})</strong>
+            </div>
+            <div class="d-flex justify-between align-center mb-1.5">
+              <span class="text-muted">Định mức nộp:</span>
+              <strong class="text-emerald font-mono font-bold" style="font-size: 1.15rem;">${amount.toLocaleString('vi-VN')} đ</strong>
+            </div>
+            <div class="d-flex justify-between align-center mb-1.5">
+              <span class="text-muted">Số tài khoản:</span>
+              <span class="d-flex align-center gap-1">
+                <span class="font-mono text-gold font-bold">${bankAccount}</span>
+                <button type="button" class="btn btn-outline btn-xs" id="btnCopyStkFund" title="Sao chép STK" style="padding: 1px 6px; font-size: 10px;">Copy</button>
+              </span>
+            </div>
+            <div class="d-flex justify-between align-center mb-1.5">
+              <span class="text-muted">Ngân hàng & Chủ TK:</span>
+              <span class="text-white font-medium">${bankCode} • ${bankOwner}</span>
+            </div>
+            <div class="d-flex justify-between align-center pt-1" style="border-top: 1px dashed rgba(255,255,255,0.1);">
+              <span class="text-muted">Nội dung CK:</span>
+              <span class="d-flex align-center gap-1">
+                <span class="font-mono text-gold font-bold">${transferSyntax}</span>
+                <button type="button" class="btn btn-outline btn-xs" id="btnCopySyntaxFund" title="Sao chép cú pháp" style="padding: 1px 6px; font-size: 10px;">Copy</button>
+              </span>
+            </div>
+          </div>
+
+          <!-- Nút hành động -->
+          <div class="d-flex gap-2 justify-center align-center flex-wrap">
+            <a href="${qrUrl}" download="VietQR_${member.id}_${currentMonth.replace('/', '-')}.png" target="_blank" class="btn btn-outline btn-sm flex-1" style="font-size: 0.8rem; padding: 8px 12px; border-color: rgba(56,189,248,0.5); color: #38bdf8; text-align: center;">
+              📥 Tải Ảnh QR
+            </a>
+            ${isAdmin ? `
+              <button type="button" class="btn btn-gold btn-sm flex-1" id="btnAdminDirectCollect" style="font-weight: 700; padding: 8px 16px;">
+                ⚡ Đã Thu (Admin)
+              </button>
+            ` : `
+              <button type="button" class="btn btn-outline btn-sm flex-1" id="btnCloseFundUnpaidModal" style="padding: 8px 12px;">
+                Đóng Lại
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    this.open('Nộp Quỹ Hoạt Động CLB', contentHtml, null, null);
+
+    const modalEl = document.getElementById('globalAppModal');
+    if (!modalEl) return;
+
+    modalEl.querySelector('#btnCloseFundPaidModal')?.addEventListener('click', () => this.close());
+    modalEl.querySelector('#btnCloseFundUnpaidModal')?.addEventListener('click', () => this.close());
+
+    modalEl.querySelector('#btnCopyStkFund')?.addEventListener('click', () => {
+      sound.playClick();
+      navigator.clipboard.writeText(settings.bankAccount || '80402233445566');
+      modalManager.showAlert('✅ Đã sao chép số tài khoản vào bộ nhớ tạm!');
+    });
+
+    modalEl.querySelector('#btnCopySyntaxFund')?.addEventListener('click', () => {
+      sound.playClick();
+      const studentIdClean = (member.studentId || member.phone || member.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
+      const transferSyntax = `${settings.syntaxPrefix || 'QUY T10'} ${studentIdClean}`;
+      navigator.clipboard.writeText(transferSyntax);
+      modalManager.showAlert('✅ Đã sao chép nội dung chuyển khoản vào bộ nhớ tạm!');
+    });
+
+    modalEl.querySelector('#btnAdminDirectCollect')?.addEventListener('click', () => {
+      sound.playClick();
+      try {
+        const rec = store.recordDirectFundPayment(member.id, 'VietQR Chuyển Khoản');
+        this.close();
+        sound.playSuccess();
+        modalManager.showAlert(`🎉 Đã xác nhận thành công ${amount.toLocaleString('vi-VN')}đ từ kỳ thủ ${member.name} vào Quỹ CLB! (Mã biên nhận: ${rec.id})`);
+        if (typeof onComplete === 'function') onComplete();
+      } catch (err) {
+        modalManager.showAlert(err.message || 'Lỗi xử lý!');
+      }
+    });
+  },
+
   // 22. Fullscreen Live Fund QR Modal (Chế độ chiếu bảng QR đặt tại bàn sinh hoạt)
   openFullscreenLiveFundQRModal() {
     const settings = store.getFundSettings();

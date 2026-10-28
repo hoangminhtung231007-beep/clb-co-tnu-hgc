@@ -21,6 +21,36 @@ export function buildFundTransferSyntax(syntaxPrefix, member) {
   return `${prefix} ${nameClean} ${studentIdClean}`.replace(/\s+/g, ' ').trim();
 }
 
+export async function copyToClipboard(text) {
+  if (!text) return false;
+  let copied = false;
+  if (typeof navigator !== 'undefined' && navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    } catch (e) {
+      console.warn('navigator.clipboard failed, fallback to execCommand', e);
+    }
+  }
+  if (!copied && typeof document !== 'undefined') {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '-9999px';
+      textArea.setAttribute('readonly', '');
+      document.body.appendChild(textArea);
+      textArea.select();
+      copied = document.execCommand('copy');
+      document.body.removeChild(textArea);
+    } catch (err) {
+      console.error('execCommand copy failed', err);
+    }
+  }
+  return copied;
+}
+
 export const qrHelper = {
   // Generate QR payload string for a member
   generatePayload(member) {

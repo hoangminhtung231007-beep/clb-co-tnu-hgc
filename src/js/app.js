@@ -8,6 +8,7 @@ import { modalManager } from './components/modals.js';
 import { firebaseService } from './services/firebaseService.js';
 import { getFirebaseConfig, saveFirebaseConfig, clearFirebaseConfig } from './config/firebaseConfig.js';
 import { exportSwissStandingsCsv } from './utils/swissSystem.js';
+import { copyToClipboard } from './utils/qrHelper.js';
 
 class App {
   constructor() {
@@ -4473,7 +4474,7 @@ class App {
     });
 
     // Zalo copy
-    container.querySelector('#btnCopyDirectZalo')?.addEventListener('click', () => {
+    container.querySelector('#btnCopyDirectZalo')?.addEventListener('click', async () => {
       sound.playClick();
       if (unpaidMembers.length === 0) {
         modalManager.showAlert('🎉 Toàn bộ kỳ thủ đã hoàn thành đóng quỹ tháng này!');
@@ -4482,8 +4483,8 @@ class App {
       const lines = unpaidMembers.map((m, idx) => `${idx + 1}. ${m.name} (${m.studentId || 'Kỳ thủ'})`).join('\n');
       const amountVal = Number(settings.amount) || 40000;
       const text = `📢 THÔNG BÁO THU QUỸ: ${settings.title || 'Quỹ Sinh Hoạt'}\n💰 Định mức: ${amountVal.toLocaleString('vi-VN')}đ / bạn\n\n⚠️ Danh sách kỳ thủ chưa hoàn thành (${unpaidMembers.length} bạn):\n${lines}\n\n👉 Các bạn vui lòng truy cập website CLB, vào mục "Thẻ Thành Viên" và bấm nút "💳 Nộp Quỹ CLB" để quét mã VietQR (hệ thống đã tự động điền sẵn số tiền và thông tin của bạn) nhé!\n🌐 Website: https://clb-co-tnu-hgc.vercel.app`;
-      navigator.clipboard.writeText(text);
-      modalManager.showAlert('✅ Đã sao chép danh sách các bạn chưa nộp! Hãy dán vào Nhóm Zalo CLB để nhắc nhở.');
+      await copyToClipboard(text);
+      modalManager.openZaloAnnouncementModal(text);
     });
 
     // CSV export

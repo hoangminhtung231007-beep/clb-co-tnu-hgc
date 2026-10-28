@@ -1,6 +1,6 @@
 import { store } from '../state/store.js';
 import { sound } from '../utils/audio.js';
-import { qrHelper, buildFundTransferSyntax } from '../utils/qrHelper.js';
+import { qrHelper, buildFundTransferSyntax, copyToClipboard } from '../utils/qrHelper.js';
 import { memberCardComponent } from './memberCard.js';
 
 export const modalManager = {
@@ -4475,7 +4475,7 @@ export const modalManager = {
         });
       });
 
-      modalEl.querySelector('#btnCopyUnpaidZaloReminder')?.addEventListener('click', () => {
+      modalEl.querySelector('#btnCopyUnpaidZaloReminder')?.addEventListener('click', async () => {
         sound.playClick();
         if (unpaidMembers.length === 0) {
           modalManager.showAlert('🎉 Tuyệt vời! Toàn bộ kỳ thủ đã hoàn thành đóng quỹ đợt này.');
@@ -4483,11 +4483,68 @@ export const modalManager = {
         }
 
         const lines = unpaidMembers.map((item, idx) => `${idx + 1}. ${item.member.name} (${item.member.studentId || 'Kỳ thủ'})`).join('\n');
-        const text = `📢 NHẮC NỘP TIỀN QUỸ: ${campaign.title}\n💰 Định mức: ${(campaign.amount || 0).toLocaleString('vi-VN')}đ | Hạn chót: ${campaign.deadline || 'Sớm nhất'}\n⚠️ Danh sách kỳ thủ chưa nộp (${unpaidMembers.length} bạn):\n${lines}\n\n👉 Vui lòng chuyển khoản về STK: ${campaign.bankAccount} (${campaign.bankCode}) - Cú pháp: CLBCO ${campaign.id} [MÃ_SINH_VIÊN]\nHoặc vào website mục Thẻ Thành Viên bấm "Đóng Quỹ" để quét mã VietQR tự động nhé!`;
-        navigator.clipboard.writeText(text);
-        modalManager.showAlert('✅ Đã sao chép danh sách các kỳ thủ chưa nộp! Hãy dán vào Nhóm Zalo CLB để nhắc nhở.');
+        const amountVal = Number(campaign.amount) || 40000;
+        const text = `📢 THÔNG BÁO THU QUỸ: ${campaign.title || 'Quỹ Sinh Hoạt'}\n💰 Định mức: ${amountVal.toLocaleString('vi-VN')}đ / bạn\n\n⚠️ Danh sách kỳ thủ chưa hoàn thành (${unpaidMembers.length} bạn):\n${lines}\n\n👉 Các bạn vui lòng truy cập website CLB, vào mục "Thẻ Thành Viên" và bấm nút "💳 Nộp Quỹ CLB" để quét mã VietQR (hệ thống đã tự động điền sẵn số tiền và thông tin của bạn) nhé!\n🌐 Website: https://clb-co-tnu-hgc.vercel.app`;
+        await copyToClipboard(text);
+        modalManager.openZaloAnnouncementModal(text);
       });
     }
+  },
+
+  // 18.5. Zalo Announcement Modal Preview & Auto-Copy
+  openZaloAnnouncementModal(announcementText) {
+    sound.playSuccess();
+    const contentHtml = `
+      <div class="p-2" style="max-width: 580px;">
+        <div class="d-flex align-center gap-2 mb-3">
+          <span style="font-size: 1.6rem;">📢</span>
+          <div>
+            <h3 class="text-base font-bold text-white mb-0">THÔNG BÁO THU QUỸ GỬI NHÓM ZALO</h3>
+            <p class="text-xs text-muted mb-0">Nội dung dưới đây đã được định dạng và tự động lưu vào bộ nhớ tạm.</p>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="d-flex justify-between align-center mb-1">
+            <span class="text-xs text-gold font-bold">📋 NỘI DUNG VĂN BẢN (ĐÃ SAO CHÉP):</span>
+            <button type="button" class="btn btn-outline btn-xs" id="btnModalCopyZaloAgain">
+              📋 Sao Chép Lại
+            </button>
+          </div>
+          <textarea id="modalZaloTextarea" class="form-control font-mono text-xs" rows="8" readonly style="width:100%; resize:vertical; line-height:1.6; background: rgba(0,0,0,0.45); color:#f8fafc; border: 1px solid var(--border-gold); border-radius: 8px; padding: 10px;">${announcementText}</textarea>
+        </div>
+
+        <div class="text-xs text-dim p-2 mb-3" style="background: rgba(16,185,129,0.08); border-radius: 6px; border-left: 3px solid var(--emerald); line-height: 1.5;">
+          ✅ <strong>Đã lưu vào bộ nhớ tạm!</strong> Bạn có thể mở Zalo và bấm <strong>Dán (Ctrl + V)</strong>.<br>
+          📱 <em>Nếu trên điện thoại chưa nhận:</em> Hãy bấm nút <strong>"Sao Chép Lại"</strong> ở trên hoặc chọn bôi đen văn bản trong ô.
+        </div>
+
+        <div class="d-flex justify-end gap-2">
+          <button type="button" class="btn btn-gold btn-sm w-100" id="btnModalCloseZaloPreview">
+            Đã Sao Chép & Đóng
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.open('Thông Báo Thu Quỹ Nhóm Zalo', contentHtml, null, null);
+
+    setTimeout(() => {
+      const modalEl = document.getElementById('globalAppModal');
+      if (!modalEl) return;
+
+      modalEl.querySelector('#btnModalCloseZaloPreview')?.addEventListener('click', () => {
+        this.close();
+      });
+
+      modalEl.querySelector('#btnModalCopyZaloAgain')?.addEventListener('click', async () => {
+        sound.playClick();
+        const ok = await copyToClipboard(announcementText);
+        const ta = modalEl.querySelector('#modalZaloTextarea');
+        if (ta) ta.select();
+        modalManager.showAlert(ok ? '✅ Đã sao chép lại nội dung thành công!' : 'Vui lòng chọn bôi đen văn bản trong khung để sao chép.');
+      });
+    }, 50);
   },
 
   // 19. Fund Automation Guide Modal

@@ -4219,7 +4219,7 @@ class App {
     const targetMonth = members.length * settings.amount;
     const percent = members.length > 0 ? Math.round((paidMembers.length / members.length) * 100) : 0;
 
-    const generalSyntax = `${settings.syntaxPrefix || 'QUY T10'} [MASV]`;
+    const generalSyntax = `${settings.syntaxPrefix || 'QUY T10'} [HỌ VÀ TÊN] [MSSV]`;
     const deskQrUrl = settings.qrImage || '/vietqr-fund.png';
 
     container.innerHTML = `
@@ -4480,7 +4480,7 @@ class App {
         return;
       }
       const lines = unpaidMembers.map((m, idx) => `${idx + 1}. ${m.name} (${m.studentId || 'Kỳ thủ'})`).join('\n');
-      const text = `📢 THÔNG BÁO THU QUỸ: ${settings.title}\n💰 Định mức: ${(settings.amount || 30000).toLocaleString('vi-VN')}đ / bạn\n🏦 Ngân hàng: ${settings.bankCode} - STK: ${settings.bankAccount}\n👤 Chủ TK: ${settings.bankOwner}\n📝 Cú pháp chuyển khoản: ${settings.syntaxPrefix} [MÃ_SINH_VIÊN]\n⚠️ Danh sách kỳ thủ chưa nộp (${unpaidMembers.length} bạn):\n${lines}\n\n👉 Các bạn quét mã VietQR tại bàn sinh hoạt hoặc chuyển khoản đúng cú pháp để hệ thống tự động ghi nhận nhé!`;
+      const text = `📢 THÔNG BÁO THU QUỸ: ${settings.title}\n💰 Định mức: ${(settings.amount || 30000).toLocaleString('vi-VN')}đ / bạn\n🏦 Ngân hàng: ${settings.bankCode} - STK: ${settings.bankAccount}\n👤 Chủ TK: ${settings.bankOwner}\n📝 Cú pháp chuyển khoản: ${settings.syntaxPrefix} [HỌ VÀ TÊN] [MÃ_SINH_VIÊN]\n⚠️ Danh sách kỳ thủ chưa nộp (${unpaidMembers.length} bạn):\n${lines}\n\n👉 Các bạn quét mã VietQR tại bàn sinh hoạt hoặc chuyển khoản đúng cú pháp để hệ thống tự động ghi nhận nhé!`;
       navigator.clipboard.writeText(text);
       modalManager.showAlert('✅ Đã sao chép danh sách các bạn chưa nộp! Hãy dán vào Nhóm Zalo CLB để nhắc nhở.');
     });

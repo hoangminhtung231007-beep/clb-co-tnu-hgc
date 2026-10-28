@@ -2,7 +2,8 @@ import { INITIAL_DATA } from './mockData.js';
 import { CHESS_MOTTOS, getMottoByIndex } from './chessMottos.js';
 import { firebaseService } from '../services/firebaseService.js';
 import { SwissTournament, exportSwissStandingsCsv } from '../utils/swissSystem.js';
-export { CHESS_MOTTOS, getMottoByIndex, firebaseService, SwissTournament, exportSwissStandingsCsv };
+import { buildFundTransferSyntax } from '../utils/qrHelper.js';
+export { CHESS_MOTTOS, getMottoByIndex, firebaseService, SwissTournament, exportSwissStandingsCsv, buildFundTransferSyntax };
 
 export const ALUMNI_MESSAGES = [
   'Chúc CLB và Ban Điều Hành mới luôn giữ vững ngọn lửa đam mê, đoàn kết và đưa phong trào cờ Phân hiệu ngày càng lớn mạnh, gặt hái thêm nhiều vinh quang!',
@@ -1451,8 +1452,7 @@ class Store {
       throw new Error(`Kỳ thủ ${member.name} đã được ghi nhận hoàn thành ${term} rồi! (Mã BN: ${existing.id})`);
     }
 
-    const studentIdClean = (member.studentId || member.phone || member.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
-    const transferSyntax = `${settings.syntaxPrefix || 'QUY'} ${studentIdClean}`;
+    const transferSyntax = buildFundTransferSyntax(settings.syntaxPrefix, member);
 
     const newRecord = {
       id: `FND-${Date.now().toString().slice(-5)}`,

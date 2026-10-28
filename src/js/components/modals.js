@@ -1,6 +1,6 @@
 import { store } from '../state/store.js';
 import { sound } from '../utils/audio.js';
-import { qrHelper } from '../utils/qrHelper.js';
+import { qrHelper, buildFundTransferSyntax } from '../utils/qrHelper.js';
 import { memberCardComponent } from './memberCard.js';
 
 export const modalManager = {
@@ -4242,7 +4242,7 @@ export const modalManager = {
     const bankAccount = campaign.bankAccount || '80402233445566';
     const bankOwner = campaign.bankOwner || 'HOANG MINH TUNG';
     const amount = campaign.amount || 30000;
-    const generalNote = `CLBCO ${campaign.id} MASV`;
+    const generalNote = `CLBCO ${campaign.id} [HỌ VÀ TÊN] [MSSV]`;
 
     const qrUrl = `https://img.vietqr.io/image/${bankCode}-${bankAccount}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(generalNote)}&accountName=${encodeURIComponent(bankOwner)}`;
 
@@ -4280,7 +4280,7 @@ export const modalManager = {
     if (modalEl) {
       modalEl.querySelector('#btnCopyZaloTemplate')?.addEventListener('click', () => {
         sound.playClick();
-        const text = `📢 THÔNG BÁO NỘP QUỸ: ${campaign.title}\n💰 Định mức: ${(campaign.amount || 0).toLocaleString('vi-VN')}đ / người\n🗓️ Hạn chót: ${campaign.deadline || 'Sớm nhất'}\n🏦 Ngân hàng: ${bankCode} - STK: ${bankAccount}\n👤 Chủ TK: ${bankOwner}\n📝 Cú pháp chuyển khoản: CLBCO ${campaign.id} [MÃ_SINH_VIÊN]\n(Hệ thống website sẽ tự động ghi sổ và cấp biên nhận số ngay khi chuyển khoản)`;
+        const text = `📢 THÔNG BÁO NỘP QUỸ: ${campaign.title}\n💰 Định mức: ${(campaign.amount || 0).toLocaleString('vi-VN')}đ / người\n🗓️ Hạn chót: ${campaign.deadline || 'Sớm nhất'}\n🏦 Ngân hàng: ${bankCode} - STK: ${bankAccount}\n👤 Chủ TK: ${bankOwner}\n📝 Cú pháp chuyển khoản: CLBCO ${campaign.id} [HỌ VÀ TÊN] [MÃ_SINH_VIÊN]\n(Hệ thống website sẽ tự động ghi sổ và cấp biên nhận số ngay khi chuyển khoản)`;
         navigator.clipboard.writeText(text);
         modalManager.showAlert('✅ Đã sao chép nội dung thông báo vào bộ nhớ tạm! Bạn có thể dán ngay vào Nhóm Zalo CLB.');
       });
@@ -4665,8 +4665,7 @@ export const modalManager = {
     if (!member) return;
     const settings = store.getFundSettings();
     const amount = settings.amount || 30000;
-    const studentIdClean = (member.studentId || member.phone || member.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
-    const transferNote = `${settings.syntaxPrefix || 'QUY'} ${studentIdClean}`;
+    const transferNote = buildFundTransferSyntax(settings.syntaxPrefix, member);
     const qrUrl = `https://img.vietqr.io/image/${settings.bankCode || 'MB'}-${settings.bankAccount || '80402233445566'}-qr_only.png?amount=${amount}&addInfo=${encodeURIComponent(transferNote)}&accountName=${encodeURIComponent(settings.bankOwner || 'HOANG MINH TUNG')}`;
 
     const contentHtml = `
@@ -4797,8 +4796,7 @@ export const modalManager = {
       `;
     } else {
       // CHƯA NỘP QUỸ -> HIỂN THỊ VIETQR TỰ ĐỘNG CÁ NHÂN HÓA
-      const studentIdClean = (member.studentId || member.phone || member.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
-      const transferSyntax = `${settings.syntaxPrefix || 'QUY T10'} ${studentIdClean}`;
+      const transferSyntax = buildFundTransferSyntax(settings.syntaxPrefix, member);
       const bankCode = settings.bankCode || 'MB';
       const bankAccount = settings.bankAccount || '80402233445566';
       const bankOwner = settings.bankOwner || 'HOANG MINH TUNG';
@@ -4893,8 +4891,7 @@ export const modalManager = {
 
     modalEl.querySelector('#btnCopySyntaxFund')?.addEventListener('click', () => {
       sound.playClick();
-      const studentIdClean = (member.studentId || member.phone || member.id || 'KYTHU').replace(/[^a-zA-Z0-9]/g, '');
-      const transferSyntax = `${settings.syntaxPrefix || 'QUY T10'} ${studentIdClean}`;
+      const transferSyntax = buildFundTransferSyntax(settings.syntaxPrefix, member);
       navigator.clipboard.writeText(transferSyntax);
       modalManager.showAlert('✅ Đã sao chép nội dung chuyển khoản vào bộ nhớ tạm!');
     });
@@ -4917,7 +4914,7 @@ export const modalManager = {
   openFullscreenLiveFundQRModal() {
     const settings = store.getFundSettings();
     const amount = settings.amount || 30000;
-    const generalNote = `${settings.syntaxPrefix || 'QUY T10'} [MÃ_SV]`;
+    const generalNote = `${settings.syntaxPrefix || 'QUY T10'} [HỌ VÀ TÊN] [MSSV]`;
     const qrUrl = settings.qrImage || '/vietqr-fund.png';
 
     const contentHtml = `

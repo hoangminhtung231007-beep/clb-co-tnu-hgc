@@ -4480,7 +4480,8 @@ class App {
         return;
       }
       const lines = unpaidMembers.map((m, idx) => `${idx + 1}. ${m.name} (${m.studentId || 'Kỳ thủ'})`).join('\n');
-      const text = `📢 THÔNG BÁO THU QUỸ: ${settings.title}\n💰 Định mức: ${(settings.amount || 30000).toLocaleString('vi-VN')}đ / bạn\n🏦 Ngân hàng: ${settings.bankCode} - STK: ${settings.bankAccount}\n👤 Chủ TK: ${settings.bankOwner}\n📝 Cú pháp chuyển khoản: ${settings.syntaxPrefix} [HỌ VÀ TÊN] [MÃ_SINH_VIÊN]\n⚠️ Danh sách kỳ thủ chưa nộp (${unpaidMembers.length} bạn):\n${lines}\n\n👉 Các bạn quét mã VietQR tại bàn sinh hoạt hoặc chuyển khoản đúng cú pháp để hệ thống tự động ghi nhận nhé!`;
+      const amountVal = Number(settings.amount) || 40000;
+      const text = `📢 THÔNG BÁO THU QUỸ: ${settings.title || 'Quỹ Sinh Hoạt'}\n💰 Định mức: ${amountVal.toLocaleString('vi-VN')}đ / bạn\n\n⚠️ Danh sách kỳ thủ chưa hoàn thành (${unpaidMembers.length} bạn):\n${lines}\n\n👉 Các bạn vui lòng truy cập website CLB, vào mục "Thẻ Thành Viên" và bấm nút "💳 Nộp Quỹ CLB" để quét mã VietQR (hệ thống đã tự động điền sẵn số tiền và thông tin của bạn) nhé!\n🌐 Website: https://clb-co-tnu-hgc.vercel.app`;
       navigator.clipboard.writeText(text);
       modalManager.showAlert('✅ Đã sao chép danh sách các bạn chưa nộp! Hãy dán vào Nhóm Zalo CLB để nhắc nhở.');
     });

@@ -26,6 +26,7 @@ class Store {
   constructor() {
     this.listeners = new Set();
     this.isRemoteUpdating = false;
+    this.hasReceivedInitialSync = false;
     this.state = this.loadState();
     this.initFirebaseSync();
   }
@@ -40,12 +41,20 @@ class Store {
 
   applyRemoteData(remoteData) {
     this.isRemoteUpdating = true;
+    this.hasReceivedInitialSync = true;
     try {
       if (Array.isArray(remoteData.members)) this.state.members = remoteData.members;
       if (Array.isArray(remoteData.events)) this.state.events = remoteData.events;
       if (Array.isArray(remoteData.attendanceLogs)) this.state.attendanceLogs = remoteData.attendanceLogs;
       if (Array.isArray(remoteData.articles)) this.state.articles = remoteData.articles;
-      if (Array.isArray(remoteData.pendingApplications)) this.state.pendingApplications = remoteData.pendingApplications;
+      if (Array.isArray(remoteData.pendingApplications)) {
+        const remotePending = remoteData.pendingApplications;
+        const currentPending = this.state.pendingApplications || [];
+        const map = new Map();
+        remotePending.forEach((a) => { if (a && a.id) map.set(a.id, a); });
+        currentPending.forEach((a) => { if (a && a.id && !map.has(a.id)) map.set(a.id, a); });
+        this.state.pendingApplications = Array.from(map.values());
+      }
       if (Array.isArray(remoteData.alumniBoard)) this.state.alumniBoard = remoteData.alumniBoard;
       if (Array.isArray(remoteData.alumniMembers)) this.state.alumniMembers = remoteData.alumniMembers;
       if (Array.isArray(remoteData.eventFeedback)) this.state.eventFeedback = remoteData.eventFeedback;
@@ -176,9 +185,9 @@ class Store {
     return () => this.listeners.delete(listener);
   }
 
-  notify() {
+  notify(forceSync = false) {
     this.saveState();
-    if (!this.isRemoteUpdating) {
+    if (!this.isRemoteUpdating && (this.hasReceivedInitialSync || forceSync)) {
       firebaseService.syncToFirestore(this.state);
     }
     this.listeners.forEach((listener) => {
@@ -200,14 +209,17 @@ class Store {
     } catch (e) {}
     this.state = JSON.parse(JSON.stringify(INITIAL_DATA));
     this.saveState(this.state);
-    this.notify();
+    this.notify(true);
   }
 
   // --- Session & Role Management ---
   setRole(role) {
     if (['guest', 'member', 'admin'].includes(role)) {
       this.state.currentSession.role = role;
-      this.notify();
+      this.saveState();
+      this.listeners.forEach((listener) => {
+        try { listener(this.state); } catch (e) {}
+      });
     }
   }
 
@@ -215,7 +227,10 @@ class Store {
     const member = this.getMemberById(memberId);
     if (member) {
       this.state.currentSession.activeMemberId = memberId;
-      this.notify();
+      this.saveState();
+      this.listeners.forEach((listener) => {
+        try { listener(this.state); } catch (e) {}
+      });
     }
   }
 
@@ -401,7 +416,7 @@ class Store {
     };
 
     this.state.pendingApplications.unshift(newApp);
-    this.notify();
+    this.notify(true);
     return newApp;
   }
 
@@ -428,7 +443,7 @@ class Store {
     });
 
     this.state.pendingApplications.splice(appIndex, 1);
-    this.notify();
+    this.notify(true);
     return newMember;
   }
 
@@ -437,7 +452,7 @@ class Store {
     const appIndex = this.state.pendingApplications.findIndex((a) => a.id === appId);
     if (appIndex === -1) return false;
     this.state.pendingApplications.splice(appIndex, 1);
-    this.notify();
+    this.notify(true);
     return true;
   }
 

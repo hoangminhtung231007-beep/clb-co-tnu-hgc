@@ -931,24 +931,6 @@ class App {
       });
     }
 
-    // Notification Dropdown PWA & Push buttons
-    const btnEnablePush = document.getElementById('btnEnableDevicePushNotif');
-    if (btnEnablePush) {
-      btnEnablePush.addEventListener('click', (e) => {
-        e.stopPropagation();
-        sound.playClick();
-        this.requestDeviceNotificationPermission();
-      });
-    }
-
-    const btnOpenPwa = document.getElementById('btnOpenPwaInstallGuide');
-    if (btnOpenPwa) {
-      btnOpenPwa.addEventListener('click', (e) => {
-        e.stopPropagation();
-        sound.playClick();
-        modalManager.openPwaInstallGuideModal();
-      });
-    }
 
     // Nav brand
     const brand = document.getElementById('navBrand');

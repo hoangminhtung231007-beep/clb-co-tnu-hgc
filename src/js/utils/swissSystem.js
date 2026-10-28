@@ -427,14 +427,18 @@ export function exportSwissStandingsCsv(swissData, tournamentTitle) {
     csv += row + '\r\n';
   });
 
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const cleanTitle = (tournamentTitle || 'Giai_Co').replace(/[^\w\d-_]/g, '_');
-  a.download = `Ket_Qua_${cleanTitle}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  if (typeof document !== 'undefined') {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const cleanTitle = (tournamentTitle || 'Giai_Co').replace(/[^\w\d-_]/g, '_');
+    a.download = `Ket_Qua_${cleanTitle}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  return csv;
 }

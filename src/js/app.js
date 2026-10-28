@@ -265,7 +265,6 @@ class App {
                 <div class="text-xs font-bold text-white text-truncate">${activeMember?.name || 'Thành Viên'}</div>
                 <div class="text-xs text-dim">${activeMember?.id || ''} • ${activeMember?.roleTitle || 'Thành viên'}</div>
               </div>
-              <span class="badge badge-cyan" style="font-size:11px;">Elo ${activeMember?.elo || 1200}</span>
             </div>
           </div>
         `;

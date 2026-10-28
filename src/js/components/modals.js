@@ -523,17 +523,17 @@ export const modalManager = {
         try {
           if (canvas && img.complete && img.naturalWidth) {
             const expCanvas = document.createElement('canvas');
-            expCanvas.width = 400;
-            expCanvas.height = 400;
+            expCanvas.width = 160;
+            expCanvas.height = 160;
             const ectx = expCanvas.getContext('2d');
-            const cw = 400;
-            const ch = 400;
+            const cw = 160;
+            const ch = 160;
             const nw = img.naturalWidth;
             const nh = img.naturalHeight;
             const aspect = nw / nh;
             let baseW = aspect > 1 ? ch * aspect : cw;
             let baseH = aspect > 1 ? ch : cw / aspect;
-            const scaleDpi = 400 / canvas.width;
+            const scaleDpi = 160 / canvas.width;
             const drawW = baseW * zoom;
             const drawH = baseH * zoom;
             const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
@@ -541,7 +541,7 @@ export const modalManager = {
             ectx.fillStyle = '#0f172a';
             ectx.fillRect(0, 0, cw, ch);
             ectx.drawImage(img, drawX, drawY, drawW, drawH);
-            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.92);
+            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.75);
           }
         } catch (e) {
           finalAvatarExport = currentRawSrc;
@@ -2566,17 +2566,17 @@ export const modalManager = {
         try {
           if (canvas && img.complete && img.naturalWidth) {
             const expCanvas = document.createElement('canvas');
-            expCanvas.width = 400;
-            expCanvas.height = 400;
+            expCanvas.width = 160;
+            expCanvas.height = 160;
             const ectx = expCanvas.getContext('2d');
-            const cw = 400;
-            const ch = 400;
+            const cw = 160;
+            const ch = 160;
             const nw = img.naturalWidth;
             const nh = img.naturalHeight;
             const aspect = nw / nh;
             let baseW = aspect > 1 ? ch * aspect : cw;
             let baseH = aspect > 1 ? ch : cw / aspect;
-            const scaleDpi = 400 / canvas.width;
+            const scaleDpi = 160 / canvas.width;
             const drawW = baseW * zoom;
             const drawH = baseH * zoom;
             const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
@@ -2584,7 +2584,7 @@ export const modalManager = {
             ectx.fillStyle = '#0f172a';
             ectx.fillRect(0, 0, cw, ch);
             ectx.drawImage(img, drawX, drawY, drawW, drawH);
-            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.92);
+            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.75);
           }
         } catch (e) {
           finalAvatarExport = currentRawSrc;
@@ -5084,7 +5084,12 @@ export const modalManager = {
       const updateFinalExport = () => {
         try {
           if (canvas && img.complete && img.naturalWidth) {
-            finalAvatarExport = canvas.toDataURL('image/jpeg', 0.92);
+            const expCanvas = document.createElement('canvas');
+            expCanvas.width = 160;
+            expCanvas.height = 195;
+            const ectx = expCanvas.getContext('2d');
+            ectx.drawImage(canvas, 0, 0, 160, 195);
+            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.75);
           }
         } catch (e) {
           finalAvatarExport = currentRawSrc;

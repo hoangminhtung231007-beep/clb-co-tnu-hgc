@@ -13,6 +13,7 @@ class FirebaseService {
     this.app = null;
     this.db = null;
     this.unsubscribeSnapshot = null;
+    this.unsubscribeAppSnapshot = null;
     this.status = 'unconfigured'; // 'unconfigured' | 'connecting' | 'connected' | 'disconnected' | 'error'
     this.statusListeners = new Set();
     this.lastSyncTime = null;
@@ -64,6 +65,9 @@ class FirebaseService {
       if (this.unsubscribeSnapshot) {
         this.unsubscribeSnapshot();
       }
+      if (this.unsubscribeAppSnapshot) {
+        this.unsubscribeAppSnapshot();
+      }
 
       this.unsubscribeSnapshot = onSnapshot(
         docRef,
@@ -86,6 +90,24 @@ class FirebaseService {
         (error) => {
           console.error('Firestore snapshot listener error:', error);
           this.notifyStatus('error');
+        }
+      );
+
+      // Dedicated listener for club_applications/pending_list
+      const appDocRef = doc(this.db, 'club_applications', 'pending_list');
+      this.unsubscribeAppSnapshot = onSnapshot(
+        appDocRef,
+        { includeMetadataChanges: true },
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (data && Array.isArray(data.applications) && typeof onRemoteDataCallback === 'function') {
+              onRemoteDataCallback({ pendingApplications: data.applications }, snapshot.metadata);
+            }
+          }
+        },
+        (error) => {
+          console.warn('Firestore applications listener warning:', error);
         }
       );
 
@@ -129,6 +151,20 @@ class FirebaseService {
           const cleanPayload = JSON.parse(JSON.stringify(payload));
 
           await setDoc(docRef, cleanPayload, { merge: true });
+
+          // Also backup applications to dedicated club_applications/pending_list
+          if (Array.isArray(state.pendingApplications)) {
+            try {
+              const appDocRef = doc(this.db, 'club_applications', 'pending_list');
+              await setDoc(appDocRef, {
+                applications: JSON.parse(JSON.stringify(state.pendingApplications)),
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+            } catch (appErr) {
+              console.warn('Backup write to club_applications warning:', appErr);
+            }
+          }
+
           this.lastSyncTime = new Date();
           this.notifyStatus('connected');
           resolve(true);
@@ -179,6 +215,19 @@ class FirebaseService {
     };
     const cleanPayload = JSON.parse(JSON.stringify(payload));
     await setDoc(docRef, cleanPayload, { merge: true });
+
+    if (Array.isArray(state.pendingApplications)) {
+      try {
+        const appDocRef = doc(this.db, 'club_applications', 'pending_list');
+        await setDoc(appDocRef, {
+          applications: JSON.parse(JSON.stringify(state.pendingApplications)),
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (appErr) {
+        console.warn('Backup push to club_applications warning:', appErr);
+      }
+    }
+
     this.lastSyncTime = new Date();
     this.notifyStatus('connected');
     return true;
@@ -188,6 +237,10 @@ class FirebaseService {
     if (this.unsubscribeSnapshot) {
       this.unsubscribeSnapshot();
       this.unsubscribeSnapshot = null;
+    }
+    if (this.unsubscribeAppSnapshot) {
+      this.unsubscribeAppSnapshot();
+      this.unsubscribeAppSnapshot = null;
     }
     this.app = null;
     this.db = null;

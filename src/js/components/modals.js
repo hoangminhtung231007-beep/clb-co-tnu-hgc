@@ -4547,6 +4547,86 @@ export const modalManager = {
     }, 50);
   },
 
+  // 18.6. Mobile-Friendly Card Preview & Direct Save Modal
+  openCardSaveModal({ blobUrl, file, fileName, memberName, memberId }) {
+    sound.playSuccess();
+
+    const contentHtml = `
+      <div class="card-save-modal-wrap p-2 text-center" style="max-width: 600px;">
+        <div class="mb-3">
+          <span class="badge badge-emerald" style="font-size: 11px; padding: 4px 10px;">✅ ĐÃ XUẤT ẢNH THẺ THÀNH CÔNG</span>
+          <h3 class="text-base font-bold text-white mt-1 mb-0">Thẻ Thành Viên: ${memberName}</h3>
+          <div class="text-xs text-muted font-mono">Mã Thẻ: ${memberId}</div>
+        </div>
+
+        <!-- High-res Image Preview (Direct touch-and-hold friendly) -->
+        <div class="card-preview-img-box mb-3 p-1" style="background: rgba(0,0,0,0.5); border: 1.5px solid var(--border-gold); border-radius: 12px; overflow: hidden; max-height: 440px; overflow-y: auto;">
+          <img src="${blobUrl}" alt="Thẻ Thành Viên ${memberName}" id="imgPreviewCardResult" style="width: 100%; height: auto; display: block; border-radius: 8px; cursor: pointer;" title="Chạm giữ để lưu ảnh vào điện thoại">
+        </div>
+
+        <!-- Phone-Friendly Tip -->
+        <div class="text-xs text-dim p-2 mb-3 text-left" style="background: rgba(212,175,55,0.08); border-radius: 8px; border-left: 3px solid var(--gold); line-height: 1.6;">
+          📱 <strong>HƯỚNG DẪN LƯU VÀO ĐIỆN THOẠI:</strong><br>
+          • <strong>Cách 1:</strong> Bấm nút <strong>"📲 Lưu Vào Máy (Chia Sẻ)"</strong> bên dưới.<br>
+          • <strong>Cách 2 (Đơn giản nhất):</strong> <strong>Nhấn và giữ ngón tay vào ảnh thẻ ở trên</strong> khoảng 1 giây ➔ Chọn <strong>"Lưu hình ảnh"</strong> (hoặc <em>"Tải ảnh xuống"</em>) để lưu thẳng vào Thư viện ảnh của điện thoại.
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex flex-column gap-2">
+          <button type="button" class="btn btn-gold btn-md w-100 font-bold" id="btnModalSaveCardPhone" style="padding: 10px;">
+            📲 Lưu Vào Máy (Hoặc Chia Sẻ)
+          </button>
+          <button type="button" class="btn btn-outline btn-sm w-100" id="btnModalCloseCardSave">
+            Đóng Lại
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.open('Lưu Thẻ Thành Viên Điện Tử', contentHtml, null, null);
+
+    setTimeout(() => {
+      const modalEl = document.getElementById('globalAppModal');
+      if (!modalEl) return;
+
+      modalEl.querySelector('#btnModalCloseCardSave')?.addEventListener('click', () => {
+        this.close();
+      });
+
+      modalEl.querySelector('#btnModalSaveCardPhone')?.addEventListener('click', async () => {
+        sound.playClick();
+        
+        // Try Web Share API with File (Native iOS & Android save/share sheet)
+        if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: `Thẻ Thành Viên CLB Cờ - ${memberName}`,
+              text: `Thẻ thành viên CLB Cờ TNU - HGC của kỳ thủ ${memberName}`
+            });
+            return;
+          } catch (shareErr) {
+            if (shareErr.name !== 'AbortError') {
+              console.warn('Share sheet cancelled or failed, fallback to anchor click', shareErr);
+            } else {
+              return; // User intentionally cancelled share dialog
+            }
+          }
+        }
+
+        // Fallback: Trigger standard anchor download
+        const dl = document.createElement('a');
+        dl.download = fileName;
+        dl.href = blobUrl;
+        document.body.appendChild(dl);
+        dl.click();
+        setTimeout(() => {
+          if (document.body.contains(dl)) document.body.removeChild(dl);
+        }, 800);
+      });
+    }, 50);
+  },
+
   // 19. Fund Automation Guide Modal
   openFundAutomationGuideModal() {
     const contentHtml = `

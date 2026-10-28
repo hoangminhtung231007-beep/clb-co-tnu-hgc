@@ -364,7 +364,7 @@ export const memberCardComponent = {
 
           // Off-screen clone container to remove 3D transform during render
           const cloneWrap = document.createElement('div');
-          cloneWrap.style.cssText = 'position:fixed; left:-9999px; top:0; width:700px; z-index:-9999; pointer-events:none;';
+          cloneWrap.style.cssText = 'position: absolute; top: 0; left: 0; width: 700px; opacity: 0; pointer-events: none; z-index: -9999;';
           document.body.appendChild(cloneWrap);
 
           // Clone Mặt Trước
@@ -423,12 +423,14 @@ export const memberCardComponent = {
             html2canvas(cloneFront, {
               scale: 2,
               useCORS: true,
+              allowTaint: true,
               backgroundColor: null,
               logging: false
             }),
             html2canvas(cloneBack, {
               scale: 2,
               useCORS: true,
+              allowTaint: true,
               backgroundColor: null,
               logging: false
             })
@@ -502,12 +504,39 @@ export const memberCardComponent = {
           ctx.font = '600 18px monospace';
           ctx.fillText(`HỘI VIÊN: ${member.name.toUpperCase()} • MÃ ĐỊNH DANH: ${member.id} • HỆ THỐNG XÁC THỰC THẺ CLB CỜ TNU - HGC`, totalW / 2, curY);
 
-          // Trigger Download
-          const finalUrl = compositeCanvas.toDataURL('image/png');
-          const dlLink = document.createElement('a');
-          dlLink.download = `The_Thanh_Vien_2_Mat_TNU_HGC_${member.id}.png`;
-          dlLink.href = finalUrl;
-          dlLink.click();
+          // Convert compositeCanvas to Blob
+          const blob = await new Promise((resolve) => {
+            compositeCanvas.toBlob(resolve, 'image/png', 0.95);
+          });
+
+          const cleanName = (member.name || 'Member').replace(/[^a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]/g, '_');
+          const fileName = `The_Thanh_Vien_${member.id}_${cleanName}.png`;
+          const blobUrl = blob ? URL.createObjectURL(blob) : compositeCanvas.toDataURL('image/png');
+          const file = blob ? new File([blob], fileName, { type: 'image/png' }) : null;
+
+          // Attempt direct download for desktop
+          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+          if (!isMobile) {
+            try {
+              const dlLink = document.createElement('a');
+              dlLink.download = fileName;
+              dlLink.href = blobUrl;
+              document.body.appendChild(dlLink);
+              dlLink.click();
+              setTimeout(() => {
+                if (document.body.contains(dlLink)) document.body.removeChild(dlLink);
+              }, 1000);
+            } catch (_) {}
+          }
+
+          // Open Mobile-Friendly Card Preview & Direct Save Modal
+          modalManager.openCardSaveModal({
+            blobUrl,
+            file,
+            fileName,
+            memberName: member.name,
+            memberId: member.id
+          });
 
           sound.playSuccess?.() || sound.playClick();
         } catch (err) {

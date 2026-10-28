@@ -2301,33 +2301,10 @@ class App {
     if (isMobile) {
       container.innerHTML = `
         <div class="admin-dashboard-view admin-mobile-scanner-only animate-fadeIn" style="max-width: 600px; margin: 0 auto; padding: 4px;">
-          <!-- Top Sleek Header cho Admin trên điện thoại -->
-          <div class="card p-3 mb-3 d-flex justify-between align-center flex-wrap gap-2" style="background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(15,23,42,0.95)); border: 1.5px solid var(--gold-primary); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-            <div class="d-flex align-center gap-2">
-              <div style="font-size: 1.6rem; line-height: 1;">👑</div>
-              <div>
-                <div class="d-flex align-center gap-1.5">
-                  <h3 class="font-bold text-gold text-sm mb-0">QUẢN TRỊ VIÊN</h3>
-                  <span class="badge badge-gold" style="font-size: 9px; padding: 1px 6px;">SCANNER</span>
-                </div>
-                <span class="text-xs text-dim">Chế độ Quét QR Điểm Danh Di Động</span>
-              </div>
-            </div>
-            <button type="button" class="btn btn-outline btn-xs" id="btnAdminMobileLogout" style="border-color: rgba(244,63,94,0.4); color: #fb7185; font-size: 11px; padding: 6px 12px; font-weight: 600; border-radius: 6px;">
-              🚪 Đăng xuất
-            </button>
-          </div>
-
           <!-- Chứa duy nhất phần quét QR và nhật ký điểm danh -->
           <div id="adminActualSubContent"></div>
         </div>
       `;
-
-      container.querySelector('#btnAdminMobileLogout')?.addEventListener('click', () => {
-        sound.playClick();
-        store.setRole('guest');
-        this.navigateTo('home');
-      });
 
       const targetPane = container.querySelector('#adminActualSubContent');
       this.renderAdminCheckin(targetPane);

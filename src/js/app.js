@@ -5547,16 +5547,11 @@ service cloud.firestore {
             </div>
           </div>
 
-          <div class="d-flex gap-2 justify-between align-center flex-wrap">
-            <button type="button" class="btn btn-outline btn-xs text-gold" id="btnQuickUnlockFb" style="font-size: 0.75rem; padding: 6px 12px; border-color: rgba(212,175,55,0.4);">
-              ⚡ Mở khóa nhanh (admin123456)
+          <div class="d-flex gap-2 justify-end align-center flex-wrap">
+            <button type="button" class="btn btn-outline btn-sm" id="btnCancelFirebaseUnlock">Hủy Bỏ</button>
+            <button type="submit" class="btn btn-gold btn-sm" id="btnConfirmFirebaseUnlock" style="font-weight:700; padding:8px 18px;">
+              <span>🔓</span> <span>Mở Khóa Truy Cập</span>
             </button>
-            <div class="d-flex gap-2">
-              <button type="button" class="btn btn-outline btn-sm" id="btnCancelFirebaseUnlock">Hủy Bỏ</button>
-              <button type="submit" class="btn btn-gold btn-sm" id="btnConfirmFirebaseUnlock" style="font-weight:700; padding:8px 18px;">
-                <span>🔓</span> <span>Mở Khóa Truy Cập</span>
-              </button>
-            </div>
           </div>
         </form>
       </div>
@@ -5571,16 +5566,9 @@ service cloud.firestore {
       const errEl = modalEl.querySelector('#firebaseUnlockError');
       const form = modalEl.querySelector('#formUnlockFirebase');
       const btnCancel = modalEl.querySelector('#btnCancelFirebaseUnlock');
-      const btnQuickUnlock = modalEl.querySelector('#btnQuickUnlockFb');
       const eyeBtn = modalEl.querySelector('.btn-toggle-eye');
 
       if (passInp) passInp.focus();
-
-      btnQuickUnlock?.addEventListener('click', () => {
-        sound.playSuccess();
-        modalManager.close();
-        onSuccess && onSuccess();
-      });
 
       eyeBtn?.addEventListener('click', () => {
         if (passInp) {
@@ -5611,7 +5599,7 @@ service cloud.firestore {
           sound.playAlert();
           if (errEl) {
             errEl.style.display = 'block';
-            errEl.innerHTML = '⚠️ Mật khẩu không chính xác! Mật khẩu mặc định là: <strong>admin123456</strong> (hoặc bấm nút "Mở khóa nhanh" bên dưới).';
+            errEl.innerHTML = '⚠️ Mật khẩu không chính xác! Mật khẩu mặc định là: <strong>admin123456</strong> (hoặc mật khẩu Admin của bạn).';
           }
           if (passInp) {
             passInp.value = '';

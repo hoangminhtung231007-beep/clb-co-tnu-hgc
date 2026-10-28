@@ -352,14 +352,13 @@ export const memberCardComponent = {
 
         const origHtml = btnDownload.innerHTML;
         btnDownload.disabled = true;
-        btnDownload.innerHTML = '<span class="btn-icon">⏳</span> Đang tạo ảnh 2 mặt...';
+        btnDownload.innerHTML = '<span class="btn-icon">⏳</span> Đang tạo ảnh thẻ...';
 
         try {
           const frontEl = containerEl.querySelector('#digitalMemberPassFront');
-          const backEl = containerEl.querySelector('#digitalMemberPassBack');
 
-          if (!frontEl || !backEl) {
-            throw new Error('Không tìm thấy thẻ');
+          if (!frontEl) {
+            throw new Error('Không tìm thấy thẻ mặt trước');
           }
 
           // Off-screen clone container to remove 3D transform during render
@@ -367,13 +366,17 @@ export const memberCardComponent = {
           cloneWrap.style.cssText = 'position: absolute; top: 0; left: 0; width: 700px; opacity: 0; pointer-events: none; z-index: -9999;';
           document.body.appendChild(cloneWrap);
 
-          // Clone Mặt Trước
+          // Clone Mặt Trước (Mặt thông tin & Smart QR Key)
           const cloneFront = frontEl.cloneNode(true);
           cloneFront.style.setProperty('transform', 'none', 'important');
           cloneFront.style.setProperty('position', 'relative', 'important');
           cloneFront.style.setProperty('width', '700px', 'important');
           cloneFront.style.setProperty('min-height', '360px', 'important');
-          cloneFront.style.margin = '0 0 20px 0';
+          cloneFront.style.margin = '0';
+
+          // Xóa icon camera đổi avatar để ảnh thẻ xuất ra chuẩn đẹp
+          cloneFront.querySelector('.id-avatar-change-hint')?.remove();
+
           cloneWrap.appendChild(cloneFront);
 
           // Copy canvas pixel buffer from original QR
@@ -386,132 +389,44 @@ export const memberCardComponent = {
             ctxC.drawImage(origCanvas, 0, 0);
           }
 
-          // Clone Mặt Sau
-          const cloneBack = backEl.cloneNode(true);
-          cloneBack.style.setProperty('transform', 'none', 'important');
-          cloneBack.style.setProperty('position', 'relative', 'important');
-          cloneBack.style.setProperty('width', '700px', 'important');
-          cloneBack.style.setProperty('min-height', '360px', 'important');
-          cloneBack.style.margin = '0';
-          cloneWrap.appendChild(cloneBack);
-
           // Pre-convert img tags to data URLs if possible for clean cross-origin capture
-          const convertImgToDataUrl = async (el) => {
-            const imgs = el.querySelectorAll('img');
-            for (const img of imgs) {
-              if (img.src && !img.src.startsWith('data:')) {
-                try {
-                  const res = await fetch(img.src, { mode: 'cors' });
-                  if (res.ok) {
-                    const blob = await res.blob();
-                    const dUrl = await new Promise((resolve) => {
-                      const r = new FileReader();
-                      r.onloadend = () => resolve(r.result);
-                      r.readAsDataURL(blob);
-                    });
-                    img.src = dUrl;
-                  }
-                } catch (_) {}
-              }
+          const imgs = cloneFront.querySelectorAll('img');
+          for (const img of imgs) {
+            if (img.src && !img.src.startsWith('data:')) {
+              try {
+                const res = await fetch(img.src, { mode: 'cors' });
+                if (res.ok) {
+                  const b = await res.blob();
+                  const dUrl = await new Promise((resolve) => {
+                    const r = new FileReader();
+                    r.onloadend = () => resolve(r.result);
+                    r.readAsDataURL(b);
+                  });
+                  img.src = dUrl;
+                }
+              } catch (_) {}
             }
-          };
+          }
 
-          await Promise.all([convertImgToDataUrl(cloneFront), convertImgToDataUrl(cloneBack)]);
-
-          // Capture both sides via html2canvas (2x Retina scale)
-          const [canvasFront, canvasBack] = await Promise.all([
-            html2canvas(cloneFront, {
-              scale: 2,
-              useCORS: true,
-              allowTaint: true,
-              backgroundColor: null,
-              logging: false
-            }),
-            html2canvas(cloneBack, {
-              scale: 2,
-              useCORS: true,
-              allowTaint: true,
-              backgroundColor: null,
-              logging: false
-            })
-          ]);
+          // Capture Front Card via html2canvas (2x Retina scale)
+          const canvasFront = await html2canvas(cloneFront, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: null,
+            logging: false
+          });
 
           cloneWrap.remove();
 
-          // Create Composite Canvas containing both sides
-          const pad = 48;
-          const cardGap = 36;
-          const headerH = 100;
-          const labelH = 40;
-          const footerH = 50;
-
-          const totalW = Math.max(canvasFront.width, canvasBack.width) + pad * 2;
-          const totalH = pad * 2 + headerH + (labelH + canvasFront.height) + cardGap + (labelH + canvasBack.height) + footerH;
-
-          const compositeCanvas = document.createElement('canvas');
-          compositeCanvas.width = totalW;
-          compositeCanvas.height = totalH;
-          const ctx = compositeCanvas.getContext('2d');
-
-          // Gradient Luxury Background
-          const grad = ctx.createLinearGradient(0, 0, totalW, totalH);
-          grad.addColorStop(0, '#060d1e');
-          grad.addColorStop(0.5, '#0d1d40');
-          grad.addColorStop(1, '#050a16');
-          ctx.fillStyle = grad;
-          ctx.fillRect(0, 0, totalW, totalH);
-
-          // Golden Outer Frame
-          ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
-          ctx.lineWidth = 3;
-          ctx.strokeRect(18, 18, totalW - 36, totalH - 36);
-
-          // Header Text
-          ctx.textAlign = 'center';
-          ctx.fillStyle = '#d4af37';
-          ctx.font = 'bold 36px sans-serif';
-          ctx.fillText('CLB CỜ TNU - HGC • THẺ THÀNH VIÊN ĐIỆN TỬ', totalW / 2, pad + 38);
-
-          ctx.fillStyle = '#94a3b8';
-          ctx.font = '600 20px sans-serif';
-          ctx.fillText('ĐẠI HỌC THÁI NGUYÊN PHÂN HIỆU TẠI HÀ GIANG', totalW / 2, pad + 74);
-
-          // Label 1: Mặt Trước
-          let curY = pad + headerH;
-          ctx.textAlign = 'left';
-          ctx.fillStyle = '#e2e8f0';
-          ctx.font = 'bold 22px sans-serif';
-          ctx.fillText('❖ MẶT TRƯỚC (THÔNG TIN & SMART QR KEY)', pad, curY + 24);
-
-          curY += labelH;
-          const frontX = (totalW - canvasFront.width) / 2;
-          ctx.drawImage(canvasFront, frontX, curY);
-
-          // Label 2: Mặt Sau
-          curY += canvasFront.height + cardGap;
-          ctx.fillStyle = '#e2e8f0';
-          ctx.font = 'bold 22px sans-serif';
-          ctx.fillText('❖ MẶT SAU (QUY ĐỊNH SỬ DỤNG & LIÊN HỆ)', pad, curY + 24);
-
-          curY += labelH;
-          const backX = (totalW - canvasBack.width) / 2;
-          ctx.drawImage(canvasBack, backX, curY);
-
-          // Footer Watermark
-          curY += canvasBack.height + 36;
-          ctx.textAlign = 'center';
-          ctx.fillStyle = 'rgba(212, 175, 55, 0.75)';
-          ctx.font = '600 18px monospace';
-          ctx.fillText(`HỘI VIÊN: ${member.name.toUpperCase()} • MÃ ĐỊNH DANH: ${member.id} • HỆ THỐNG XÁC THỰC THẺ CLB CỜ TNU - HGC`, totalW / 2, curY);
-
-          // Convert compositeCanvas to Blob
+          // Convert canvasFront to Blob
           const blob = await new Promise((resolve) => {
-            compositeCanvas.toBlob(resolve, 'image/png', 0.95);
+            canvasFront.toBlob(resolve, 'image/png', 0.95);
           });
 
           const cleanName = (member.name || 'Member').replace(/[^a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]/g, '_');
           const fileName = `The_Thanh_Vien_${member.id}_${cleanName}.png`;
-          const blobUrl = blob ? URL.createObjectURL(blob) : compositeCanvas.toDataURL('image/png');
+          const blobUrl = blob ? URL.createObjectURL(blob) : canvasFront.toDataURL('image/png');
           const file = blob ? new File([blob], fileName, { type: 'image/png' }) : null;
 
           // Attempt direct download for desktop
@@ -540,7 +455,7 @@ export const memberCardComponent = {
 
           sound.playSuccess?.() || sound.playClick();
         } catch (err) {
-          console.error('Lỗi xuất ảnh thẻ 2 mặt:', err);
+          console.error('Lỗi xuất ảnh thẻ mặt trước:', err);
           modalManager.showAlert('Có lỗi khi tạo ảnh thẻ thành viên. Vui lòng thử lại!');
         } finally {
           btnDownload.disabled = false;

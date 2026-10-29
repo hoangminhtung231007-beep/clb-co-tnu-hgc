@@ -1596,25 +1596,122 @@ class App {
     `;
   }
 
+  renderMembersDirectoryRows(filtered, isMemberOrAdmin) {
+    if (!filtered || filtered.length === 0) {
+      return `
+        <tr><td colspan="9" class="text-center text-muted p-4">${this.memberSearchQuery ? 'Không tìm thấy kỳ thủ phù hợp với từ khóa.' : 'Chưa có kỳ thủ nào trong danh sách. Thành viên mới sẽ xuất hiện sau khi Ban Điều Hành duyệt đơn đăng ký.'}</td></tr>
+      `;
+    }
+    return filtered.map((m) => {
+      const gold = m.goldMedals ?? 0;
+      const silver = m.silverMedals ?? 0;
+      const bronze = m.bronzeMedals ?? 0;
+      return `
+        <tr>
+          <td data-label="Mã Thẻ"><span class="font-mono text-gold font-bold text-xs">${m.id}</span></td>
+          <td data-label="Kỳ Thủ">
+            <div class="member-cell">
+              <img src="${m.avatar}" alt="${m.name}">
+              <div>
+                <div class="font-bold text-white">${m.name}</div>
+                <div class="text-xs text-dim">${m.roleTitle}</div>
+              </div>
+            </div>
+          </td>
+          <td data-label="MSSV"><span class="font-mono text-xs">${m.studentId}</span></td>
+          <td data-label="Lớp"><span class="text-xs font-medium text-white">${m.class || m.major || 'Chưa phân lớp'}</span></td>
+          <td data-label="HC Vàng"><strong class="text-gold font-bold">🥇 ${gold}</strong></td>
+          <td data-label="HC Bạc"><strong class="text-cyan font-bold">🥈 ${silver}</strong></td>
+          <td data-label="HC Đồng"><strong class="text-rose font-bold">🥉 ${bronze}</strong></td>
+          <td data-label="Chuyên Cần"><span class="badge badge-emerald">${m.attendanceRate !== undefined ? m.attendanceRate : 0}%</span></td>
+          <td data-label="Liên Hệ">
+            <span class="text-xs text-muted">
+              ${isMemberOrAdmin ? (m.phone || '098*.***') : '••••••••••'}
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  filterMembersDirectory(members, query) {
+    const rawQ = (query || '').trim().toLowerCase();
+    if (!rawQ) return members;
+
+    // Normalizer for accent-insensitive search (e.g. 'tien dat' matches 'Tiến Đạt')
+    const stripAccents = (str) => {
+      if (!str) return '';
+      return str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'd')
+        .trim();
+    };
+
+    const normQ = stripAccents(rawQ);
+
+    return members.filter((m) => {
+      const name = (m.name || '').toLowerCase();
+      const studentId = (m.studentId || '').toLowerCase();
+      const mClass = (m.class || '').toLowerCase();
+      const major = (m.major || '').toLowerCase();
+      const faculty = (m.faculty || '').toLowerCase();
+      const university = (m.university || '').toLowerCase();
+
+      // Check direct contains
+      if (name.includes(rawQ) || studentId.includes(rawQ) || mClass.includes(rawQ) || major.includes(rawQ) || faculty.includes(rawQ) || university.includes(rawQ)) {
+        return true;
+      }
+
+      // Check accent-stripped contains
+      if (normQ) {
+        const normName = stripAccents(m.name);
+        const normClass = stripAccents(m.class);
+        const normMajor = stripAccents(m.major);
+        const normFaculty = stripAccents(m.faculty);
+        if (normName.includes(normQ) || normClass.includes(normQ) || normMajor.includes(normQ) || normFaculty.includes(normQ)) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+  }
+
   renderMembersDirectory(container) {
     const state = store.getState();
     const isMemberOrAdmin = state.currentSession.role === 'member' || state.currentSession.role === 'admin';
 
-    let filtered = state.members.filter((m) => {
-      const q = this.memberSearchQuery.toLowerCase();
-      return m.name.toLowerCase().includes(q) ||
-             m.studentId.toLowerCase().includes(q) ||
-             (m.major && m.major.toLowerCase().includes(q)) ||
-             m.university.toLowerCase().includes(q);
-    });
+    // If search bar & table already exist in container, update table body in place (avoids losing focus on mobile)
+    const existingSearchInput = container.querySelector('#dirSearchInput');
+    const existingTbody = container.querySelector('#membersDirectoryTbody');
+    const existingClearBtn = container.querySelector('#btnClearDirSearch');
+
+    if (existingSearchInput && existingTbody) {
+      const filtered = this.filterMembersDirectory(state.members, this.memberSearchQuery);
+      existingTbody.innerHTML = this.renderMembersDirectoryRows(filtered, isMemberOrAdmin);
+      if (existingClearBtn) {
+        existingClearBtn.style.display = this.memberSearchQuery ? 'inline-flex' : 'none';
+      }
+      return;
+    }
+
+    const filtered = this.filterMembersDirectory(state.members, this.memberSearchQuery);
 
     container.innerHTML = `
       <div class="directory-view animate-fadeIn">
         <!-- Controls & Filters -->
         <div class="directory-controls-bar">
-          <div class="d-flex gap-2 align-center flex-1" style="min-width:260px;">
+          <div class="d-flex gap-2 align-center flex-1" style="min-width:260px; position:relative;">
             <input type="text" id="dirSearchInput" class="form-input form-input-sm flex-1" 
-                   value="${this.memberSearchQuery}" placeholder="Tìm theo tên thành viên, MSSV hoặc lớp...">
+                   value="${this.memberSearchQuery}" placeholder="Tìm theo tên thành viên, MSSV hoặc lớp..."
+                   autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+                   style="padding-right: 32px;">
+            <button type="button" id="btnClearDirSearch" class="btn btn-outline btn-sm" 
+                    style="display: ${this.memberSearchQuery ? 'inline-flex' : 'none'}; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 0; width: 22px; height: 22px; font-size: 12px; align-items: center; justify-content: center; border-radius: 50%; z-index: 2; border-color: rgba(255,255,255,0.2); color: #cbd5e1;" 
+                    title="Xóa tìm kiếm">✕</button>
           </div>
         </div>
 
@@ -1640,39 +1737,8 @@ class App {
                 <th>Liên Hệ</th>
               </tr>
             </thead>
-            <tbody>
-              ${filtered.length === 0 ? `
-                <tr><td colspan="9" class="text-center text-muted p-4">${this.memberSearchQuery ? 'Không tìm thấy kỳ thủ phù hợp với từ khóa.' : 'Chưa có kỳ thủ nào trong danh sách. Thành viên mới sẽ xuất hiện sau khi Ban Điều Hành duyệt đơn đăng ký.'}</td></tr>
-              ` : filtered.map((m) => {
-                const gold = m.goldMedals ?? 0;
-                const silver = m.silverMedals ?? 0;
-                const bronze = m.bronzeMedals ?? 0;
-                return `
-                <tr>
-                  <td data-label="Mã Thẻ"><span class="font-mono text-gold font-bold text-xs">${m.id}</span></td>
-                  <td data-label="Kỳ Thủ">
-                    <div class="member-cell">
-                      <img src="${m.avatar}" alt="${m.name}">
-                      <div>
-                        <div class="font-bold text-white">${m.name}</div>
-                        <div class="text-xs text-dim">${m.roleTitle}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td data-label="MSSV"><span class="font-mono text-xs">${m.studentId}</span></td>
-                  <td data-label="Lớp"><span class="text-xs font-medium text-white">${m.class || m.major || 'Chưa phân lớp'}</span></td>
-                  <td data-label="HC Vàng"><strong class="text-gold font-bold">🥇 ${gold}</strong></td>
-                  <td data-label="HC Bạc"><strong class="text-cyan font-bold">🥈 ${silver}</strong></td>
-                  <td data-label="HC Đồng"><strong class="text-rose font-bold">🥉 ${bronze}</strong></td>
-                  <td data-label="Chuyên Cần"><span class="badge badge-emerald">${m.attendanceRate !== undefined ? m.attendanceRate : 0}%</span></td>
-                  <td data-label="Liên Hệ">
-                    <span class="text-xs text-muted">
-                      ${isMemberOrAdmin ? (m.phone || '098*.***') : '••••••••••'}
-                    </span>
-                  </td>
-                </tr>
-              `;
-              }).join('')}
+            <tbody id="membersDirectoryTbody">
+              ${this.renderMembersDirectoryRows(filtered, isMemberOrAdmin)}
             </tbody>
           </table>
         </div>
@@ -1680,11 +1746,29 @@ class App {
     `;
 
     const searchInput = container.querySelector('#dirSearchInput');
+    const clearBtn = container.querySelector('#btnClearDirSearch');
+    const tbody = container.querySelector('#membersDirectoryTbody');
 
-    if (searchInput) {
+    if (searchInput && tbody) {
       searchInput.addEventListener('input', (e) => {
         this.memberSearchQuery = e.target.value;
-        this.renderMembersDirectory(container);
+        const res = this.filterMembersDirectory(state.members, this.memberSearchQuery);
+        tbody.innerHTML = this.renderMembersDirectoryRows(res, isMemberOrAdmin);
+        if (clearBtn) {
+          clearBtn.style.display = this.memberSearchQuery ? 'inline-flex' : 'none';
+        }
+      });
+    }
+
+    if (clearBtn && searchInput && tbody) {
+      clearBtn.addEventListener('click', () => {
+        sound.playClick();
+        this.memberSearchQuery = '';
+        searchInput.value = '';
+        clearBtn.style.display = 'none';
+        const res = this.filterMembersDirectory(state.members, '');
+        tbody.innerHTML = this.renderMembersDirectoryRows(res, isMemberOrAdmin);
+        searchInput.focus();
       });
     }
   }

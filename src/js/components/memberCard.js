@@ -1,6 +1,7 @@
 import { modalManager } from "./modals.js";
 import { qrHelper } from '../utils/qrHelper.js';
 import { sound } from '../utils/audio.js';
+import { store } from '../state/store.js';
 import html2canvas from 'html2canvas';
 
 export const memberCardComponent = {
@@ -89,10 +90,10 @@ export const memberCardComponent = {
 
               <!-- Card Body (Ảnh đại diện 125px + 8 trường thông tin + Khối Smart QR Key lấp đầy khoảng trống) -->
               <div class="id-card-body id-front-body">
-                <!-- Cột 1: Ảnh đại diện (Hỗ trợ bấm để đổi avatar) -->
-                <div class="id-avatar-wrap" id="cardAvatarWrap" title="Bấm vào đây để đổi avatar ảnh thẻ" style="cursor: pointer; position: relative;">
+                <!-- Cột 1: Ảnh đại diện (Hỗ trợ bấm để sửa thông tin cá nhân) -->
+                <div class="id-avatar-wrap" id="cardAvatarWrap" title="Bấm vào đây để sửa thông tin cá nhân" style="cursor: pointer; position: relative;">
                   <img src="${member.avatar}" alt="${member.name}" class="id-avatar">
-                  <div class="id-avatar-change-hint" style="position: absolute; bottom: 6px; right: 6px; background: rgba(15,23,42,0.85); border: 1.5px solid var(--border-gold); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--gold-color); pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,0.6);" title="Đổi Avatar">📸</div>
+                  <div class="id-avatar-change-hint" style="position: absolute; bottom: 6px; right: 6px; background: rgba(15,23,42,0.85); border: 1.5px solid var(--border-gold); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--gold-color); pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,0.6);" title="Sửa thông tin cá nhân">✏️</div>
                 </div>
 
                 <!-- Cột 2: Thông tin chi tiết -->
@@ -281,7 +282,7 @@ export const memberCardComponent = {
           </div>
         </div>
 
-        <!-- Card Actions: Tải Thẻ Thành Viên, Nộp Quỹ & Đổi Avatar -->
+        <!-- Card Actions: Tải Thẻ Thành Viên, Nộp Quỹ & Sửa Thông Tin Cá Nhân -->
         <div class="card-action-bar" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
           <button id="btnDownloadCard" class="btn btn-gold btn-sm">
             <span class="btn-icon">⬇</span> Tải Thẻ Thành Viên
@@ -289,8 +290,8 @@ export const memberCardComponent = {
           <button id="btnMemberPayFund" class="btn btn-sm" style="font-weight: 700; background: linear-gradient(135deg, #059669, #10b981); border: none; color: #ffffff; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); padding: 8px 16px;">
             <span class="btn-icon">💳</span> Nộp Quỹ CLB
           </button>
-          <button id="btnChangeAvatarCard" class="btn btn-outline btn-sm" style="border-color: rgba(56, 189, 248, 0.5); color: #38bdf8; font-weight: 600;">
-            <span class="btn-icon">📸</span> Đổi Avatar
+          <button id="btnEditMemberProfileCard" class="btn btn-outline btn-sm" style="border-color: rgba(56, 189, 248, 0.5); color: #38bdf8; font-weight: 600;">
+            <span class="btn-icon">✏️</span> Sửa thông tin cá nhân
           </button>
         </div>
       </div>
@@ -317,17 +318,18 @@ export const memberCardComponent = {
       flipInner.classList.toggle('is-flipped');
     });
 
-    // Chức năng Đổi Avatar Thẻ Thành Viên
-    const triggerChangeAvatar = (e) => {
+    // Chức năng Sửa Thông Tin Cá Nhân (Bao gồm ảnh thẻ & thông tin, ẩn phân quyền vai trò)
+    const triggerEditProfile = (e) => {
       if (e) e.stopPropagation();
       sound.playClick();
-      modalManager.openChangeAvatarModal(member, (updatedMember) => {
+      const latestMember = store.getMemberById(member.id) || member;
+      modalManager.openMemberModal(latestMember, (updatedMember) => {
         memberCardComponent.render(containerEl, updatedMember);
-      });
+      }, { hideRole: true });
     };
 
-    const btnChangeAvatar = containerEl.querySelector('#btnChangeAvatarCard');
-    btnChangeAvatar?.addEventListener('click', triggerChangeAvatar);
+    const btnEditProfile = containerEl.querySelector('#btnEditMemberProfileCard') || containerEl.querySelector('#btnChangeAvatarCard');
+    btnEditProfile?.addEventListener('click', triggerEditProfile);
 
     // Chức năng Nộp Quỹ CLB cá nhân hóa
     const btnPayFund = containerEl.querySelector('#btnMemberPayFund');
@@ -340,7 +342,7 @@ export const memberCardComponent = {
     });
 
     const avatarWrap = containerEl.querySelector('#cardAvatarWrap');
-    avatarWrap?.addEventListener('click', triggerChangeAvatar);
+    avatarWrap?.addEventListener('click', triggerEditProfile);
 
     // Chức năng tải ảnh thẻ thành viên 2 mặt (Mặt trước & Mặt sau)
     const btnDownload = containerEl.querySelector('#btnDownloadCard');

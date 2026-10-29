@@ -224,7 +224,17 @@ export const modalManager = {
   },
 
   // 1. Add / Edit Member Modal
-  openMemberModal(memberToEdit = null) {
+  openMemberModal(memberToEdit = null, onSavedOrOptions = null, options = {}) {
+    let onSaved = null;
+    let opts = {};
+    if (typeof onSavedOrOptions === 'function') {
+      onSaved = onSavedOrOptions;
+      opts = options || {};
+    } else if (typeof onSavedOrOptions === 'object' && onSavedOrOptions !== null) {
+      opts = onSavedOrOptions;
+      onSaved = typeof options === 'function' ? options : null;
+    }
+    const hideRole = !!opts.hideRole;
     const isEdit = !!memberToEdit;
     const m = memberToEdit || {};
     const defaultAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
@@ -276,6 +286,7 @@ export const modalManager = {
           </div>
         </div>
 
+        ${!hideRole ? `
         <!-- Phân quyền vai trò -->
         <div class="form-group">
           <label class="form-label">Phân quyền vai trò</label>
@@ -311,6 +322,7 @@ export const modalManager = {
                  placeholder="VD: Chủ nhiệm, Phó chủ nhiệm Chuyên môn, Trưởng ban...">
           <small class="text-xs text-muted mt-1" style="display:block;">* Chức vụ này sẽ hiển thị trang trọng trên thẻ thành viên và trang cơ cấu Ban Điều Hành CLB.</small>
         </div>
+        ` : ''}
 
         <!-- Số điện thoại (Đã xóa Email trường) -->
         <div class="form-group">
@@ -392,7 +404,10 @@ export const modalManager = {
 
     let finalAvatarExport = currentRawSrc;
 
-    this.open(isEdit ? `Chỉnh sửa hồ sơ kỳ thủ: ${m.name}` : 'Thêm thành viên kỳ thủ mới', contentHtml, (modal) => {
+    const modalTitle = isEdit ? (hideRole ? `Chỉnh sửa thông tin cá nhân: ${m.name}` : `Chỉnh sửa hồ sơ kỳ thủ: ${m.name}`) : 'Thêm thành viên kỳ thủ mới';
+    const confirmBtnText = isEdit ? (hideRole ? 'Lưu thông tin' : 'Cập nhật hồ sơ') : 'Thêm mới kỳ thủ';
+
+    this.open(modalTitle, contentHtml, (modal) => {
       const name = modal.querySelector('#mName').value.trim();
       const studentId = modal.querySelector('#mStudentId').value.trim();
       if (!name || !studentId) {
@@ -411,11 +426,17 @@ export const modalManager = {
       const facultyVal = modal.querySelector('#mFaculty')?.value.trim() || 'K22';
       const cohortVal = modal.querySelector('#mCohort')?.value.trim() || '2024 - 2028';
       const disciplineVal = m.discipline || 'Cả hai';
-      const roleVal = modal.querySelector('#mRole')?.value || 'member';
-      let roleTitleVal = 'Thành viên';
-      if (roleVal === 'bdh') {
-        const customTitle = modal.querySelector('#mBdhRoleTitle')?.value.trim();
-        roleTitleVal = customTitle || 'Chủ nhiệm';
+      
+      let roleVal = m.role || 'member';
+      let roleTitleVal = m.roleTitle || 'Thành viên';
+      if (!hideRole) {
+        roleVal = modal.querySelector('#mRole')?.value || 'member';
+        if (roleVal === 'bdh') {
+          const customTitle = modal.querySelector('#mBdhRoleTitle')?.value.trim();
+          roleTitleVal = customTitle || 'Chủ nhiệm';
+        } else {
+          roleTitleVal = 'Thành viên';
+        }
       }
       const phoneVal = modal.querySelector('#mPhone')?.value.trim() || '';
 
@@ -439,65 +460,73 @@ export const modalManager = {
         avatar: finalAvatarExport || currentRawSrc
       };
 
+      let updatedResult = null;
       if (isEdit) {
-        store.updateMember(m.id, data);
-        modalManager.showAlert(`Đã cập nhật thành công hồ sơ kỳ thủ [${name}]!`);
+        updatedResult = store.updateMember(m.id, data);
+        sound.playSuccess?.();
+        modalManager.showAlert(hideRole ? `Đã lưu thành công thông tin cá nhân của bạn!` : `Đã cập nhật thành công hồ sơ kỳ thủ [${name}]!`);
       } else {
-        store.addMember(data);
+        updatedResult = store.addMember(data);
+        sound.playSuccess?.();
         modalManager.showAlert(`Đã thêm mới kỳ thủ [${name}] thành công!`);
       }
+      if (typeof onSaved === 'function') {
+        onSaved(updatedResult || { ...m, ...data });
+      }
       return true;
-    }, isEdit ? 'Cập nhật hồ sơ' : 'Thêm mới kỳ thủ');
+    }, confirmBtnText);
 
     // Setup manual framing studio
     const modalEl = document.getElementById('globalAppModal');
     if (modalEl) {
-      // Setup dynamic BĐH position box toggle & preset clicks
-      const roleSelect = modalEl.querySelector('#mRole');
-      const bdhContainer = modalEl.querySelector('#bdhRoleTitleContainer');
-      const bdhInput = modalEl.querySelector('#mBdhRoleTitle');
+      if (!hideRole) {
+        // Setup dynamic BĐH position box toggle & preset clicks
+        const roleSelect = modalEl.querySelector('#mRole');
+        const bdhContainer = modalEl.querySelector('#bdhRoleTitleContainer');
+        const bdhInput = modalEl.querySelector('#mBdhRoleTitle');
 
-      const updatePresetButtonsHighlight = (activeTitle) => {
-        modalEl.querySelectorAll('.btn-preset-title').forEach((b) => {
-          if (b.getAttribute('data-title') === activeTitle) {
-            b.classList.remove('btn-outline');
-            b.classList.add('btn-gold');
-          } else {
-            b.classList.remove('btn-gold');
-            b.classList.add('btn-outline');
-          }
-        });
-      };
-
-      if (roleSelect && bdhContainer) {
-        roleSelect.addEventListener('change', () => {
-          if (roleSelect.value === 'bdh') {
-            bdhContainer.style.display = 'block';
-            if (bdhInput && (!bdhInput.value || bdhInput.value === 'Thành viên')) {
-              bdhInput.value = 'Chủ nhiệm';
+        const updatePresetButtonsHighlight = (activeTitle) => {
+          modalEl.querySelectorAll('.btn-preset-title').forEach((b) => {
+            if (b.getAttribute('data-title') === activeTitle) {
+              b.classList.remove('btn-outline');
+              b.classList.add('btn-gold');
+            } else {
+              b.classList.remove('btn-gold');
+              b.classList.add('btn-outline');
             }
-            updatePresetButtonsHighlight(bdhInput ? bdhInput.value.trim() : 'Chủ nhiệm');
-          } else {
-            bdhContainer.style.display = 'none';
-          }
-        });
-      }
+          });
+        };
 
-      modalEl.querySelectorAll('.btn-preset-title').forEach((pBtn) => {
-        pBtn.addEventListener('click', () => {
-          sound.playClick();
-          const title = pBtn.getAttribute('data-title');
-          if (bdhInput && title) {
-            bdhInput.value = title;
-            updatePresetButtonsHighlight(title);
-          }
-        });
-      });
+        if (roleSelect && bdhContainer) {
+          roleSelect.addEventListener('change', () => {
+            if (roleSelect.value === 'bdh') {
+              bdhContainer.style.display = 'block';
+              if (bdhInput && (!bdhInput.value || bdhInput.value === 'Thành viên')) {
+                bdhInput.value = 'Chủ nhiệm';
+              }
+              updatePresetButtonsHighlight(bdhInput ? bdhInput.value.trim() : 'Chủ nhiệm');
+            } else {
+              bdhContainer.style.display = 'none';
+            }
+          });
+        }
 
-      if (bdhInput) {
-        bdhInput.addEventListener('input', () => {
-          updatePresetButtonsHighlight(bdhInput.value.trim());
+        modalEl.querySelectorAll('.btn-preset-title').forEach((pBtn) => {
+          pBtn.addEventListener('click', () => {
+            sound.playClick();
+            const title = pBtn.getAttribute('data-title');
+            if (bdhInput && title) {
+              bdhInput.value = title;
+              updatePresetButtonsHighlight(title);
+            }
+          });
         });
+
+        if (bdhInput) {
+          bdhInput.addEventListener('input', () => {
+            updatePresetButtonsHighlight(bdhInput.value.trim());
+          });
+        }
       }
 
       const canvas = modalEl.querySelector('#avatarCropCanvas');

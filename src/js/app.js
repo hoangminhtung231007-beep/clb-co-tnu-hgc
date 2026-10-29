@@ -2469,7 +2469,7 @@ class App {
       classCounts[cls] = (classCounts[cls] || 0) + 1;
     });
 
-    const sortedClasses = Object.entries(classCounts).sort((a, b) => b[1] - a[1]);
+    const sortedClasses = Object.entries(classCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
     const palette = [
       '#d4af37', // Gold
       '#38bdf8', // Sky Blue
@@ -2478,35 +2478,24 @@ class App {
       '#ec4899', // Pink
       '#8b5cf6', // Purple
       '#06b6d4', // Cyan
-      '#64748b'  // Slate
+      '#f43f5e', // Rose
+      '#14b8a6', // Teal
+      '#a855f7', // Violet
+      '#eab308', // Yellow
+      '#6366f1', // Indigo
+      '#84cc16', // Lime
+      '#fb923c', // Orange
+      '#22d3ee', // Light Cyan
+      '#94a3b8'  // Slate
     ];
 
-    let segments = [];
-    if (sortedClasses.length <= 6) {
-      segments = sortedClasses.map(([label, count], idx) => ({
-        label,
-        count,
-        value: totalMembers ? Math.round((count / totalMembers) * 100) : 0,
-        color: palette[idx % palette.length]
-      }));
-    } else {
-      const top5 = sortedClasses.slice(0, 5);
-      const othersCount = sortedClasses.slice(5).reduce((sum, item) => sum + item[1], 0);
-      segments = top5.map(([label, count], idx) => ({
-        label,
-        count,
-        value: totalMembers ? Math.round((count / totalMembers) * 100) : 0,
-        color: palette[idx % palette.length]
-      }));
-      if (othersCount > 0) {
-        segments.push({
-          label: 'Các lớp khác',
-          count: othersCount,
-          value: totalMembers ? Math.round((othersCount / totalMembers) * 100) : 0,
-          color: '#64748b'
-        });
-      }
-    }
+    // Hiển thị toàn bộ tất cả các lớp của hội viên trong CLB
+    const segments = sortedClasses.map(([label, count], idx) => ({
+      label,
+      count,
+      value: totalMembers ? Math.round((count / totalMembers) * 100) : 0,
+      color: palette[idx % palette.length]
+    }));
 
     container.innerHTML = `
       <div class="admin-sub-overview animate-fadeIn">
@@ -2542,7 +2531,7 @@ class App {
           </div>
         </div>
 
-        <!-- Quick Charts Row (Đã xóa Thống kê điểm danh theo tuần, hiển thị Phân bố theo Lớp) -->
+        <!-- Quick Charts Row (Hiển thị đầy đủ tất cả các lớp) -->
         <div class="charts-grid-row" style="grid-template-columns: 1fr;">
           <div class="chart-box">
             <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3">
@@ -2561,7 +2550,16 @@ class App {
     `;
 
     const donutCanvas = container.querySelector('#overviewDonutChart');
-    if (donutCanvas) chartHelper.renderDonutChart(donutCanvas, segments, totalMembers);
+    if (donutCanvas) {
+      chartHelper.renderDonutChart(donutCanvas, segments, totalMembers);
+
+      if (window.ResizeObserver && donutCanvas.parentElement) {
+        const ro = new ResizeObserver(() => {
+          chartHelper.renderDonutChart(donutCanvas, segments, totalMembers);
+        });
+        ro.observe(donutCanvas.parentElement);
+      }
+    }
   }
 
   // Admin Sub 2: Smart QR Check-in ("Buồng lái điểm danh")
@@ -4713,15 +4711,20 @@ class App {
     // 3. Class segments for Donut chart
     const classCountMap = {};
     members.forEach((m) => {
-      const cls = m.class || m.major || 'K22 Sư phạm - CNTT';
+      const cls = (m.class || m.major || 'Chưa phân lớp').trim();
       classCountMap[cls] = (classCountMap[cls] || 0) + 1;
     });
-    const colors = ['#d4af37', '#10b981', '#f59e0b', '#38bdf8', '#8b5cf6', '#ec4899'];
-    const classSegments = Object.entries(classCountMap).map(([label, count], idx) => ({
+    const classPalette = [
+      '#d4af37', '#38bdf8', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6',
+      '#06b6d4', '#f43f5e', '#14b8a6', '#a855f7', '#eab308', '#6366f1',
+      '#84cc16', '#fb923c', '#22d3ee', '#94a3b8'
+    ];
+    const sortedAnalyticsClasses = Object.entries(classCountMap).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const classSegments = sortedAnalyticsClasses.map(([label, count], idx) => ({
       label,
       count,
       value: Math.round((count / (members.length || 1)) * 100),
-      color: colors[idx % colors.length]
+      color: classPalette[idx % classPalette.length]
     }));
 
     // 4. Monthly timeline bar chart
@@ -5035,6 +5038,12 @@ class App {
     const donut = container.querySelector('#analyticsDonutChart');
     if (donut) {
       chartHelper.renderDonutChart(donut, data.classSegments);
+      if (window.ResizeObserver && donut.parentElement) {
+        const ro = new ResizeObserver(() => {
+          chartHelper.renderDonutChart(donut, data.classSegments);
+        });
+        ro.observe(donut.parentElement);
+      }
     }
 
     // Bind Date Inputs & Filter Button

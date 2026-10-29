@@ -181,11 +181,11 @@ export const chartHelper = {
     const width = (canvasEl.width = containerWidth);
 
     const isMobile = width < 560;
-    const height = (canvasEl.height = isMobile ? Math.max(220, 190 + dataSegments.length * 28) : 240);
+    const totalCount = dataSegments.reduce((sum, s) => sum + (s.count !== undefined ? s.count : (s.value || 0)), 0) || totalMembersCount || 0;
 
-    ctx.clearRect(0, 0, width, height);
-
-    if (dataSegments.length === 0 || totalMembersCount === 0) {
+    if (dataSegments.length === 0 || totalCount === 0) {
+      const height = (canvasEl.height = 200);
+      ctx.clearRect(0, 0, width, height);
       ctx.fillStyle = '#64748b';
       ctx.textAlign = 'center';
       ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -193,14 +193,53 @@ export const chartHelper = {
       return;
     }
 
-    const totalCount = dataSegments.reduce((sum, s) => sum + (s.count !== undefined ? s.count : s.value || 0), 0) || totalMembersCount || 1;
+    const rowHeight = 26;
+    let cols = 1;
+    let rows = dataSegments.length;
+    let colWidth = 0;
+    let legendStartX = 0;
+    let legendStartY = 0;
+    let centerX, centerY, radius, innerRadius, height;
+
+    if (isMobile) {
+      centerX = width / 2;
+      centerY = 85;
+      radius = 65;
+      innerRadius = radius * 0.58;
+      legendStartX = 20;
+      legendStartY = 175;
+      cols = 1;
+      rows = dataSegments.length;
+      colWidth = width - 40;
+      height = Math.max(220, legendStartY + rows * rowHeight + 15);
+    } else {
+      centerX = Math.max(110, Math.min(width * 0.22, 140));
+      radius = Math.min(centerX - 15, 80);
+      innerRadius = radius * 0.58;
+      legendStartX = centerX + radius + 32;
+
+      const availWidth = Math.max(200, width - legendStartX - 20);
+      if (availWidth >= 660 && dataSegments.length >= 10) {
+        cols = 3;
+      } else if (availWidth >= 380 && dataSegments.length >= 6) {
+        cols = 2;
+      } else {
+        cols = 1;
+      }
+
+      rows = Math.ceil(dataSegments.length / cols);
+      colWidth = Math.floor(availWidth / cols);
+      const legendHeight = rows * rowHeight;
+      height = Math.max(240, legendHeight + 40);
+      centerY = Math.max(radius + 20, Math.min(height / 2, 150));
+      legendStartY = Math.max(25, (height - legendHeight) / 2 + 10);
+    }
+
+    canvasEl.height = height;
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw Donut Slices
     let currentAngle = -Math.PI / 2;
-
-    const centerX = isMobile ? width / 2 : Math.max(120, Math.min(width * 0.28, 160));
-    const centerY = isMobile ? 85 : height / 2;
-    const radius = isMobile ? 65 : Math.min(centerX - 15, centerY - 20, 85);
-    const innerRadius = radius * 0.58;
-
     dataSegments.forEach((seg) => {
       const sliceVal = seg.count !== undefined ? seg.count : seg.value;
       const sliceAngle = (sliceVal / totalCount) * Math.PI * 2;
@@ -222,34 +261,34 @@ export const chartHelper = {
     ctx.fillStyle = '#94a3b8';
     ctx.fillText('kỳ thủ', centerX, centerY + 18);
 
-    // Legend on the right (or bottom on mobile)
-    const legendX = isMobile ? 24 : centerX + radius + 35;
-    let legendY = isMobile ? 180 : Math.max(30, (height - dataSegments.length * 30) / 2 + 15);
+    // Draw Legend Items in Multi-Column format
     ctx.textAlign = 'left';
-
-    dataSegments.forEach((seg) => {
+    dataSegments.forEach((seg, idx) => {
       const sliceVal = seg.count !== undefined ? seg.count : seg.value;
       const pct = Math.round((sliceVal / totalCount) * 100);
 
+      const col = isMobile ? 0 : Math.floor(idx / rows);
+      const row = isMobile ? idx : (idx % rows);
+      const itemX = legendStartX + col * colWidth;
+      const itemY = legendStartY + row * rowHeight;
+
       // Color swatch dot
       ctx.beginPath();
-      ctx.arc(legendX, legendY, 5, 0, Math.PI * 2);
+      ctx.arc(itemX + 5, itemY, 4.5, 0, Math.PI * 2);
       ctx.fillStyle = seg.color;
       ctx.fill();
 
       // Label
       ctx.fillStyle = '#e2e8f0';
       ctx.font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.fillText(seg.label, legendX + 14, legendY + 4);
+      ctx.fillText(seg.label, itemX + 15, itemY + 4);
 
       // Value & percentage
-      const labelW = ctx.measureText(seg.label).width + 10;
+      const labelW = ctx.measureText(seg.label).width + 8;
       ctx.fillStyle = '#94a3b8';
       ctx.font = '500 12px monospace';
       const textVal = `${sliceVal} (${pct}%)`;
-      ctx.fillText(textVal, legendX + 14 + labelW, legendY + 4);
-
-      legendY += 30;
+      ctx.fillText(textVal, itemX + 15 + labelW, itemY + 4);
     });
   }
 };

@@ -32,8 +32,31 @@ class App {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').then((reg) => {
         console.log('CLB Cờ PWA ServiceWorker registered', reg);
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker?.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('New update available, auto reloading...');
+              window.location.reload();
+            }
+          });
+        });
       }).catch((err) => {
         console.warn('SW registration skipped', err);
+      });
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          navigator.serviceWorker.ready.then((reg) => reg.update()).catch(() => {});
+        }
       });
     }
 
@@ -1708,6 +1731,7 @@ class App {
             <input type="text" id="dirSearchInput" class="form-input form-input-sm flex-1" 
                    value="${this.memberSearchQuery}" placeholder="Tìm theo tên thành viên, MSSV hoặc lớp..."
                    autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+                   inputmode="search"
                    style="padding-right: 32px;">
             <button type="button" id="btnClearDirSearch" class="btn btn-outline btn-sm" 
                     style="display: ${this.memberSearchQuery ? 'inline-flex' : 'none'}; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 0; width: 22px; height: 22px; font-size: 12px; align-items: center; justify-content: center; border-radius: 50%; z-index: 2; border-color: rgba(255,255,255,0.2); color: #cbd5e1;" 
@@ -1756,6 +1780,13 @@ class App {
         tbody.innerHTML = this.renderMembersDirectoryRows(res, isMemberOrAdmin);
         if (clearBtn) {
           clearBtn.style.display = this.memberSearchQuery ? 'inline-flex' : 'none';
+        }
+      });
+
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          searchInput.blur();
         }
       });
     }

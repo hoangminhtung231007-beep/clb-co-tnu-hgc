@@ -1083,7 +1083,9 @@ class App {
       fabCenter.classList.toggle('active', view === 'member-pass');
     }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (window.scrollY > 0) {
+      window.scrollTo(0, 0);
+    }
     this.renderCurrentView();
   }
 
@@ -1382,41 +1384,48 @@ class App {
     const tabMembers = container.querySelector('#tabOrgMembers');
     const tabAlumniBoard = container.querySelector('#tabOrgAlumniBoard');
     const tabAlumniMembers = container.querySelector('#tabOrgAlumniMembers');
+    const contentPane = container.querySelector('#orgTabContent');
+
+    const switchOrgSubTab = (tabName) => {
+      this.orgTab = tabName;
+      tabBoard?.classList.toggle('active', tabName === 'board');
+      tabMembers?.classList.toggle('active', tabName === 'members');
+      tabAlumniBoard?.classList.toggle('active', tabName === 'alumni-board');
+      tabAlumniMembers?.classList.toggle('active', tabName === 'alumni-members');
+
+      if (!contentPane) return;
+      if (tabName === 'board') {
+        this.renderBoardMembers(contentPane, bdhMembers);
+      } else if (tabName === 'members') {
+        this.renderMembersDirectory(contentPane);
+      } else if (tabName === 'alumni-board') {
+        this.renderAlumniBoard(contentPane, state.alumniBoard || []);
+      } else if (tabName === 'alumni-members') {
+        this.renderAlumniMembers(contentPane, state.alumniMembers || []);
+      }
+    };
 
     tabBoard?.addEventListener('click', () => {
       sound.playClick();
-      this.orgTab = 'board';
-      this.renderOrganization(container);
+      switchOrgSubTab('board');
     });
 
     tabMembers?.addEventListener('click', () => {
       sound.playClick();
-      this.orgTab = 'members';
-      this.renderOrganization(container);
+      switchOrgSubTab('members');
     });
 
     tabAlumniBoard?.addEventListener('click', () => {
       sound.playClick();
-      this.orgTab = 'alumni-board';
-      this.renderOrganization(container);
+      switchOrgSubTab('alumni-board');
     });
 
     tabAlumniMembers?.addEventListener('click', () => {
       sound.playClick();
-      this.orgTab = 'alumni-members';
-      this.renderOrganization(container);
+      switchOrgSubTab('alumni-members');
     });
 
-    const contentPane = container.querySelector('#orgTabContent');
-    if (this.orgTab === 'board') {
-      this.renderBoardMembers(contentPane, bdhMembers);
-    } else if (this.orgTab === 'members') {
-      this.renderMembersDirectory(contentPane);
-    } else if (this.orgTab === 'alumni-board') {
-      this.renderAlumniBoard(contentPane, state.alumniBoard || []);
-    } else if (this.orgTab === 'alumni-members') {
-      this.renderAlumniMembers(contentPane, state.alumniMembers || []);
-    }
+    switchOrgSubTab(this.orgTab);
   }
 
   renderBoardMembers(container, bdhList) {
@@ -2383,26 +2392,39 @@ class App {
       </div>
     `;
 
-    // Bind admin sidebar tabs
+    // Bind admin sidebar tabs with in-place static transition
     container.querySelectorAll('.admin-nav-item').forEach((item) => {
       item.addEventListener('click', () => {
-        sound.playClick();
         const sub = item.getAttribute('data-sub');
+        if (!sub || this.adminSubView === sub) return;
+
+        sound.playClick();
         if (sub === 'admin-firebase' && !this.firebaseUnlocked) {
           this.promptFirebasePassword(() => {
             this.firebaseUnlocked = true;
-            this.adminSubView = 'admin-firebase';
-            this.renderAdminDashboard(container);
+            this.switchAdminSubView(container, 'admin-firebase');
           });
           return;
         }
-        this.adminSubView = sub;
-        this.renderAdminDashboard(container);
+        this.switchAdminSubView(container, sub);
       });
     });
 
     const pane = container.querySelector('#adminSubContentPane');
     this.renderAdminSubView(pane);
+  }
+
+  switchAdminSubView(container, sub) {
+    this.adminSubView = sub;
+    container.querySelectorAll('.admin-nav-item').forEach((it) => {
+      it.classList.toggle('active', it.getAttribute('data-sub') === sub);
+    });
+    const pane = container.querySelector('#adminSubContentPane');
+    if (pane) {
+      this.renderAdminSubView(pane);
+    } else {
+      this.renderAdminDashboard(container);
+    }
   }
 
   renderAdminSubView(container) {
@@ -4030,8 +4052,8 @@ class App {
 
     container.querySelector('#btnGoToCreateTournament')?.addEventListener('click', () => {
       sound.playClick();
-      this.adminSubView = 'admin-events';
-      this.renderAdminDashboard(document.getElementById('mainViewport'));
+      const mainEl = document.getElementById('mainViewport');
+      this.switchAdminSubView(mainEl, 'admin-events');
     });
 
     container.querySelector('#swissEventSelect')?.addEventListener('change', (e) => {
@@ -5395,14 +5417,17 @@ service cloud.firestore {
     btnLock?.addEventListener('click', () => {
       sound.playClick();
       this.firebaseUnlocked = false;
-      this.adminSubView = 'admin-overview';
       modalManager.showAlert({
         type: 'info',
         title: 'Đã khóa bảo vệ',
         message: 'Mục Firebase Cloud đã được khóa an toàn. Bạn sẽ cần nhập lại mật khẩu khi truy cập lần sau.'
       });
       const dashboard = document.getElementById('mainViewport');
-      if (dashboard) this.renderAdminDashboard(dashboard);
+      const fbBadge = document.getElementById('adminFirebaseSidebarBadge');
+      if (fbBadge) {
+        fbBadge.innerHTML = `🔒 ${firebaseService.status === 'connected' ? 'ONLINE' : (firebaseService.status === 'connecting' ? 'CONNECTING' : 'LOCAL')}`;
+      }
+      if (dashboard) this.switchAdminSubView(dashboard, 'admin-overview');
     });
 
     // Change Firebase Password Form

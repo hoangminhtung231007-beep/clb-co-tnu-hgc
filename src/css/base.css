@@ -68,7 +68,7 @@ html {
   line-height: 1.5;
   color: var(--text-main);
   background-color: var(--bg-primary);
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -79,7 +79,7 @@ body {
     radial-gradient(circle at 15% 10%, rgba(212, 175, 55, 0.07) 0%, transparent 40%),
     radial-gradient(circle at 85% 80%, rgba(56, 189, 248, 0.05) 0%, transparent 40%),
     linear-gradient(180deg, #070d1e 0%, #0a1125 100%);
-  background-attachment: fixed;
+  background-attachment: scroll;
   overflow-x: hidden;
 }
 
@@ -144,14 +144,14 @@ p {
 .mt-3 { margin-top: 0.85rem; }
 .mt-4 { margin-top: 1.25rem; }
 
-/* Micro-animations */
+/* Micro-animations - Pure rock-solid static transitions without vertical layout shifts */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0.94; }
+  to { opacity: 1; }
 }
 
 @keyframes scaleUp {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0.96; transform: scale(0.99); }
   to { opacity: 1; transform: scale(1); }
 }
 
@@ -171,8 +171,18 @@ p {
   100% { background-position: 200% 0; }
 }
 
-.animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
-.animate-scaleUp { animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-fadeIn { 
+  animation: fadeIn 0.1s ease-out forwards; 
+}
+.animate-scaleUp { 
+  animation: scaleUp 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+}
+
+/* Eliminate jitter in tables and member lists */
+tr.animate-fadeIn,
+.member-card-wrapper.animate-fadeIn {
+  animation: none !important;
+}
 
 /* Flex & Layout Utilities */
 .d-flex { display: flex; }

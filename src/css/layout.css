@@ -256,6 +256,7 @@
   max-width: 1360px;
   margin: 0 auto;
   padding: 24px 20px 80px;
+  min-height: calc(100vh - 120px);
 }
 
 /* Admin Dashboard Layout */
@@ -952,6 +953,7 @@
   /* Spacing & Viewport */
   .main-viewport {
     padding: 12px 10px calc(80px + env(safe-area-inset-bottom, 0px));
+    min-height: calc(100vh - 120px);
   }
 
   /* Bottom Navigation Dock */

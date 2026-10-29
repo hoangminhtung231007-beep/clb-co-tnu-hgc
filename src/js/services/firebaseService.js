@@ -13,7 +13,6 @@ class FirebaseService {
     this.app = null;
     this.db = null;
     this.unsubscribeSnapshot = null;
-    this.unsubscribeAppSnapshot = null;
     this.status = 'unconfigured'; // 'unconfigured' | 'connecting' | 'connected' | 'disconnected' | 'error'
     this.statusListeners = new Set();
     this.lastSyncTime = null;
@@ -65,9 +64,6 @@ class FirebaseService {
       if (this.unsubscribeSnapshot) {
         this.unsubscribeSnapshot();
       }
-      if (this.unsubscribeAppSnapshot) {
-        this.unsubscribeAppSnapshot();
-      }
 
       this.unsubscribeSnapshot = onSnapshot(
         docRef,
@@ -90,24 +86,6 @@ class FirebaseService {
         (error) => {
           console.error('Firestore snapshot listener error:', error);
           this.notifyStatus('error');
-        }
-      );
-
-      // Dedicated listener for club_applications/pending_list
-      const appDocRef = doc(this.db, 'club_applications', 'pending_list');
-      this.unsubscribeAppSnapshot = onSnapshot(
-        appDocRef,
-        { includeMetadataChanges: true },
-        (snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.data();
-            if (data && Array.isArray(data.applications) && typeof onRemoteDataCallback === 'function') {
-              onRemoteDataCallback({ pendingApplications: data.applications }, snapshot.metadata);
-            }
-          }
-        },
-        (error) => {
-          console.warn('Firestore applications listener warning:', error);
         }
       );
 
@@ -159,7 +137,7 @@ class FirebaseService {
               await setDoc(appDocRef, {
                 applications: JSON.parse(JSON.stringify(state.pendingApplications)),
                 updatedAt: new Date().toISOString()
-              }, { merge: true });
+              }, { merge: false });
             } catch (appErr) {
               console.warn('Backup write to club_applications warning:', appErr);
             }
@@ -222,7 +200,7 @@ class FirebaseService {
         await setDoc(appDocRef, {
           applications: JSON.parse(JSON.stringify(state.pendingApplications)),
           updatedAt: new Date().toISOString()
-        }, { merge: true });
+        }, { merge: false });
       } catch (appErr) {
         console.warn('Backup push to club_applications warning:', appErr);
       }
@@ -237,10 +215,6 @@ class FirebaseService {
     if (this.unsubscribeSnapshot) {
       this.unsubscribeSnapshot();
       this.unsubscribeSnapshot = null;
-    }
-    if (this.unsubscribeAppSnapshot) {
-      this.unsubscribeAppSnapshot();
-      this.unsubscribeAppSnapshot = null;
     }
     this.app = null;
     this.db = null;

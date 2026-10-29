@@ -49,12 +49,31 @@ class Store {
       if (Array.isArray(remoteData.attendanceLogs)) this.state.attendanceLogs = remoteData.attendanceLogs;
       if (Array.isArray(remoteData.articles)) this.state.articles = remoteData.articles;
       if (Array.isArray(remoteData.pendingApplications)) {
-        const remotePending = remoteData.pendingApplications;
-        const currentPending = this.state.pendingApplications || [];
-        const map = new Map();
-        remotePending.forEach((a) => { if (a && a.id) map.set(a.id, a); });
-        currentPending.forEach((a) => { if (a && a.id && !map.has(a.id)) map.set(a.id, a); });
-        this.state.pendingApplications = Array.from(map.values());
+        // Single Source of Truth from Firestore
+        const existingMembers = Array.isArray(this.state.members) ? this.state.members : [];
+        const memberStudentIds = new Set(
+          existingMembers.map((m) => (m.studentId || '').trim().toLowerCase()).filter(Boolean)
+        );
+        const memberNames = new Set(
+          existingMembers.map((m) => (m.name || '').trim().toLowerCase()).filter(Boolean)
+        );
+
+        // Strict filter:
+        // 1. Must have a valid ID
+        // 2. Status must be 'pending'
+        // 3. Must NOT belong to an already approved official club member!
+        this.state.pendingApplications = remoteData.pendingApplications.filter((app) => {
+          if (!app || !app.id) return false;
+          if (app.status && app.status !== 'pending') return false;
+
+          const cleanStudentId = (app.studentId || '').trim().toLowerCase();
+          const cleanName = (app.name || '').trim().toLowerCase();
+
+          if (cleanStudentId && memberStudentIds.has(cleanStudentId)) return false;
+          if (cleanName && memberNames.has(cleanName)) return false;
+
+          return true;
+        });
       }
       if (Array.isArray(remoteData.alumniBoard)) this.state.alumniBoard = remoteData.alumniBoard;
       if (Array.isArray(remoteData.alumniMembers)) this.state.alumniMembers = remoteData.alumniMembers;
@@ -97,6 +116,21 @@ class Store {
         const rawArticles = Array.isArray(parsed.articles) ? parsed.articles : (INITIAL_DATA.articles || []);
 
         const rawPending = Array.isArray(parsed.pendingApplications) ? parsed.pendingApplications : (INITIAL_DATA.pendingApplications || []);
+        const existingStudentIds = new Set(
+          rawClubMembers.map((m) => (m.studentId || '').trim().toLowerCase()).filter(Boolean)
+        );
+        const existingNames = new Set(
+          rawClubMembers.map((m) => (m.name || '').trim().toLowerCase()).filter(Boolean)
+        );
+        const cleanedPending = rawPending.filter((app) => {
+          if (!app || !app.id) return false;
+          const sId = (app.studentId || '').trim().toLowerCase();
+          const n = (app.name || '').trim().toLowerCase();
+          if (sId && existingStudentIds.has(sId)) return false;
+          if (n && existingNames.has(n)) return false;
+          return true;
+        });
+
         const rawEvents = Array.isArray(parsed.events) ? parsed.events : (INITIAL_DATA.events || []);
         const rawLogs = Array.isArray(parsed.attendanceLogs) ? parsed.attendanceLogs : (INITIAL_DATA.attendanceLogs || []);
 
@@ -128,7 +162,7 @@ class Store {
               : parsed.clubInfo.zaloGroupLink
           },
           articles: rawArticles,
-          pendingApplications: rawPending,
+          pendingApplications: cleanedPending,
           members: rawClubMembers.map((m, idx) => ({
             ...m,
             role: m.role === 'admin' ? 'bdh' : m.role,
@@ -389,6 +423,29 @@ class Store {
     if (!Array.isArray(this.state.pendingApplications)) {
       this.state.pendingApplications = [];
     }
+
+    const cleanStudentId = (data.studentId || '').trim().toLowerCase();
+    const cleanName = (data.name || '').trim().toLowerCase();
+
+    // 1. Check if applicant is already an active member in the club
+    const isAlreadyMember = (this.state.members || []).some((m) => {
+      const mSid = (m.studentId || '').trim().toLowerCase();
+      const mName = (m.name || '').trim().toLowerCase();
+      return (cleanStudentId && mSid === cleanStudentId) || (cleanName && mName === cleanName);
+    });
+    if (isAlreadyMember) {
+      throw new Error(`Kỳ thủ [${data.name}] đã là thành viên chính thức trong CLB Cờ TNU - HGC!`);
+    }
+
+    // 2. Check if this student already has a pending application
+    const isAlreadyPending = this.state.pendingApplications.some((a) => {
+      const aSid = (a.studentId || '').trim().toLowerCase();
+      return cleanStudentId && aSid === cleanStudentId;
+    });
+    if (isAlreadyPending) {
+      throw new Error(`Mã sinh viên [${data.studentId}] đã gửi hồ sơ đăng ký và đang chờ duyệt!`);
+    }
+
     let maxNum = 0;
     this.state.pendingApplications.forEach((app) => {
       const match = app.id && app.id.match(/^DK-2026-(\d+)$/);

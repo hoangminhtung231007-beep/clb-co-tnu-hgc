@@ -68,9 +68,13 @@ export const modalManager = {
     if (confirmBtn && onConfirm) {
       confirmBtn.onclick = () => {
         sound.playClick();
-        const shouldClose = onConfirm(modalEl);
-        if (shouldClose !== false) {
-          close();
+        try {
+          const shouldClose = onConfirm(modalEl);
+          if (shouldClose !== false) {
+            close();
+          }
+        } catch (e) {
+          console.error('Modal onConfirm error:', e);
         }
       };
     }
@@ -2516,24 +2520,31 @@ export const modalManager = {
       const dob = modal.querySelector('#crDob')?.value || '2005-01-01';
       const gender = modal.querySelector('#crGender')?.value || 'Nam';
 
-      const newApp = store.addApplication({
-        name,
-        studentId,
-        faculty,
-        class: className,
-        cohort,
-        dob,
-        gender,
-        phone,
-        avatar: finalAvatarExport || currentRawSrc
-      });
+      try {
+        const newApp = store.addApplication({
+          name,
+          studentId,
+          faculty,
+          class: className,
+          cohort,
+          dob,
+          gender,
+          phone,
+          avatar: finalAvatarExport || currentRawSrc
+        });
 
-      // Mở modal chúc mừng thành công kèm mã QR & link Zalo
-      setTimeout(() => {
-        modalManager.openRegistrationSuccessModal(newApp);
-      }, 100);
+        sound.playSuccess();
+        // Mở modal chúc mừng thành công kèm mã QR & link Zalo
+        setTimeout(() => {
+          modalManager.openRegistrationSuccessModal(newApp);
+        }, 80);
 
-      return true;
+        return true;
+      } catch (err) {
+        console.error('Registration error:', err);
+        modalManager.showAlert(err.message || 'Không thể gửi đơn đăng ký. Vui lòng kiểm tra lại thông tin!');
+        return false;
+      }
     }, 'Gửi Đơn Đăng Ký');
 
     // Setup interactive canvas crop studio for registration

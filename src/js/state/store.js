@@ -50,29 +50,8 @@ class Store {
       if (Array.isArray(remoteData.articles)) this.state.articles = remoteData.articles;
       if (Array.isArray(remoteData.pendingApplications)) {
         // Single Source of Truth from Firestore
-        const existingMembers = Array.isArray(this.state.members) ? this.state.members : [];
-        const memberStudentIds = new Set(
-          existingMembers.map((m) => (m.studentId || '').trim().toLowerCase()).filter(Boolean)
-        );
-        const memberNames = new Set(
-          existingMembers.map((m) => (m.name || '').trim().toLowerCase()).filter(Boolean)
-        );
-
-        // Strict filter:
-        // 1. Must have a valid ID
-        // 2. Status must be 'pending'
-        // 3. Must NOT belong to an already approved official club member!
         this.state.pendingApplications = remoteData.pendingApplications.filter((app) => {
-          if (!app || !app.id) return false;
-          if (app.status && app.status !== 'pending') return false;
-
-          const cleanStudentId = (app.studentId || '').trim().toLowerCase();
-          const cleanName = (app.name || '').trim().toLowerCase();
-
-          if (cleanStudentId && memberStudentIds.has(cleanStudentId)) return false;
-          if (cleanName && memberNames.has(cleanName)) return false;
-
-          return true;
+          return app && app.id && (!app.status || app.status === 'pending');
         });
       }
       if (Array.isArray(remoteData.alumniBoard)) this.state.alumniBoard = remoteData.alumniBoard;
@@ -116,19 +95,8 @@ class Store {
         const rawArticles = Array.isArray(parsed.articles) ? parsed.articles : (INITIAL_DATA.articles || []);
 
         const rawPending = Array.isArray(parsed.pendingApplications) ? parsed.pendingApplications : (INITIAL_DATA.pendingApplications || []);
-        const existingStudentIds = new Set(
-          rawClubMembers.map((m) => (m.studentId || '').trim().toLowerCase()).filter(Boolean)
-        );
-        const existingNames = new Set(
-          rawClubMembers.map((m) => (m.name || '').trim().toLowerCase()).filter(Boolean)
-        );
         const cleanedPending = rawPending.filter((app) => {
-          if (!app || !app.id) return false;
-          const sId = (app.studentId || '').trim().toLowerCase();
-          const n = (app.name || '').trim().toLowerCase();
-          if (sId && existingStudentIds.has(sId)) return false;
-          if (n && existingNames.has(n)) return false;
-          return true;
+          return app && app.id && (!app.status || app.status === 'pending');
         });
 
         const rawEvents = Array.isArray(parsed.events) ? parsed.events : (INITIAL_DATA.events || []);
@@ -316,6 +284,24 @@ class Store {
 
   // --- Members CRUD ---
   addMember(memberData) {
+    const cleanStudentId = (memberData.studentId || '').trim().toLowerCase();
+
+    // If a member with this studentId already exists in club, update their info without creating duplicate card!
+    if (cleanStudentId) {
+      const existingIdx = (this.state.members || []).findIndex(
+        (m) => (m.studentId || '').trim().toLowerCase() === cleanStudentId
+      );
+      if (existingIdx !== -1) {
+        this.state.members[existingIdx] = {
+          ...this.state.members[existingIdx],
+          ...memberData,
+          id: this.state.members[existingIdx].id // Keep their official card ID
+        };
+        this.notify(true);
+        return this.state.members[existingIdx];
+      }
+    }
+
     let maxNum = 0;
     (this.state.members || []).forEach((m) => {
       const match = m.id && m.id.match(/^TNU-HGC-(\d+)$/);
@@ -424,26 +410,32 @@ class Store {
       this.state.pendingApplications = [];
     }
 
-    const cleanStudentId = (data.studentId || '').trim().toLowerCase();
-    const cleanName = (data.name || '').trim().toLowerCase();
+    const cleanStudentId = (data.studentId || '').trim();
+    const cleanName = (data.name || '').trim();
 
-    // 1. Check if applicant is already an active member in the club
-    const isAlreadyMember = (this.state.members || []).some((m) => {
-      const mSid = (m.studentId || '').trim().toLowerCase();
-      const mName = (m.name || '').trim().toLowerCase();
-      return (cleanStudentId && mSid === cleanStudentId) || (cleanName && mName === cleanName);
-    });
-    if (isAlreadyMember) {
-      throw new Error(`Kỳ thủ [${data.name}] đã là thành viên chính thức trong CLB Cờ TNU - HGC!`);
-    }
-
-    // 2. Check if this student already has a pending application
-    const isAlreadyPending = this.state.pendingApplications.some((a) => {
+    // If an application with this studentId is already pending, update it in-place cleanly
+    const existingIndex = this.state.pendingApplications.findIndex((a) => {
       const aSid = (a.studentId || '').trim().toLowerCase();
-      return cleanStudentId && aSid === cleanStudentId;
+      return cleanStudentId && aSid === cleanStudentId.toLowerCase();
     });
-    if (isAlreadyPending) {
-      throw new Error(`Mã sinh viên [${data.studentId}] đã gửi hồ sơ đăng ký và đang chờ duyệt!`);
+
+    if (existingIndex !== -1) {
+      const updatedApp = {
+        ...this.state.pendingApplications[existingIndex],
+        name: cleanName || this.state.pendingApplications[existingIndex].name,
+        faculty: data.faculty || this.state.pendingApplications[existingIndex].faculty,
+        class: data.class || this.state.pendingApplications[existingIndex].class,
+        cohort: data.cohort || this.state.pendingApplications[existingIndex].cohort,
+        dob: data.dob || this.state.pendingApplications[existingIndex].dob,
+        gender: data.gender || this.state.pendingApplications[existingIndex].gender,
+        phone: data.phone || this.state.pendingApplications[existingIndex].phone,
+        avatar: data.avatar || this.state.pendingApplications[existingIndex].avatar,
+        status: 'pending',
+        updatedAt: new Date().toISOString()
+      };
+      this.state.pendingApplications[existingIndex] = updatedApp;
+      this.notify(true);
+      return updatedApp;
     }
 
     let maxNum = 0;
@@ -459,8 +451,8 @@ class Store {
 
     const newApp = {
       id: newId,
-      name: data.name || 'Sinh viên',
-      studentId: data.studentId || '',
+      name: cleanName || 'Sinh viên',
+      studentId: cleanStudentId || '',
       faculty: data.faculty || '',
       class: data.class || '',
       cohort: data.cohort || '',

@@ -90,10 +90,9 @@ export const memberCardComponent = {
 
               <!-- Card Body (Ảnh đại diện 125px + 8 trường thông tin + Khối Smart QR Key lấp đầy khoảng trống) -->
               <div class="id-card-body id-front-body">
-                <!-- Cột 1: Ảnh đại diện (Hỗ trợ bấm để sửa thông tin cá nhân) -->
-                <div class="id-avatar-wrap" id="cardAvatarWrap" title="Bấm vào đây để sửa thông tin cá nhân" style="cursor: pointer; position: relative;">
+                <!-- Cột 1: Ảnh đại diện -->
+                <div class="id-avatar-wrap">
                   <img src="${member.avatar}" alt="${member.name}" class="id-avatar">
-                  <div class="id-avatar-change-hint" style="position: absolute; bottom: 6px; right: 6px; background: rgba(15,23,42,0.85); border: 1.5px solid var(--border-gold); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--gold-color); pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,0.6);" title="Sửa thông tin cá nhân">✏️</div>
                 </div>
 
                 <!-- Cột 2: Thông tin chi tiết -->
@@ -340,9 +339,6 @@ export const memberCardComponent = {
         memberCardComponent.render(containerEl, member);
       });
     });
-
-    const avatarWrap = containerEl.querySelector('#cardAvatarWrap');
-    avatarWrap?.addEventListener('click', triggerEditProfile);
 
     // Chức năng tải ảnh thẻ thành viên 2 mặt (Mặt trước & Mặt sau)
     const btnDownload = containerEl.querySelector('#btnDownloadCard');

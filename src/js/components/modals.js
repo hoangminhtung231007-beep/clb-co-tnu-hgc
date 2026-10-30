@@ -104,13 +104,23 @@ export const modalManager = {
       document.body.appendChild(alertEl);
     }
 
-    const safeMsg = String(message || '');
+    let actualMsg = message;
+    let actualTitle = title;
+    let actualOnOk = onOk;
+
+    if (typeof message === 'object' && message !== null) {
+      actualMsg = message.message || message.msg || message.text || '';
+      if (message.title) actualTitle = message.title;
+      if (typeof message.onOk === 'function') actualOnOk = message.onOk;
+    }
+
+    const safeMsg = String(actualMsg || '');
     alertEl.innerHTML = `
       <div class="modal-dialog animate-scaleUp" style="max-width: 520px; width: 100%; background: radial-gradient(circle at 50% 0%, rgba(212,175,55,0.2) 0%, rgba(14,23,46,0.98) 100%); border: 1px solid var(--border-gold); box-shadow: 0 25px 65px rgba(0,0,0,0.9), 0 0 35px rgba(212,175,55,0.3); border-radius: 16px; overflow: hidden; padding: 0;">
         <div style="padding: 16px 20px; background: rgba(212,175,55,0.08); border-bottom: 1px solid rgba(212,175,55,0.25); display: flex; align-items: center; justify-content: space-between;">
           <div style="display: flex; align-items: center; gap: 10px;">
             <span style="font-size: 1.35rem;">👑</span>
-            <span style="font-size: 0.88rem; font-weight: 800; letter-spacing: 0.05em; color: #facc15; text-transform: uppercase;">${title}</span>
+            <span style="font-size: 0.88rem; font-weight: 800; letter-spacing: 0.05em; color: #facc15; text-transform: uppercase;">${actualTitle}</span>
           </div>
           <button type="button" id="alertModalCloseX" style="background: none; border: none; color: #94a3b8; font-size: 1.6rem; line-height: 1; cursor: pointer; padding: 0 4px; transition: color 0.2s;" title="Đóng">&times;</button>
         </div>
@@ -135,7 +145,7 @@ export const modalManager = {
       if (!mainModal || mainModal.style.display === 'none') {
         document.body.style.overflow = '';
       }
-      if (typeof onOk === 'function') onOk();
+      if (typeof actualOnOk === 'function') actualOnOk();
     };
 
     const okBtn = alertEl.querySelector('#btnAlertModalOk');
@@ -154,8 +164,20 @@ export const modalManager = {
 
   // Custom Confirm Modal (Replaces browser "localhost:3000 cho biết" confirm with luxury themed dialog)
   showConfirm(message, onConfirm, onCancel = null, options = {}) {
+    let actualMsg = message;
+    let actualOnConfirm = onConfirm;
+    let actualOnCancel = onCancel;
+    let actualOptions = options || {};
+
+    if (typeof message === 'object' && message !== null) {
+      actualMsg = message.message || message.text || '';
+      actualOnConfirm = message.onConfirm || onConfirm;
+      actualOnCancel = message.onCancel || onCancel;
+      actualOptions = { ...message, ...actualOptions };
+    }
+
     if (typeof window !== 'undefined' && window.showCustomConfirm) {
-      window.showCustomConfirm(message, onConfirm, onCancel, options);
+      window.showCustomConfirm(actualMsg, actualOnConfirm, actualOnCancel, actualOptions);
       return;
     }
     sound.playWarning && sound.playWarning();
@@ -168,11 +190,12 @@ export const modalManager = {
       document.body.appendChild(confirmEl);
     }
 
-    const isDanger = options.danger !== false;
-    const title = options.title || 'XÁC NHẬN THAO TÁC';
-    const confirmText = options.confirmText || 'Đồng ý thực hiện';
-    const icon = options.icon || (isDanger ? '⚠️' : '👑');
-    const safeMsg = String(message || '');
+    const isDanger = actualOptions.danger !== false;
+    const title = actualOptions.title || 'XÁC NHẬN THAO TÁC';
+    const confirmText = actualOptions.confirmText || 'Đồng ý thực hiện';
+    const cancelText = actualOptions.cancelText || 'Hủy bỏ';
+    const icon = actualOptions.icon || (isDanger ? '⚠️' : '👑');
+    const safeMsg = String(actualMsg || '');
 
     confirmEl.innerHTML = `
       <div class="modal-dialog animate-scaleUp" style="max-width: 520px; width: 100%; background: radial-gradient(circle at 50% 0%, ${isDanger ? 'rgba(239,68,68,0.2)' : 'rgba(212,175,55,0.2)'} 0%, rgba(14,23,46,0.98) 100%); border: 1px solid ${isDanger ? 'rgba(239,68,68,0.5)' : 'var(--border-gold)'}; box-shadow: 0 25px 65px rgba(0,0,0,0.9), 0 0 35px ${isDanger ? 'rgba(239,68,68,0.3)' : 'rgba(212,175,55,0.3)'}; border-radius: 16px; overflow: hidden; padding: 0;">
@@ -188,7 +211,7 @@ export const modalManager = {
 
         <div style="padding: 14px 20px 18px; display: flex; justify-content: flex-end; gap: 12px; background: rgba(0,0,0,0.25); border-top: 1px solid rgba(255,255,255,0.06);">
           <button type="button" class="btn btn-outline btn-sm" id="btnConfirmCancel" style="padding: 8px 18px; font-size: 0.88rem; border-radius: 8px;">
-            Hủy bỏ
+            ${cancelText}
           </button>
           <button type="button" class="btn ${isDanger ? 'btn-danger' : 'btn-gold'} btn-sm" id="btnConfirmOk" style="font-weight: 700; padding: 8px 22px; font-size: 0.88rem; border-radius: 8px; ${isDanger ? 'background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #fff;' : ''}">
             ${confirmText}
@@ -207,8 +230,8 @@ export const modalManager = {
       if (!mainModal || mainModal.style.display === 'none') {
         document.body.style.overflow = '';
       }
-      if (confirmed && typeof onConfirm === 'function') onConfirm();
-      else if (!confirmed && typeof onCancel === 'function') onCancel();
+      if (confirmed && typeof actualOnConfirm === 'function') actualOnConfirm();
+      else if (!confirmed && typeof actualOnCancel === 'function') actualOnCancel();
     };
 
     const okBtn = confirmEl.querySelector('#btnConfirmOk');

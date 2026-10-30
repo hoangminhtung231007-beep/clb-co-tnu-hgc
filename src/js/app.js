@@ -5316,55 +5316,111 @@ class App {
           </div>
         </div>
 
-        <!-- Dedicated Firebase Cloud Password Card -->
+        <!-- Dedicated Security & Password Settings Card -->
         <div class="card mb-4" style="background: radial-gradient(circle at 100% 0%, rgba(212,175,55,0.08) 0%, transparent 60%), linear-gradient(135deg, rgba(14,23,46,0.95) 0%, rgba(26,42,82,0.85) 100%); border: 1.5px solid var(--border-gold); padding: 22px;">
           <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
             <div>
-              <div class="d-flex align-center gap-2 mb-1">
-                <span class="badge badge-gold">BẢO MẬT RIÊNG</span>
-                <span class="badge badge-cyan">MẬT KHẨU MỤC NÀY</span>
+              <div class="d-flex align-center gap-2 mb-1 flex-wrap">
+                <span class="badge badge-gold">BẢO MẬT HỆ THỐNG</span>
+                <span class="badge badge-cyan" id="badgeActivePassTab">MẬT KHẨU FIREBASE CLOUD</span>
+                ${localStorage.getItem('TNU_HGC_FIREBASE_LOCK_PASSWORD') 
+                  ? '<span class="badge badge-emerald" id="badgeFbPassStatus">🔒 ĐANG DÙNG MẬT KHẨU RIÊNG</span>' 
+                  : '<span class="badge badge-outline" id="badgeFbPassStatus">🔑 MẶC ĐỊNH: admin123456</span>'}
               </div>
-              <h3 class="font-bold text-white text-base">Đổi Mật Khẩu Mở Khóa Firebase Cloud</h3>
-              <p class="text-xs text-muted mb-0">Mật khẩu này dùng riêng để mở khóa mục Firebase Cloud (độc lập với mật khẩu đăng nhập Admin)</p>
+              <h3 class="font-bold text-white text-base">Cài Đặt & Đổi Mật Khẩu Bảo Mật</h3>
+              <p class="text-xs text-muted mb-0">Quản lý mật khẩu mở khóa Firebase Cloud và mật khẩu đăng nhập Quản Trị Viên (Admin)</p>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="d-flex gap-1 p-1" style="background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+              <button type="button" class="btn btn-gold btn-xs" id="tabBtnFirebasePass" style="font-size: 0.78rem; padding: 6px 12px; font-weight: 700;">
+                🔒 Mật khẩu Firebase Cloud
+              </button>
+              <button type="button" class="btn btn-outline btn-xs" id="tabBtnAdminPass" style="font-size: 0.78rem; padding: 6px 12px;">
+                👑 Mật khẩu Đăng nhập Admin
+              </button>
             </div>
           </div>
 
-          <form id="formChangeFirebaseLockPassword" onsubmit="return false;" class="app-form" style="max-width: 560px;">
-            <div class="form-group mb-3">
-              <label class="form-label text-xs font-bold text-dim">MẬT KHẨU HIỆN TẠI CỦA FIREBASE CLOUD:</label>
-              <div style="position: relative;">
-                <input type="password" id="inputFbCurrentPass" class="form-input" placeholder="Nhập mật khẩu Firebase hiện tại..." required style="padding-right: 42px;">
-                <button type="button" class="btn-toggle-eye" data-target="inputFbCurrentPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
+          <!-- Section 1: Firebase Password Form -->
+          <div id="secFirebasePasswordForm">
+            <form id="formChangeFirebaseLockPassword" class="app-form" style="max-width: 560px;">
+              <div class="form-group mb-3">
+                <label class="form-label text-xs font-bold text-dim">MẬT KHẨU HIỆN TẠI CỦA FIREBASE CLOUD:</label>
+                <div style="position: relative;">
+                  <input type="password" id="inputFbCurrentPass" class="form-input" placeholder="Nhập mật khẩu Firebase hiện tại..." required style="padding-right: 42px;">
+                  <button type="button" class="btn-toggle-eye" data-target="inputFbCurrentPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
+                </div>
               </div>
-            </div>
 
-            <div class="form-group mb-3">
-              <label class="form-label text-xs font-bold text-dim">MẬT KHẨU MỚI (TỐI THIỂU 6 KÝ TỰ):</label>
-              <div style="position: relative;">
-                <input type="password" id="inputFbNewPass" class="form-input" placeholder="Nhập mật khẩu mới..." required style="padding-right: 42px;">
-                <button type="button" class="btn-toggle-eye" data-target="inputFbNewPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
+              <div class="form-group mb-3">
+                <label class="form-label text-xs font-bold text-dim">MẬT KHẨU MỚI (TỐI THIỂU 6 KÝ TỰ):</label>
+                <div style="position: relative;">
+                  <input type="password" id="inputFbNewPass" class="form-input" placeholder="Nhập mật khẩu mới..." required style="padding-right: 42px;">
+                  <button type="button" class="btn-toggle-eye" data-target="inputFbNewPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
+                </div>
               </div>
-            </div>
 
-            <div class="form-group mb-3">
-              <label class="form-label text-xs font-bold text-dim">XÁC NHẬN MẬT KHẨU MỚI:</label>
-              <div style="position: relative;">
-                <input type="password" id="inputFbConfirmPass" class="form-input" placeholder="Nhập lại mật khẩu mới..." required style="padding-right: 42px;">
-                <button type="button" class="btn-toggle-eye" data-target="inputFbConfirmPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
+              <div class="form-group mb-3">
+                <label class="form-label text-xs font-bold text-dim">XÁC NHẬN MẬT KHẨU MỚI:</label>
+                <div style="position: relative;">
+                  <input type="password" id="inputFbConfirmPass" class="form-input" placeholder="Nhập lại mật khẩu mới..." required style="padding-right: 42px;">
+                  <button type="button" class="btn-toggle-eye" data-target="inputFbConfirmPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
+                </div>
               </div>
-            </div>
 
-            <div id="fbChangePassAlert" style="display: none; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 0.8rem; font-weight: 600;"></div>
+              <div id="fbChangePassAlert" style="display: none; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 0.8rem; font-weight: 600;"></div>
 
-            <div class="d-flex justify-between align-center flex-wrap gap-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.08);">
-              <button type="submit" class="btn btn-gold btn-sm" id="btnSaveFirebasePassword" style="font-weight: 700; padding: 8px 22px;">
-                <span>💾</span> <span>Lưu Mật Khẩu Firebase</span>
-              </button>
-              <button type="button" class="btn btn-outline btn-sm" id="btnResetDefaultFbPass" style="font-size: 0.78rem;">
-                <span>🔄</span> Đặt lại mật khẩu gốc
-              </button>
-            </div>
-          </form>
+              <div class="d-flex justify-between align-center flex-wrap gap-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.08);">
+                <button type="submit" class="btn btn-gold btn-sm" id="btnSaveFirebasePassword" style="font-weight: 700; padding: 8px 22px;">
+                  <span>💾</span> <span>Lưu Mật Khẩu Firebase</span>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm" id="btnResetDefaultFbPass" style="font-size: 0.78rem;">
+                  <span>🔄</span> Đặt lại mật khẩu gốc
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Section 2: Admin Password Form -->
+          <div id="secAdminPasswordForm" style="display: none;">
+            <form id="formChangeAdminLoginPassword" class="app-form" style="max-width: 560px;">
+              <div class="form-group mb-3">
+                <label class="form-label text-xs font-bold text-dim">MẬT KHẨU ĐĂNG NHẬP ADMIN HIỆN TẠI:</label>
+                <div style="position: relative;">
+                  <input type="password" id="inputAdminCurrentPass" class="form-input" placeholder="Nhập mật khẩu Admin hiện tại..." required style="padding-right: 42px;">
+                  <button type="button" class="btn-toggle-eye" data-target="inputAdminCurrentPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
+                </div>
+              </div>
+
+              <div class="form-group mb-3">
+                <label class="form-label text-xs font-bold text-dim">MẬT KHẨU ADMIN MỚI (TỐI THIỂU 6 KÝ TỰ):</label>
+                <div style="position: relative;">
+                  <input type="password" id="inputAdminNewPass" class="form-input" placeholder="Nhập mật khẩu Admin mới..." required style="padding-right: 42px;">
+                  <button type="button" class="btn-toggle-eye" data-target="inputAdminNewPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
+                </div>
+              </div>
+
+              <div class="form-group mb-3">
+                <label class="form-label text-xs font-bold text-dim">XÁC NHẬN MẬT KHẨU ADMIN MỚI:</label>
+                <div style="position: relative;">
+                  <input type="password" id="inputAdminConfirmPass" class="form-input" placeholder="Nhập lại mật khẩu Admin mới..." required style="padding-right: 42px;">
+                  <button type="button" class="btn-toggle-eye" data-target="inputAdminConfirmPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
+                </div>
+              </div>
+
+              <div id="adminChangePassAlert" style="display: none; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 0.8rem; font-weight: 600;"></div>
+
+              <div class="d-flex justify-between align-center flex-wrap gap-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.08);">
+                <button type="submit" class="btn btn-gold btn-sm" id="btnSaveAdminPassword" style="font-weight: 700; padding: 8px 22px;">
+                  <span>💾</span> <span>Lưu Mật Khẩu Admin</span>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm" id="btnResetDefaultAdminPass" style="font-size: 0.78rem;">
+                  <span>🔄</span> Đặt lại về admin123456
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
 
         <!-- 3-Minute Quick Guide Card -->
@@ -5579,16 +5635,20 @@ service cloud.firestore {
       }
     };
 
-    formFbPass?.addEventListener('submit', (e) => {
-      e.preventDefault();
+    const handleSaveFbPassword = () => {
       const curr = (inputFbCurr?.value || '').trim();
       const newP = (inputFbNew?.value || '').trim();
       const conf = (inputFbConf?.value || '').trim();
 
-      const expected = localStorage.getItem('TNU_HGC_FIREBASE_LOCK_PASSWORD') || 'admin123456';
-      if (curr !== expected) {
+      const savedPass = localStorage.getItem('TNU_HGC_FIREBASE_LOCK_PASSWORD');
+      const adminPass = localStorage.getItem('TNU_HGC_ADMIN_PASSWORD') || 'admin123456';
+      const expected = savedPass || 'admin123456';
+
+      // Accept current if it matches savedPass, adminPass, or default admin123456
+      const isCurrValid = (curr === expected || curr === adminPass || (!savedPass && curr === 'admin123456'));
+      if (!isCurrValid) {
         sound.playAlert();
-        showFbPassAlert('⚠️ Mật khẩu Firebase hiện tại không đúng. Vui lòng thử lại!');
+        showFbPassAlert('⚠️ Mật khẩu Firebase hiện tại không đúng. Mật khẩu mặc định ban đầu là: admin123456');
         inputFbCurr?.focus();
         return;
       }
@@ -5609,23 +5669,50 @@ service cloud.firestore {
 
       localStorage.setItem('TNU_HGC_FIREBASE_LOCK_PASSWORD', newP);
       sound.playSuccess();
-      showFbPassAlert('✅ Đã cập nhật mật khẩu mở khóa Firebase Cloud mới thành công!', true);
+      showFbPassAlert(`✅ Đã cập nhật mật khẩu mở khóa Firebase Cloud mới thành công! Mật khẩu mới: ${newP}`, true);
 
       if (inputFbCurr) inputFbCurr.value = '';
       if (inputFbNew) inputFbNew.value = '';
       if (inputFbConf) inputFbConf.value = '';
 
+      const badge = container.querySelector('#badgeFbPassStatus');
+      if (badge) {
+        badge.className = 'badge badge-emerald';
+        badge.textContent = '🔒 ĐANG DÙNG MẬT KHẨU RIÊNG';
+      }
+
       modalManager.showAlert({
         type: 'success',
-        title: 'Đổi mật khẩu thành công',
-        message: 'Mật khẩu mở khóa Firebase Cloud đã được cập nhật thành công (hoàn toàn độc lập với mật khẩu Admin)!'
+        title: 'ĐỔI MẬT KHẨU THÀNH CÔNG',
+        message: `Mật khẩu mở khóa Firebase Cloud đã được cập nhật thành công!\n\nMật khẩu mới của bạn là: ${newP}\n\nHãy ghi nhớ mật khẩu này để mở khóa khi truy cập lần sau.`
+      });
+    };
+
+    const btnSaveFbPass = container.querySelector('#btnSaveFirebasePassword');
+    btnSaveFbPass?.addEventListener('click', (e) => {
+      e.preventDefault();
+      handleSaveFbPassword();
+    });
+
+    formFbPass?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleSaveFbPassword();
+    });
+
+    [inputFbCurr, inputFbNew, inputFbConf].forEach((inp) => {
+      inp?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleSaveFbPassword();
+        }
       });
     });
 
-    btnResetFbPass?.addEventListener('click', () => {
+    btnResetFbPass?.addEventListener('click', (e) => {
+      e.preventDefault();
       sound.playAlert();
       modalManager.showConfirm({
-        title: 'Đặt lại mật khẩu Firebase gốc?',
+        title: 'ĐẶT LẠI MẬT KHẨU GỐC?',
         message: 'Bạn có chắc chắn muốn đặt lại mật khẩu mở khóa Firebase Cloud về mặc định "admin123456"?',
         confirmText: 'Đặt lại về admin123456',
         cancelText: 'Hủy bỏ',
@@ -5636,6 +5723,175 @@ service cloud.firestore {
           if (inputFbCurr) inputFbCurr.value = '';
           if (inputFbNew) inputFbNew.value = '';
           if (inputFbConf) inputFbConf.value = '';
+
+          const badge = container.querySelector('#badgeFbPassStatus');
+          if (badge) {
+            badge.className = 'badge badge-outline';
+            badge.textContent = '🔑 MẶC ĐỊNH: admin123456';
+          }
+
+          modalManager.showAlert({
+            title: 'ĐÃ ĐẶT LẠI MẬT KHẨU',
+            message: 'Mật khẩu mở khóa Firebase Cloud đã được khôi phục về mặc định: admin123456'
+          });
+        }
+      });
+    });
+
+    // Password Settings Tab Switcher
+    const tabFbBtn = container.querySelector('#tabBtnFirebasePass');
+    const tabAdminBtn = container.querySelector('#tabBtnAdminPass');
+    const secFbForm = container.querySelector('#secFirebasePasswordForm');
+    const secAdminForm = container.querySelector('#secAdminPasswordForm');
+    const badgeActiveTab = container.querySelector('#badgeActivePassTab');
+
+    const updateStatusBadge = (isFb) => {
+      const badge = container.querySelector('#badgeFbPassStatus');
+      if (!badge) return;
+      if (isFb) {
+        const hasCustomFb = Boolean(localStorage.getItem('TNU_HGC_FIREBASE_LOCK_PASSWORD'));
+        badge.className = hasCustomFb ? 'badge badge-emerald' : 'badge badge-outline';
+        badge.textContent = hasCustomFb ? '🔒 ĐANG DÙNG MẬT KHẨU RIÊNG' : '🔑 MẶC ĐỊNH: admin123456';
+      } else {
+        const hasCustomAdmin = Boolean(localStorage.getItem('TNU_HGC_ADMIN_PASSWORD'));
+        badge.className = hasCustomAdmin ? 'badge badge-emerald' : 'badge badge-outline';
+        badge.textContent = hasCustomAdmin ? '👑 ĐANG DÙNG MẬT KHẨU RIÊNG' : '🔑 MẶC ĐỊNH: admin123456';
+      }
+    };
+
+    tabFbBtn?.addEventListener('click', () => {
+      sound.playClick();
+      tabFbBtn.className = 'btn btn-gold btn-xs';
+      tabAdminBtn.className = 'btn btn-outline btn-xs';
+      tabFbBtn.style.fontWeight = '700';
+      tabAdminBtn.style.fontWeight = 'normal';
+      if (secFbForm) secFbForm.style.display = 'block';
+      if (secAdminForm) secAdminForm.style.display = 'none';
+      if (badgeActiveTab) badgeActiveTab.textContent = 'MẬT KHẨU FIREBASE CLOUD';
+      updateStatusBadge(true);
+    });
+
+    tabAdminBtn?.addEventListener('click', () => {
+      sound.playClick();
+      tabAdminBtn.className = 'btn btn-gold btn-xs';
+      tabFbBtn.className = 'btn btn-outline btn-xs';
+      tabAdminBtn.style.fontWeight = '700';
+      tabFbBtn.style.fontWeight = 'normal';
+      if (secAdminForm) secAdminForm.style.display = 'block';
+      if (secFbForm) secFbForm.style.display = 'none';
+      if (badgeActiveTab) badgeActiveTab.textContent = 'MẬT KHẨU ĐĂNG NHẬP ADMIN';
+      updateStatusBadge(false);
+    });
+
+    // Change Admin Login Password Form
+    const formAdminPass = container.querySelector('#formChangeAdminLoginPassword');
+    const inputAdminCurr = container.querySelector('#inputAdminCurrentPass');
+    const inputAdminNew = container.querySelector('#inputAdminNewPass');
+    const inputAdminConf = container.querySelector('#inputAdminConfirmPass');
+    const alertAdminBox = container.querySelector('#adminChangePassAlert');
+    const btnSaveAdminPass = container.querySelector('#btnSaveAdminPassword');
+    const btnResetAdminPass = container.querySelector('#btnResetDefaultAdminPass');
+
+    const showAdminPassAlert = (msg, isSuccess = false) => {
+      if (!alertAdminBox) return;
+      alertAdminBox.textContent = msg;
+      alertAdminBox.style.display = 'block';
+      if (isSuccess) {
+        alertAdminBox.style.background = 'rgba(16, 185, 129, 0.15)';
+        alertAdminBox.style.color = '#34d399';
+        alertAdminBox.style.border = '1px solid rgba(16, 185, 129, 0.35)';
+      } else {
+        alertAdminBox.style.background = 'rgba(244, 63, 94, 0.15)';
+        alertAdminBox.style.color = '#fb7185';
+        alertAdminBox.style.border = '1px solid rgba(244, 63, 94, 0.35)';
+      }
+    };
+
+    const handleSaveAdminPassword = () => {
+      const curr = (inputAdminCurr?.value || '').trim();
+      const newP = (inputAdminNew?.value || '').trim();
+      const conf = (inputAdminConfirmPass?.value || inputAdminConf?.value || '').trim();
+
+      const savedAdmin = localStorage.getItem('TNU_HGC_ADMIN_PASSWORD');
+      const expectedAdmin = savedAdmin || 'admin123456';
+
+      if (curr !== expectedAdmin && (!savedAdmin && curr !== 'admin123456')) {
+        sound.playAlert();
+        showAdminPassAlert('⚠️ Mật khẩu Admin hiện tại không đúng. Mật khẩu mặc định là: admin123456');
+        inputAdminCurr?.focus();
+        return;
+      }
+
+      if (newP.length < 6) {
+        sound.playAlert();
+        showAdminPassAlert('⚠️ Mật khẩu mới phải có ít nhất 6 ký tự!');
+        inputAdminNew?.focus();
+        return;
+      }
+
+      if (newP !== conf) {
+        sound.playAlert();
+        showAdminPassAlert('⚠️ Xác nhận mật khẩu mới không trùng khớp!');
+        inputAdminConf?.focus();
+        return;
+      }
+
+      localStorage.setItem('TNU_HGC_ADMIN_PASSWORD', newP);
+      sound.playSuccess();
+      showAdminPassAlert(`✅ Đã đổi mật khẩu đăng nhập Admin thành công! Mật khẩu mới: ${newP}`, true);
+
+      if (inputAdminCurr) inputAdminCurr.value = '';
+      if (inputAdminNew) inputAdminNew.value = '';
+      if (inputAdminConf) inputAdminConf.value = '';
+
+      updateStatusBadge(false);
+
+      modalManager.showAlert({
+        type: 'success',
+        title: 'ĐỔI MẬT KHẨU ADMIN THÀNH CÔNG',
+        message: `Mật khẩu đăng nhập Quản Trị Viên (Admin) đã được cập nhật thành công!\n\nMật khẩu mới: ${newP}\n\nTừ bây giờ, bạn dùng mật khẩu này để đăng nhập quyền Admin.`
+      });
+    };
+
+    btnSaveAdminPass?.addEventListener('click', (e) => {
+      e.preventDefault();
+      handleSaveAdminPassword();
+    });
+
+    formAdminPass?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleSaveAdminPassword();
+    });
+
+    [inputAdminCurr, inputAdminNew, inputAdminConf].forEach((inp) => {
+      inp?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleSaveAdminPassword();
+        }
+      });
+    });
+
+    btnResetAdminPass?.addEventListener('click', (e) => {
+      e.preventDefault();
+      sound.playAlert();
+      modalManager.showConfirm({
+        title: 'ĐẶT LẠI MẬT KHẨU ADMIN GỐC?',
+        message: 'Bạn có chắc chắn muốn đặt lại mật khẩu đăng nhập Admin về mặc định "admin123456"?',
+        confirmText: 'Đặt lại về admin123456',
+        cancelText: 'Hủy bỏ',
+        onConfirm: () => {
+          localStorage.removeItem('TNU_HGC_ADMIN_PASSWORD');
+          sound.playSuccess();
+          showAdminPassAlert('✅ Đã khôi phục mật khẩu Admin về mặc định: admin123456', true);
+          if (inputAdminCurr) inputAdminCurr.value = '';
+          if (inputAdminNew) inputAdminNew.value = '';
+          if (inputAdminConf) inputAdminConf.value = '';
+          updateStatusBadge(false);
+          modalManager.showAlert({
+            title: 'ĐÃ ĐẶT LẠI MẬT KHẨU ADMIN',
+            message: 'Mật khẩu đăng nhập Admin đã được khôi phục về mặc định: admin123456'
+          });
         }
       });
     });
@@ -5653,6 +5909,9 @@ service cloud.firestore {
   }
 
   promptFirebasePassword(onSuccess) {
+    const savedFbPass = localStorage.getItem('TNU_HGC_FIREBASE_LOCK_PASSWORD');
+    const hasCustomPass = Boolean(savedFbPass);
+
     const contentHtml = `
       <div style="padding: 10px 4px;">
         <div class="text-center mb-3">
@@ -5663,22 +5922,29 @@ service cloud.firestore {
           </p>
         </div>
 
-        <form id="formUnlockFirebase" onsubmit="return false;" class="app-form">
+        <form id="formUnlockFirebase" class="app-form">
           <div class="form-group mb-4">
             <label class="form-label text-xs font-bold text-dim">MẬT KHẨU FIREBASE CLOUD BẢO VỆ:</label>
             <div style="position: relative;">
               <input type="password" id="inputFirebaseUnlockPass" class="form-input" placeholder="Nhập mật khẩu..." autofocus autocomplete="current-password" required style="padding-right: 42px;">
               <button type="button" class="btn-toggle-eye" data-target="inputFirebaseUnlockPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 4px;">👁️</button>
             </div>
-            <div id="firebaseUnlockError" class="text-xs text-rose mt-2" style="display:none; font-weight:600;">⚠️ Mật khẩu không chính xác! Mật khẩu mặc định là: admin123456</div>
-            <div class="text-xs text-muted mt-2" style="opacity: 0.9;">
-              💡 Mật khẩu mặc định: <strong class="text-gold">admin123456</strong> (hoặc mật khẩu Admin của bạn)
+            <div id="firebaseUnlockError" class="text-xs text-rose mt-2" style="display:none; font-weight:600;">⚠️ Mật khẩu không chính xác!</div>
+            <div class="text-xs text-muted mt-2 d-flex justify-between align-center flex-wrap gap-2" style="opacity: 0.95;">
+              <span id="firebaseUnlockHintText">
+                ${hasCustomPass 
+                  ? '🔒 Đang bật mật khẩu bảo vệ riêng của Firebase Cloud.' 
+                  : '💡 Mật khẩu mặc định: <strong class="text-gold">admin123456</strong>'}
+              </span>
+              <button type="button" id="btnForgotFirebasePass" style="background: none; border: none; color: var(--gold-light, #fbbf24); font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding: 0;">
+                🔄 Quên mật khẩu? Đặt lại gốc
+              </button>
             </div>
           </div>
 
           <div class="d-flex gap-2 justify-end align-center flex-wrap">
             <button type="button" class="btn btn-outline btn-sm" id="btnCancelFirebaseUnlock">Hủy Bỏ</button>
-            <button type="submit" class="btn btn-gold btn-sm" id="btnConfirmFirebaseUnlock" style="font-weight:700; padding:8px 18px;">
+            <button type="button" class="btn btn-gold btn-sm" id="btnConfirmFirebaseUnlock" style="font-weight:700; padding:8px 18px;">
               <span>🔓</span> <span>Mở Khóa Truy Cập</span>
             </button>
           </div>
@@ -5695,6 +5961,8 @@ service cloud.firestore {
       const errEl = modalEl.querySelector('#firebaseUnlockError');
       const form = modalEl.querySelector('#formUnlockFirebase');
       const btnCancel = modalEl.querySelector('#btnCancelFirebaseUnlock');
+      const btnConfirm = modalEl.querySelector('#btnConfirmFirebaseUnlock');
+      const btnForgot = modalEl.querySelector('#btnForgotFirebasePass');
       const eyeBtn = modalEl.querySelector('.btn-toggle-eye');
 
       if (passInp) passInp.focus();
@@ -5717,10 +5985,17 @@ service cloud.firestore {
 
       const handleUnlock = () => {
         const entered = (passInp?.value || '').trim();
-        const fbPass = localStorage.getItem('TNU_HGC_FIREBASE_LOCK_PASSWORD') || 'admin123456';
-        const adminPass = localStorage.getItem('TNU_HGC_ADMIN_PASSWORD') || 'admin123456';
+        const currentSavedPass = localStorage.getItem('TNU_HGC_FIREBASE_LOCK_PASSWORD');
+        const currentAdminPass = localStorage.getItem('TNU_HGC_ADMIN_PASSWORD') || 'admin123456';
 
-        if (entered === fbPass || entered === adminPass || entered === 'admin123456') {
+        let isValid = false;
+        if (currentSavedPass) {
+          isValid = (entered === currentSavedPass || (currentAdminPass !== 'admin123456' && entered === currentAdminPass));
+        } else {
+          isValid = (entered === 'admin123456' || entered === currentAdminPass);
+        }
+
+        if (isValid) {
           sound.playSuccess();
           modalManager.close();
           onSuccess && onSuccess();
@@ -5728,7 +6003,9 @@ service cloud.firestore {
           sound.playAlert();
           if (errEl) {
             errEl.style.display = 'block';
-            errEl.innerHTML = '⚠️ Mật khẩu không chính xác! Mật khẩu mặc định là: <strong>admin123456</strong> (hoặc mật khẩu Admin của bạn).';
+            errEl.innerHTML = currentSavedPass
+              ? '⚠️ Mật khẩu không chính xác! Vui lòng nhập đúng mật khẩu bảo vệ riêng đã đổi (hoặc bấm "Quên mật khẩu? Đặt lại gốc" bên dưới).'
+              : '⚠️ Mật khẩu không chính xác! Mật khẩu mặc định là: <strong>admin123456</strong>.';
           }
           if (passInp) {
             passInp.value = '';
@@ -5736,6 +6013,45 @@ service cloud.firestore {
           }
         }
       };
+
+      btnForgot?.addEventListener('click', () => {
+        sound.playAlert();
+        modalManager.showConfirm({
+          title: 'ĐẶT LẠI MẬT KHẨU GỐC?',
+          message: 'Bạn có chắc chắn muốn đặt lại mật khẩu mở khóa Firebase Cloud về mặc định "admin123456"?',
+          confirmText: 'Đặt lại về admin123456',
+          cancelText: 'Hủy bỏ',
+          onConfirm: () => {
+            localStorage.removeItem('TNU_HGC_FIREBASE_LOCK_PASSWORD');
+            sound.playSuccess();
+            const hint = modalEl.querySelector('#firebaseUnlockHintText');
+            if (hint) {
+              hint.innerHTML = '💡 Mật khẩu mặc định: <strong class="text-gold">admin123456</strong>';
+            }
+            if (errEl) errEl.style.display = 'none';
+            if (passInp) {
+              passInp.value = 'admin123456';
+              passInp.focus();
+            }
+            modalManager.showAlert({
+              title: 'ĐÃ ĐẶT LẠI MẬT KHẨU',
+              message: 'Đã đặt lại mật khẩu về mặc định: admin123456. Bạn có thể bấm "Mở Khóa Truy Cập" ngay!'
+            });
+          }
+        });
+      });
+
+      passInp?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleUnlock();
+        }
+      });
+
+      btnConfirm?.addEventListener('click', (e) => {
+        e.preventDefault();
+        handleUnlock();
+      });
 
       form?.addEventListener('submit', (e) => {
         e.preventDefault();

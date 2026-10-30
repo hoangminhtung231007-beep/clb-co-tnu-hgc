@@ -380,11 +380,21 @@
   object-fit: cover;
   display: block;
   border-radius: 12px;
-  transition: transform 0.3s ease;
 }
 
+/* Vô hiệu hóa toàn bộ hiệu ứng khi di chuột vào thẻ thành viên, chỉ giữ hiệu ứng lật thẻ 3D */
+.id-card-flip-container:hover,
+.electronic-id-card:hover,
+.vcard-avatar-box:hover,
+.vcard-avatar-img:hover,
 .vcard-avatar-box:hover .vcard-avatar-img {
-  transform: scale(1.03);
+  transform: none !important;
+  filter: none !important;
+}
+
+.id-card-flip-inner.is-flipped,
+.id-card-flip-inner.is-flipped:hover {
+  transform: rotateY(180deg) !important;
 }
 
 /* Front Details Column (Right of Avatar) */

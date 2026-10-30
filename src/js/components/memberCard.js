@@ -138,10 +138,10 @@ export const memberCardComponent = {
       ctx.closePath();
     };
 
-    // Prepare QR Code on offscreen canvas
+    // Prepare Enlarged QR Code (280x280) on offscreen canvas for effortless scanning
     const qrCanvas = document.createElement('canvas');
     await qrHelper.renderToCanvas(qrCanvas, payload, {
-      width: 168,
+      width: 280,
       margin: 0,
       dark: '#071536',
       light: '#ffffff'
@@ -149,10 +149,10 @@ export const memberCardComponent = {
 
     // Load template backgrounds & member avatar in parallel
     const [frontBgImg, backBgImg, avatarImg, fallbackLogoImg] = await Promise.all([
-      loadImage('/card-front-bg.png?v=13'),
-      loadImage('/card-back-bg.png?v=13'),
+      loadImage('/card-front-bg.png?v=14'),
+      loadImage('/card-back-bg.png?v=14'),
       loadImage(member.avatar),
-      loadImage('/logo-circle.png?v=13')
+      loadImage('/logo-circle.png?v=14')
     ]);
 
     const frontCanvas = containerEl.querySelector('#frontCardMasterCanvas');
@@ -167,15 +167,15 @@ export const memberCardComponent = {
         ctxF.drawImage(frontBgImg, 0, 0, 904, 1212);
       }
 
-      // 1. Draw Member Portrait inside 3D Gold Frame (45, 414, 326, 376, r=28) with object-fit: cover
+      // 1. Draw Member Portrait strictly INSIDE the 3D Gold Frame (47, 427, 324, 359, r=34)
       const photoToDraw = avatarImg || fallbackLogoImg;
       ctxF.save();
-      drawRoundedRectPath(ctxF, 45, 414, 326, 376, 28);
+      drawRoundedRectPath(ctxF, 47, 427, 324, 359, 34);
       ctxF.clip();
       ctxF.fillStyle = '#08183a';
-      ctxF.fillRect(45, 414, 326, 376);
+      ctxF.fillRect(47, 427, 324, 359);
       if (photoToDraw) {
-        const boxX = 45, boxY = 414, boxW = 326, boxH = 376;
+        const boxX = 47, boxY = 427, boxW = 324, boxH = 359;
         const imgW = photoToDraw.naturalWidth || photoToDraw.width || boxW;
         const imgH = photoToDraw.naturalHeight || photoToDraw.height || boxH;
         const scale = Math.max(boxW / imgW, boxH / imgH);
@@ -185,6 +185,14 @@ export const memberCardComponent = {
         const drawY = boxY + (boxH - drawH) / 2;
         ctxF.drawImage(photoToDraw, drawX, drawY, drawW, drawH);
       }
+      ctxF.restore();
+
+      // Draw crisp inner gold bezel rim over the portrait edge so the photo sits 100% inside the 3D gold frame
+      ctxF.save();
+      drawRoundedRectPath(ctxF, 45.5, 425.5, 327, 362, 35.5);
+      ctxF.strokeStyle = '#dcb258';
+      ctxF.lineWidth = 2.8;
+      ctxF.stroke();
       ctxF.restore();
 
       // 2. Draw Member Name centered above the Gold Star Divider (x=646, y=490, maxWidth=445)
@@ -236,11 +244,11 @@ export const memberCardComponent = {
       ctxF.fillText(memberRoleTitle, 766, 770, 176);
       ctxF.restore();
 
-      // 5. Draw Dynamic Smart QR Key inside the Gold QR Frame (698, 894, 168, 168)
+      // 5. Draw Enlarged Smart QR Key inside the Expanded Gold QR Frame (527, 828, 280, 280)
       ctxF.save();
-      drawRoundedRectPath(ctxF, 698, 894, 168, 168, 10);
+      drawRoundedRectPath(ctxF, 527, 828, 280, 280, 10);
       ctxF.clip();
-      ctxF.drawImage(qrCanvas, 698, 894, 168, 168);
+      ctxF.drawImage(qrCanvas, 527, 828, 280, 280);
       ctxF.restore();
     }
 

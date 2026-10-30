@@ -67,18 +67,18 @@ export const memberCardComponent = {
           <span>👆 Nhấn trực tiếp vào thẻ hoặc nút bên dưới để lật giữa <strong>Mặt Trước</strong> và <strong>Mặt Sau</strong></span>
         </div>
 
-        <!-- 3D Flip Card Container (Chuẩn dọc Portrait VIP 452x606 / 904x1212) -->
+        <!-- 3D Flip Card Container (Chuẩn dọc Full HD+ Portrait VIP 1808x2424) -->
         <div class="id-card-flip-container" id="idCardFlipper" title="Bấm vào thẻ để lật mặt trước / mặt sau">
           <div class="id-card-flip-inner" id="idCardFlipInner">
             
-            <!-- ================= MẶT TRƯỚC (FRONT SIDE) ================= -->
+            <!-- ================= MẶT TRƯỚC (FULL HD 1808x2424) ================= -->
             <div class="electronic-id-card id-card-front" id="digitalMemberPassFront">
-              <canvas id="frontCardMasterCanvas" width="904" height="1212" class="vcard-master-canvas"></canvas>
+              <canvas id="frontCardMasterCanvas" width="1808" height="2424" class="vcard-master-canvas"></canvas>
             </div>
 
-            <!-- ================= MẶT SAU (BACK SIDE) ================= -->
+            <!-- ================= MẶT SAU (FULL HD 1808x2424) ================= -->
             <div class="electronic-id-card id-card-back" id="digitalMemberPassBack">
-              <canvas id="backCardMasterCanvas" width="904" height="1212" class="vcard-master-canvas"></canvas>
+              <canvas id="backCardMasterCanvas" width="1808" height="2424" class="vcard-master-canvas"></canvas>
             </div>
 
           </div>
@@ -138,30 +138,34 @@ export const memberCardComponent = {
       ctx.closePath();
     };
 
-    // Prepare Enlarged QR Code (280x280) on offscreen canvas for effortless scanning
+    // Prepare High-Resolution QR Code (412x412 native pixels for 206x206 logical box)
     const qrCanvas = document.createElement('canvas');
     await qrHelper.renderToCanvas(qrCanvas, payload, {
-      width: 280,
+      width: 412,
       margin: 0,
       dark: '#071536',
       light: '#ffffff'
     });
 
-    // Load template backgrounds & member avatar in parallel
+    // Load Full HD (1808x2424) template backgrounds & member avatar in parallel
     const [frontBgImg, backBgImg, avatarImg, fallbackLogoImg] = await Promise.all([
-      loadImage('/card-front-bg.png?v=14'),
-      loadImage('/card-back-bg.png?v=14'),
+      loadImage('/card-front-bg.png?v=15'),
+      loadImage('/card-back-bg.png?v=15'),
       loadImage(member.avatar),
-      loadImage('/logo-circle.png?v=14')
+      loadImage('/logo-circle.png?v=15')
     ]);
 
     const frontCanvas = containerEl.querySelector('#frontCardMasterCanvas');
     const backCanvas = containerEl.querySelector('#backCardMasterCanvas');
 
-    // ================= DRAW FRONT MASTER CANVAS (904 x 1212) =================
+    // ================= DRAW FRONT MASTER CANVAS (FULL HD 1808 x 2424) =================
     if (frontCanvas) {
       const ctxF = frontCanvas.getContext('2d');
-      ctxF.clearRect(0, 0, 904, 1212);
+      ctxF.save();
+      ctxF.clearRect(0, 0, 1808, 2424);
+      ctxF.imageSmoothingEnabled = true;
+      ctxF.imageSmoothingQuality = 'high';
+      ctxF.scale(2, 2);
 
       if (frontBgImg) {
         ctxF.drawImage(frontBgImg, 0, 0, 904, 1212);
@@ -207,9 +211,9 @@ export const memberCardComponent = {
       ctxF.textAlign = 'center';
       ctxF.textBaseline = 'middle';
       ctxF.shadowColor = 'rgba(0, 0, 0, 0.85)';
-      ctxF.shadowBlur = 10;
+      ctxF.shadowBlur = 16;
       ctxF.shadowOffsetX = 0;
-      ctxF.shadowOffsetY = 3;
+      ctxF.shadowOffsetY = 5;
       ctxF.fillText(memberName, 646, 490, 445);
       ctxF.restore();
 
@@ -220,9 +224,9 @@ export const memberCardComponent = {
       ctxF.textAlign = 'left';
       ctxF.textBaseline = 'middle';
       ctxF.shadowColor = 'rgba(0, 0, 0, 0.85)';
-      ctxF.shadowBlur = 6;
+      ctxF.shadowBlur = 10;
       ctxF.shadowOffsetX = 0;
-      ctxF.shadowOffsetY = 2;
+      ctxF.shadowOffsetY = 3;
       ctxF.fillText(memberDob, 670, 611, 196);
       ctxF.fillText(memberClass, 670, 689, 196);
       ctxF.restore();
@@ -239,23 +243,30 @@ export const memberCardComponent = {
       ctxF.textAlign = 'center';
       ctxF.textBaseline = 'middle';
       ctxF.shadowColor = 'rgba(255, 248, 220, 0.45)';
-      ctxF.shadowBlur = 1;
+      ctxF.shadowBlur = 2;
       ctxF.shadowOffsetY = 1;
       ctxF.fillText(memberRoleTitle, 766, 770, 176);
       ctxF.restore();
 
-      // 5. Draw Enlarged Smart QR Key inside the Expanded Gold QR Frame (527, 828, 280, 280)
+      // 5. Draw Balanced Smart QR Key inside the Sleek 3D Gold QR Frame (621, 868, 206, 206)
       ctxF.save();
-      drawRoundedRectPath(ctxF, 527, 828, 280, 280, 10);
+      drawRoundedRectPath(ctxF, 621, 868, 206, 206, 8);
       ctxF.clip();
-      ctxF.drawImage(qrCanvas, 527, 828, 280, 280);
+      ctxF.imageSmoothingEnabled = false; // Crisp pixel-perfect QR modules
+      ctxF.drawImage(qrCanvas, 621, 868, 206, 206);
+      ctxF.restore();
+
       ctxF.restore();
     }
 
-    // ================= DRAW BACK MASTER CANVAS (904 x 1212) =================
+    // ================= DRAW BACK MASTER CANVAS (FULL HD 1808 x 2424) =================
     if (backCanvas) {
       const ctxB = backCanvas.getContext('2d');
-      ctxB.clearRect(0, 0, 904, 1212);
+      ctxB.save();
+      ctxB.clearRect(0, 0, 1808, 2424);
+      ctxB.imageSmoothingEnabled = true;
+      ctxB.imageSmoothingQuality = 'high';
+      ctxB.scale(2, 2);
 
       if (backBgImg) {
         ctxB.drawImage(backBgImg, 0, 0, 904, 1212);
@@ -265,9 +276,9 @@ export const memberCardComponent = {
       ctxB.textAlign = 'left';
       ctxB.textBaseline = 'middle';
       ctxB.shadowColor = 'rgba(0, 0, 0, 0.85)';
-      ctxB.shadowBlur = 6;
+      ctxB.shadowBlur = 10;
       ctxB.shadowOffsetX = 0;
-      ctxB.shadowOffsetY = 2;
+      ctxB.shadowOffsetY = 3;
 
       // 1. Mã thẻ (highlighted sky-blue bold at x=212, y=313)
       ctxB.font = '700 33px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif';
@@ -281,6 +292,8 @@ export const memberCardComponent = {
       ctxB.fillText(memberFaculty, 256, 398, 205);
       ctxB.fillText(memberCohort, 578, 398, 290);
       ctxB.fillText(memberJoinDate, 396, 482, 290);
+      ctxB.restore();
+
       ctxB.restore();
     }
 
@@ -329,7 +342,7 @@ export const memberCardComponent = {
       });
     });
 
-    // Chức năng tải ảnh thẻ thành viên 2 mặt (Ghép trực tiếp từ 2 Master Canvas 904x1212 sắc nét 100%)
+    // Chức năng tải ảnh thẻ thành viên 2 mặt (Ghép trực tiếp từ 2 Master Canvas Full HD 1808x2424 -> Bản in Ultra-HD 4096x2548 sắc nét 100%)
     const btnDownload = containerEl.querySelector('#btnDownloadCard');
 
     if (btnDownload) {
@@ -339,43 +352,40 @@ export const memberCardComponent = {
 
         const origHtml = btnDownload.innerHTML;
         btnDownload.disabled = true;
-        btnDownload.innerHTML = '<span class="btn-icon">⏳</span> Đang tạo ảnh thẻ 2 mặt...';
+        btnDownload.innerHTML = '<span class="btn-icon">⏳</span> Đang xuất ảnh Full HD 2 mặt...';
 
         try {
           if (!frontCanvas || !backCanvas) {
             throw new Error('Không tìm thấy thẻ mặt trước hoặc mặt sau');
           }
 
-          // Create composite 2-sided master canvas: 2048 x 1274
+          // Create Ultra-HD composite 2-sided master canvas: 4096 x 2548 (2x Full HD print resolution)
           const compCanvas = document.createElement('canvas');
-          compCanvas.width = 2048;
-          compCanvas.height = 1274;
+          compCanvas.width = 4096;
+          compCanvas.height = 2548;
           const ctxComp = compCanvas.getContext('2d');
+          ctxComp.save();
+          ctxComp.imageSmoothingEnabled = true;
+          ctxComp.imageSmoothingQuality = 'high';
+          ctxComp.scale(2, 2);
 
-          // Dark luxury textured background
+          // Dark luxury textured background (in 2048 x 1274 logical coordinates = 4096 x 2548 physical px)
           ctxComp.fillStyle = '#070e20';
-          ctxComp.fillRect(0, 0, compCanvas.width, compCanvas.height);
+          ctxComp.fillRect(0, 0, 2048, 1274);
 
-          const radGrad = ctxComp.createRadialGradient(
-            compCanvas.width / 2,
-            compCanvas.height / 2,
-            120,
-            compCanvas.width / 2,
-            compCanvas.height / 2,
-            compCanvas.width * 0.7
-          );
+          const radGrad = ctxComp.createRadialGradient(1024, 637, 120, 1024, 637, 2048 * 0.7);
           radGrad.addColorStop(0, 'rgba(20, 38, 76, 0.72)');
           radGrad.addColorStop(1, 'rgba(6, 12, 28, 0.98)');
           ctxComp.fillStyle = radGrad;
-          ctxComp.fillRect(0, 0, compCanvas.width, compCanvas.height);
+          ctxComp.fillRect(0, 0, 2048, 1274);
 
-          // Helper to draw each card with drop shadow and rounded corners
+          // Helper to draw each Full HD card with drop shadow and rounded corners
           const drawCardOnComposite = (cardCanvas, x, y, w, h, r) => {
             ctxComp.save();
-            ctxComp.shadowColor = 'rgba(0, 0, 0, 0.7)';
-            ctxComp.shadowBlur = 40;
+            ctxComp.shadowColor = 'rgba(0, 0, 0, 0.72)';
+            ctxComp.shadowBlur = 64;
             ctxComp.shadowOffsetX = 0;
-            ctxComp.shadowOffsetY = 20;
+            ctxComp.shadowOffsetY = 28;
             drawRoundedRectPath(ctxComp, x, y, w, h, r);
             ctxComp.fillStyle = '#081838';
             ctxComp.fill();
@@ -388,18 +398,19 @@ export const memberCardComponent = {
             ctxComp.restore();
           };
 
-          // Draw Front Card on left (70, 31, 904, 1212) & Back Card on right (1074, 31, 904, 1212)
+          // Draw Front Card on left (70, 31, 904, 1212 -> 1808x2424 physical px) & Back Card on right (1074, 31, 904, 1212)
           drawCardOnComposite(frontCanvas, 70, 31, 904, 1212, 44);
           drawCardOnComposite(backCanvas, 1074, 31, 904, 1212, 44);
+          ctxComp.restore();
 
-          // Convert compCanvas to Blob
+          // Convert compCanvas to lossless PNG Blob (1.0 quality)
           const blob = await new Promise((resolve) => {
-            compCanvas.toBlob(resolve, 'image/png', 0.98);
+            compCanvas.toBlob(resolve, 'image/png', 1.0);
           });
 
           const cleanName = (member.name || 'Member').replace(/[^a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]/g, '_');
-          const fileName = `The_Thanh_Vien_${member.id}_${cleanName}_2Mat.png`;
-          const blobUrl = blob ? URL.createObjectURL(blob) : compCanvas.toDataURL('image/png');
+          const fileName = `The_Thanh_Vien_FullHD_${member.id}_${cleanName}_2Mat.png`;
+          const blobUrl = blob ? URL.createObjectURL(blob) : compCanvas.toDataURL('image/png', 1.0);
           const file = blob ? new File([blob], fileName, { type: 'image/png' }) : null;
 
           // Direct download for desktop
@@ -417,7 +428,7 @@ export const memberCardComponent = {
             } catch (_) {}
           }
 
-          // Open Mobile-Friendly Card Preview & Direct Save Modal
+          // Open Mobile-Friendly Card Preview & Direct Save Modal (with the same Ultra-HD 4096x2548 PNG)
           modalManager.openCardSaveModal({
             blobUrl,
             file,

@@ -1,5 +1,5 @@
 // Service Worker for CLB Cờ TNU - HGC Progressive Web App
-const CACHE_NAME = 'tnu-hgc-pwa-v14';
+const CACHE_NAME = 'tnu-hgc-pwa-v15';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

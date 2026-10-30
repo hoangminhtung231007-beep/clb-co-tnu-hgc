@@ -4723,40 +4723,57 @@ export const modalManager = {
   // 20. Live Fund Settings Modal (Thiết lập tháng & số tiền thu của tháng đó)
   openFundSettingsModal(onComplete) {
     const settings = store.getFundSettings();
+    const curMonth = settings.month || '10/2026';
+    const curAmount = settings.amount || 40000;
+
+    // Các tháng gợi ý nhanh
+    const presetMonths = ['10/2026', '11/2026', '12/2026', '01/2027', '02/2027', '03/2027'];
+    if (!presetMonths.includes(curMonth)) {
+      presetMonths.unshift(curMonth);
+    }
 
     const contentHtml = `
       <div class="fund-settings-modal p-2" style="max-width: 540px;">
         <div class="mb-3">
           <span class="badge badge-gold">CÀI ĐẶT THU QUỸ SINH HOẠT</span>
           <h3 class="text-lg font-bold text-white mt-1">Thiết Lập Tháng & Số Tiền Thu</h3>
-          <p class="text-xs text-muted">Mỗi tháng CLB có thể thu một số tiền khác nhau. Mã QR để bàn và mã QR của thành viên sẽ tự động cập nhật theo cài đặt này.</p>
+          <p class="text-xs text-muted">Mỗi tháng CLB có thể thu một số tiền khác nhau. Chọn tháng bên dưới để hệ thống tự động đồng bộ tên đợt thu và mã VietQR.</p>
         </div>
 
         <div class="form-group mb-3">
           <label class="form-label text-gold font-bold text-xs">Tháng Thu Quỹ (Định dạng MM/YYYY) *</label>
-          <input type="text" class="form-control" id="fundSettingMonth" value="${settings.month || '10/2026'}" placeholder="VD: 10/2026, 11/2026...">
+          <div class="d-flex gap-1.5 mb-2 flex-wrap" id="presetFundMonthsContainer">
+            ${presetMonths.map((m) => `
+              <button type="button" class="btn ${m === curMonth ? 'btn-gold' : 'btn-outline'} btn-xs btn-preset-fund-month" data-month="${m}">
+                Tháng ${m}
+              </button>
+            `).join('')}
+          </div>
+          <input type="text" class="form-control font-mono font-bold" id="fundSettingMonth" value="${curMonth}" placeholder="VD: 11/2026, 12/2026...">
         </div>
 
         <div class="form-group mb-3">
           <label class="form-label text-gold font-bold text-xs">Tên Đợt Thu Quỹ *</label>
-          <input type="text" class="form-control" id="fundSettingTitle" value="${settings.title || 'Quỹ Sinh Hoạt Tháng 10/2026'}" placeholder="VD: Quỹ Sinh Hoạt Tháng 10/2026">
+          <input type="text" class="form-control" id="fundSettingTitle" value="${settings.title || 'Quỹ Sinh Hoạt Tháng ' + curMonth}" placeholder="VD: Quỹ Sinh Hoạt Tháng 11/2026">
+          <small class="text-dim text-xs mt-1 d-block">💡 Tự động cập nhật đồng bộ theo tháng thu quỹ</small>
         </div>
 
         <div class="mb-3">
           <label class="form-label text-gold font-bold text-xs">Số Tiền Cần Đóng Của Tháng Đó (VNĐ) *</label>
-          <div class="d-flex gap-2 mb-2">
-            <button type="button" class="btn btn-outline btn-xs btn-preset-fund-amt" data-amount="20000">20.000đ</button>
-            <button type="button" class="btn btn-outline btn-xs btn-preset-fund-amt" data-amount="30000">30.000đ</button>
-            <button type="button" class="btn btn-outline btn-xs btn-preset-fund-amt" data-amount="50000">50.000đ</button>
-            <button type="button" class="btn btn-outline btn-xs btn-preset-fund-amt" data-amount="100000">100.000đ</button>
+          <div class="d-flex gap-2 mb-2 flex-wrap">
+            <button type="button" class="btn ${curAmount === 20000 ? 'btn-gold' : 'btn-outline'} btn-xs btn-preset-fund-amt" data-amount="20000">20.000đ</button>
+            <button type="button" class="btn ${curAmount === 30000 ? 'btn-gold' : 'btn-outline'} btn-xs btn-preset-fund-amt" data-amount="30000">30.000đ</button>
+            <button type="button" class="btn ${curAmount === 40000 ? 'btn-gold' : 'btn-outline'} btn-xs btn-preset-fund-amt" data-amount="40000">40.000đ</button>
+            <button type="button" class="btn ${curAmount === 50000 ? 'btn-gold' : 'btn-outline'} btn-xs btn-preset-fund-amt" data-amount="50000">50.000đ</button>
+            <button type="button" class="btn ${curAmount === 100000 ? 'btn-gold' : 'btn-outline'} btn-xs btn-preset-fund-amt" data-amount="100000">100.000đ</button>
           </div>
-          <input type="number" class="form-control font-mono font-bold" id="fundSettingAmount" value="${settings.amount || 30000}" step="5000" style="color: #10b981; font-size: 1.15rem;">
+          <input type="number" class="form-control font-mono font-bold" id="fundSettingAmount" value="${curAmount}" step="5000" style="color: #10b981; font-size: 1.15rem;">
         </div>
 
         <div class="form-group mb-3">
           <label class="form-label text-white text-xs">Cú Pháp Chuyển Khoản Mặc Định</label>
-          <input type="text" class="form-control font-mono text-xs" id="fundSettingSyntax" value="${settings.syntaxPrefix || 'QUY T10'}" placeholder="VD: QUY T10">
-          <small class="text-dim text-xs mt-1 d-block">Hệ thống sẽ tự nối thêm Mã SV của kỳ thủ (VD: QUY T10 2155...)</small>
+          <input type="text" class="form-control font-mono text-xs" id="fundSettingSyntax" value="${settings.syntaxPrefix || 'QUY T10'}" placeholder="VD: QUY T11">
+          <small class="text-dim text-xs mt-1 d-block">Hệ thống sẽ tự nối thêm Mã SV của kỳ thủ (VD: QUY T11 2155...)</small>
         </div>
 
         <div class="card p-3 mb-3" style="background: rgba(14,23,46,0.6); border: 1px solid rgba(212,175,55,0.25);">
@@ -4799,22 +4816,96 @@ export const modalManager = {
 
     const modalEl = document.getElementById('globalAppModal');
     if (modalEl) {
+      const monthInput = modalEl.querySelector('#fundSettingMonth');
+      const titleInput = modalEl.querySelector('#fundSettingTitle');
+      const syntaxInput = modalEl.querySelector('#fundSettingSyntax');
+      const amountInput = modalEl.querySelector('#fundSettingAmount');
+
+      const updatePresetsHighlight = () => {
+        const curM = monthInput ? monthInput.value.trim() : '';
+        modalEl.querySelectorAll('.btn-preset-fund-month').forEach((b) => {
+          if (b.getAttribute('data-month') === curM) {
+            b.classList.remove('btn-outline');
+            b.classList.add('btn-gold');
+          } else {
+            b.classList.remove('btn-gold');
+            b.classList.add('btn-outline');
+          }
+        });
+
+        const curAmt = amountInput ? parseInt(amountInput.value, 10) : 0;
+        modalEl.querySelectorAll('.btn-preset-fund-amt').forEach((b) => {
+          if (parseInt(b.getAttribute('data-amount'), 10) === curAmt) {
+            b.classList.remove('btn-outline');
+            b.classList.add('btn-gold');
+          } else {
+            b.classList.remove('btn-gold');
+            b.classList.add('btn-outline');
+          }
+        });
+      };
+
+      const syncFromMonth = (rawM) => {
+        if (!rawM) return;
+        const cleanM = rawM.trim();
+        if (titleInput) {
+          titleInput.value = `Quỹ Sinh Hoạt Tháng ${cleanM}`;
+        }
+        if (syntaxInput) {
+          const matchMonthNum = cleanM.match(/^(\d{1,2})/);
+          if (matchMonthNum) {
+            syntaxInput.value = `QUY T${parseInt(matchMonthNum[1], 10)}`;
+          }
+        }
+        updatePresetsHighlight();
+      };
+
+      modalEl.querySelectorAll('.btn-preset-fund-month').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          sound.playClick();
+          const m = btn.getAttribute('data-month');
+          if (monthInput) monthInput.value = m;
+          syncFromMonth(m);
+        });
+      });
+
+      monthInput?.addEventListener('input', (e) => syncFromMonth(e.target.value));
+      monthInput?.addEventListener('change', (e) => syncFromMonth(e.target.value));
+
       modalEl.querySelectorAll('.btn-preset-fund-amt').forEach((btn) => {
         btn.addEventListener('click', () => {
           sound.playClick();
           const amt = btn.getAttribute('data-amount');
-          const input = modalEl.querySelector('#fundSettingAmount');
-          if (input) input.value = amt;
+          if (amountInput) amountInput.value = amt;
+          updatePresetsHighlight();
         });
       });
+
+      amountInput?.addEventListener('input', updatePresetsHighlight);
 
       modalEl.querySelector('#btnCancelFundSettings')?.addEventListener('click', () => this.close());
       modalEl.querySelector('#btnSaveFundSettings')?.addEventListener('click', () => {
         sound.playClick();
-        const month = modalEl.querySelector('#fundSettingMonth')?.value?.trim() || '10/2026';
-        const title = modalEl.querySelector('#fundSettingTitle')?.value?.trim() || `Quỹ Sinh Hoạt Tháng ${month}`;
-        const amount = parseInt(modalEl.querySelector('#fundSettingAmount')?.value) || 30000;
-        const syntaxPrefix = modalEl.querySelector('#fundSettingSyntax')?.value?.trim() || 'QUY';
+        let month = monthInput?.value?.trim() || '10/2026';
+        const mParts = month.replace('-', '/').split('/');
+        if (mParts.length === 2) {
+          const mm = mParts[0].padStart(2, '0');
+          const yyyy = mParts[1];
+          month = `${mm}/${yyyy}`;
+        }
+
+        let title = titleInput?.value?.trim() || `Quỹ Sinh Hoạt Tháng ${month}`;
+        if (!title || /Quỹ Sinh Hoạt Tháng/i.test(title)) {
+          title = `Quỹ Sinh Hoạt Tháng ${month}`;
+        }
+
+        const amount = parseInt(amountInput?.value) || 40000;
+        let syntaxPrefix = syntaxInput?.value?.trim();
+        if (!syntaxPrefix || /^QUY\s*T\d+/i.test(syntaxPrefix)) {
+          const mNum = month.split('/')[0].replace(/\D/g, '');
+          syntaxPrefix = `QUY T${parseInt(mNum, 10)}`;
+        }
+
         const bankCode = modalEl.querySelector('#fundSettingBankCode')?.value || 'MB';
         const bankAccount = modalEl.querySelector('#fundSettingBankAccount')?.value?.trim() || '80402233445566';
         const bankOwner = modalEl.querySelector('#fundSettingBankOwner')?.value?.trim() || 'HOANG MINH TUNG';
@@ -4831,7 +4922,7 @@ export const modalManager = {
 
         this.close();
         sound.playSuccess();
-        modalManager.showAlert(`✅ Đã cập nhật quỹ ${title} với định mức ${amount.toLocaleString('vi-VN')}đ! Mã VietQR thu trực tiếp đã được làm mới.`);
+        modalManager.showAlert(`✅ Đã cập nhật thành công [${title}] với định mức ${amount.toLocaleString('vi-VN')}đ!\nCú pháp chuyển khoản: ${syntaxPrefix}\nMã VietQR thu trực tiếp đã được làm mới.`);
         if (typeof onComplete === 'function') onComplete();
       });
     }
@@ -4923,9 +5014,13 @@ export const modalManager = {
     const isAdmin = state.currentSession?.role === 'admin';
 
     // Check if member has already paid for the current month/term
-    const existingRecord = (state.fundRecords || []).find(
-      (r) => r.memberId === member.id && (r.term === currentTerm || r.month === currentMonth)
-    );
+    const existingRecord = (state.fundRecords || []).find((r) => {
+      if (r.memberId !== member.id) return false;
+      if (r.month && currentMonth) {
+        return r.month.trim() === currentMonth.trim();
+      }
+      return r.term === currentTerm;
+    });
 
     let contentHtml = '';
 

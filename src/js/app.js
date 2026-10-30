@@ -4323,9 +4323,12 @@ class App {
       this.adminFundDirectTab = 'unpaid';
     }
 
-    const currentMonthRecords = fundRecords.filter(
-      (r) => r.month === settings.month || r.term === settings.title
-    );
+    const currentMonthRecords = fundRecords.filter((r) => {
+      if (r.month && settings.month) {
+        return r.month.trim() === settings.month.trim();
+      }
+      return r.term === settings.title;
+    });
     const paidMap = new Map();
     currentMonthRecords.forEach((r) => paidMap.set(r.memberId, r));
 
@@ -4344,7 +4347,7 @@ class App {
     const targetMonth = members.length * settings.amount;
     const percent = members.length > 0 ? Math.round((paidMembers.length / members.length) * 100) : 0;
 
-    const generalSyntax = `${settings.syntaxPrefix || 'QUY T10'} [HỌ VÀ TÊN] [MSSV]`;
+    const generalSyntax = `${settings.syntaxPrefix || 'QUY'} [HỌ VÀ TÊN] [MSSV]`;
     const deskQrUrl = settings.qrImage || '/vietqr-fund.png';
 
     container.innerHTML = `
@@ -4370,11 +4373,11 @@ class App {
         <div class="row g-3 mb-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
           <div class="card p-3" style="background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.3);">
             <div class="text-xs text-muted mb-1">THÁNG & ĐỊNH MỨC THU</div>
-            <div class="text-2xl font-bold text-gold font-mono">${(settings.amount || 30000).toLocaleString('vi-VN')} đ</div>
+            <div class="text-2xl font-bold text-gold font-mono">${(settings.amount || 40000).toLocaleString('vi-VN')} đ</div>
             <div class="text-xs text-dim mt-1">Áp dụng: ${settings.title}</div>
           </div>
           <div class="card p-3" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3);">
-            <div class="text-xs text-muted mb-1">TIẾN ĐỘ THU QUỸ THÁNG</div>
+            <div class="text-xs text-muted mb-1">TIẾN ĐỘ THU QUỸ THÁNG ${settings.month || ''}</div>
             <div class="text-2xl font-bold text-emerald">${paidMembers.length} / ${members.length} kỳ thủ</div>
             <div class="text-xs text-dim mt-1">Đạt ${percent}% chỉ tiêu (${unpaidMembers.length} bạn chưa nộp)</div>
           </div>

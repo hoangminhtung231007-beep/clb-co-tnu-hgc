@@ -1457,7 +1457,7 @@ class Store {
       this.state.fundSettings = {
         month: this.state.fundSettings?.month || "10/2026",
         title: this.state.fundSettings?.title || "Quỹ Sinh Hoạt Tháng 10/2026",
-        amount: this.state.fundSettings?.amount || 30000,
+        amount: this.state.fundSettings?.amount || 40000,
         syntaxPrefix: this.state.fundSettings?.syntaxPrefix || "QUY T10",
         bankAccount: "80402233445566",
         bankCode: "MB",
@@ -1465,20 +1465,46 @@ class Store {
         qrImage: "/vietqr-fund.png"
       };
     }
+    // Self-healing: Đảm bảo Tên Đợt Thu Quỹ luôn khớp với Tháng Thu Quỹ nếu tiêu đề là định dạng mặc định
+    if (this.state.fundSettings.month) {
+      const curM = this.state.fundSettings.month.trim();
+      const curTitle = this.state.fundSettings.title || '';
+      const mMatch = curTitle.match(/Tháng\s*(\d{1,2}\/\d{4})/i);
+      if (mMatch && mMatch[1] !== curM) {
+        this.state.fundSettings.title = `Quỹ Sinh Hoạt Tháng ${curM}`;
+      }
+      if (!this.state.fundSettings.syntaxPrefix || /^QUY\s*T\d+/i.test(this.state.fundSettings.syntaxPrefix)) {
+        const mNum = curM.split('/')[0].replace(/\D/g, '');
+        if (mNum) this.state.fundSettings.syntaxPrefix = `QUY T${parseInt(mNum, 10)}`;
+      }
+    }
     return this.state.fundSettings;
   }
 
   updateFundSettings({ month, title, amount, syntaxPrefix, bankAccount, bankCode, bankOwner }) {
     const cur = this.getFundSettings();
-    if (month !== undefined) cur.month = month;
-    if (title !== undefined) cur.title = title;
-    if (amount !== undefined) cur.amount = parseInt(amount) || 30000;
-    if (syntaxPrefix !== undefined) cur.syntaxPrefix = syntaxPrefix;
+    if (month !== undefined) {
+      cur.month = String(month).trim();
+    }
+    if (title !== undefined) {
+      cur.title = String(title).trim();
+    }
+    // Tự động đồng bộ Tiêu Đề theo Tháng nếu tiêu đề theo cấu trúc Quỹ Sinh Hoạt Tháng hoặc đang trống
+    if (cur.month && (!cur.title || /Quỹ Sinh Hoạt Tháng/i.test(cur.title))) {
+      cur.title = `Quỹ Sinh Hoạt Tháng ${cur.month}`;
+    }
+    if (amount !== undefined) cur.amount = parseInt(amount) || 40000;
+    if (syntaxPrefix !== undefined && String(syntaxPrefix).trim()) {
+      cur.syntaxPrefix = String(syntaxPrefix).trim();
+    } else if (cur.month) {
+      const mNum = cur.month.split('/')[0].replace(/\D/g, '');
+      if (mNum) cur.syntaxPrefix = `QUY T${parseInt(mNum, 10)}`;
+    }
     if (bankAccount !== undefined) cur.bankAccount = bankAccount;
     if (bankCode !== undefined) cur.bankCode = bankCode;
     if (bankOwner !== undefined) cur.bankOwner = bankOwner;
     this.saveState();
-    this.notify();
+    this.notify(true);
     return cur;
   }
 
@@ -1488,15 +1514,18 @@ class Store {
 
     const settings = this.getFundSettings();
     const term = settings.title || `Quỹ Sinh Hoạt Tháng ${settings.month}`;
-    const amount = settings.amount || 30000;
+    const amount = settings.amount || 40000;
 
     if (!Array.isArray(this.state.fundRecords)) {
       this.state.fundRecords = [];
     }
 
-    const existing = this.state.fundRecords.find(
-      (r) => r.memberId === memberId && (r.term === term || r.month === settings.month)
-    );
+    const existing = this.state.fundRecords.find((r) => {
+      if (r.month && settings.month) {
+        return r.memberId === memberId && r.month.trim() === settings.month.trim();
+      }
+      return r.memberId === memberId && r.term === term;
+    });
     if (existing) {
       throw new Error(`Kỳ thủ ${member.name} đã được ghi nhận hoàn thành ${term} rồi! (Mã BN: ${existing.id})`);
     }

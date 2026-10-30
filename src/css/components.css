@@ -343,7 +343,7 @@
 }
 
 .id-card-front {
-  background: url('/card-front-bg.png?v=12') center / 100% 100% no-repeat;
+  background: url('/card-front-bg.png?v=13') center / 100% 100% no-repeat;
   transform: rotateY(0deg);
   z-index: 2;
 }
@@ -354,26 +354,82 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: url('/card-back-bg.png?v=12') center / 100% 100% no-repeat;
+  background: url('/card-back-bg.png?v=13') center / 100% 100% no-repeat;
   transform: rotateY(180deg);
   z-index: 1;
+}
+
+/* ==========================================================================
+   VERTICAL MEMBER ID CARD (PORTRAIT VIP LUXURY 3D ROYAL EDITION - CANVAS)
+   ========================================================================== */
+
+.vcard-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.id-card-scene {
+  perspective: 1400px;
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 452 / 606;
+  margin: 0 auto;
+}
+
+.id-card-flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 452 / 606;
+  transition: transform 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+  cursor: pointer;
+  user-select: none;
+}
+
+.id-card-flipper.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.id-card-face {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 452 / 606;
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.78), 0 0 35px rgba(212, 175, 55, 0.22);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .vcard-master-canvas {
   width: 100%;
   height: 100%;
   display: block;
-  border-radius: inherit;
-  pointer-events: none;
+  object-fit: contain;
+  border-radius: 20px;
 }
 
-/* ==========================================================================
-   VERTICAL MEMBER ID CARD (PORTRAIT VIP LUXURY 3D ROYAL EDITION)
-   ========================================================================== */
+.flip-instruction {
+  margin-top: 12px;
+  font-size: 0.84rem;
+  color: var(--gold-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0.9;
+}
 
 /* Vô hiệu hóa toàn bộ hiệu ứng khi di chuột vào thẻ thành viên, chỉ giữ hiệu ứng lật thẻ 3D */
 .id-card-flip-container:hover,
 .electronic-id-card:hover,
+.id-card-scene:hover,
+.id-card-face:hover,
+.vcard-master-canvas:hover,
 .vcard-avatar-box:hover,
 .vcard-avatar-img:hover {
   transform: none !important;
@@ -381,7 +437,9 @@
 }
 
 .id-card-flip-inner.is-flipped,
-.id-card-flip-inner.is-flipped:hover {
+.id-card-flip-inner.is-flipped:hover,
+.id-card-flipper.is-flipped,
+.id-card-flipper.is-flipped:hover {
   transform: rotateY(180deg) !important;
 }
 

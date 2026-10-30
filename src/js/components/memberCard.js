@@ -149,10 +149,10 @@ export const memberCardComponent = {
 
     // Load template backgrounds & member avatar in parallel
     const [frontBgImg, backBgImg, avatarImg, fallbackLogoImg] = await Promise.all([
-      loadImage('/card-front-bg.png?v=12'),
-      loadImage('/card-back-bg.png?v=12'),
+      loadImage('/card-front-bg.png?v=13'),
+      loadImage('/card-back-bg.png?v=13'),
       loadImage(member.avatar),
-      loadImage('/logo-circle.png?v=12')
+      loadImage('/logo-circle.png?v=13')
     ]);
 
     const frontCanvas = containerEl.querySelector('#frontCardMasterCanvas');
@@ -167,15 +167,15 @@ export const memberCardComponent = {
         ctxF.drawImage(frontBgImg, 0, 0, 904, 1212);
       }
 
-      // 1. Draw Member Portrait inside 3D Gold Frame (49, 418, 318, 368, r=26) with object-fit: cover
+      // 1. Draw Member Portrait inside 3D Gold Frame (45, 414, 326, 376, r=28) with object-fit: cover
       const photoToDraw = avatarImg || fallbackLogoImg;
       ctxF.save();
-      drawRoundedRectPath(ctxF, 49, 418, 318, 368, 26);
+      drawRoundedRectPath(ctxF, 45, 414, 326, 376, 28);
       ctxF.clip();
-      ctxF.fillStyle = '#0b1936';
-      ctxF.fillRect(49, 418, 318, 368);
+      ctxF.fillStyle = '#08183a';
+      ctxF.fillRect(45, 414, 326, 376);
       if (photoToDraw) {
-        const boxX = 49, boxY = 418, boxW = 318, boxH = 368;
+        const boxX = 45, boxY = 414, boxW = 326, boxH = 376;
         const imgW = photoToDraw.naturalWidth || photoToDraw.width || boxW;
         const imgH = photoToDraw.naturalHeight || photoToDraw.height || boxH;
         const scale = Math.max(boxW / imgW, boxH / imgH);
@@ -187,49 +187,61 @@ export const memberCardComponent = {
       }
       ctxF.restore();
 
-      // 2. Draw Member Name centered above the Gold Star Divider (x=648, y=490, maxWidth=445)
+      // 2. Draw Member Name centered above the Gold Star Divider (x=646, y=490, maxWidth=445)
       ctxF.save();
-      let nameFontSize = 46;
+      let nameFontSize = 48;
       ctxF.font = `700 ${nameFontSize}px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif`;
-      while (ctxF.measureText(memberName).width > 445 && nameFontSize > 30) {
+      while (ctxF.measureText(memberName).width > 445 && nameFontSize > 28) {
         nameFontSize -= 2;
         ctxF.font = `700 ${nameFontSize}px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif`;
       }
       ctxF.fillStyle = '#ffffff';
       ctxF.textAlign = 'center';
       ctxF.textBaseline = 'middle';
-      ctxF.shadowColor = 'rgba(0, 0, 0, 0.75)';
-      ctxF.shadowBlur = 8;
+      ctxF.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctxF.shadowBlur = 10;
       ctxF.shadowOffsetX = 0;
-      ctxF.shadowOffsetY = 2;
-      ctxF.fillText(memberName, 648, 490, 445);
+      ctxF.shadowOffsetY = 3;
+      ctxF.fillText(memberName, 646, 490, 445);
       ctxF.restore();
 
-      // 3. Draw Ngày sinh & Lớp values aligned with static labels
+      // 3. Draw Ngày sinh & Lớp values aligned with unified 33px Bold labels (y=611, y=689)
       ctxF.save();
-      ctxF.font = '500 33px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif';
+      ctxF.font = '700 34px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif';
       ctxF.fillStyle = '#f8fafc';
       ctxF.textAlign = 'left';
       ctxF.textBaseline = 'middle';
-      ctxF.shadowColor = 'rgba(0, 0, 0, 0.7)';
-      ctxF.shadowBlur = 4;
+      ctxF.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctxF.shadowBlur = 6;
       ctxF.shadowOffsetX = 0;
-      ctxF.shadowOffsetY = 1;
-      ctxF.fillText(memberDob, 670, 613, 195);
-      ctxF.fillText(memberClass, 670, 691, 195);
+      ctxF.shadowOffsetY = 2;
+      ctxF.fillText(memberDob, 670, 611, 196);
+      ctxF.fillText(memberClass, 670, 689, 196);
       ctxF.restore();
 
-      // 4. Draw Chức vụ value centered inside the 3D Gold Pill (x=768, y=771, maxWidth=176)
+      // 4. Draw Chức vụ value centered inside the 3D Gold Pill (x=766, y=770, maxWidth=176)
       ctxF.save();
-      ctxF.font = '700 29px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif';
-      ctxF.fillStyle = '#14223e';
+      let roleFontSize = 29;
+      ctxF.font = `700 ${roleFontSize}px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif`;
+      while (ctxF.measureText(memberRoleTitle).width > 174 && roleFontSize > 20) {
+        roleFontSize -= 1;
+        ctxF.font = `700 ${roleFontSize}px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif`;
+      }
+      ctxF.fillStyle = '#081636';
       ctxF.textAlign = 'center';
       ctxF.textBaseline = 'middle';
-      ctxF.fillText(memberRoleTitle, 768, 771, 176);
+      ctxF.shadowColor = 'rgba(255, 248, 220, 0.45)';
+      ctxF.shadowBlur = 1;
+      ctxF.shadowOffsetY = 1;
+      ctxF.fillText(memberRoleTitle, 766, 770, 176);
       ctxF.restore();
 
-      // 5. Draw Dynamic Smart QR Key inside the Gold QR Frame (702, 894, 168, 168)
-      ctxF.drawImage(qrCanvas, 702, 894, 168, 168);
+      // 5. Draw Dynamic Smart QR Key inside the Gold QR Frame (698, 894, 168, 168)
+      ctxF.save();
+      drawRoundedRectPath(ctxF, 698, 894, 168, 168, 10);
+      ctxF.clip();
+      ctxF.drawImage(qrCanvas, 698, 894, 168, 168);
+      ctxF.restore();
     }
 
     // ================= DRAW BACK MASTER CANVAS (904 x 1212) =================
@@ -244,23 +256,23 @@ export const memberCardComponent = {
       ctxB.save();
       ctxB.textAlign = 'left';
       ctxB.textBaseline = 'middle';
-      ctxB.shadowColor = 'rgba(0, 0, 0, 0.7)';
-      ctxB.shadowBlur = 4;
+      ctxB.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctxB.shadowBlur = 6;
       ctxB.shadowOffsetX = 0;
-      ctxB.shadowOffsetY = 1;
+      ctxB.shadowOffsetY = 2;
 
-      // 1. Mã thẻ (highlighted sky-blue bold)
+      // 1. Mã thẻ (highlighted sky-blue bold at x=212, y=313)
       ctxB.font = '700 33px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif';
-      ctxB.fillStyle = '#5998f5';
-      ctxB.fillText(String(member.id || ''), 202, 313, 260);
+      ctxB.fillStyle = '#56ccf2';
+      ctxB.fillText(String(member.id || ''), 212, 313, 245);
 
-      // 2. MSSV, Khoa, Khóa, Ngày gia nhập
-      ctxB.font = '500 33px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif';
+      // 2. MSSV, Khoa, Khóa, Ngày gia nhập (unified 31px bold white aligned with labels)
+      ctxB.font = '700 31px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif';
       ctxB.fillStyle = '#f8fafc';
-      ctxB.fillText(memberMssv, 592, 313, 280);
-      ctxB.fillText(memberFaculty, 256, 398, 215);
-      ctxB.fillText(memberCohort, 588, 398, 265);
-      ctxB.fillText(memberJoinDate, 415, 482, 280);
+      ctxB.fillText(memberMssv, 578, 313, 290);
+      ctxB.fillText(memberFaculty, 256, 398, 205);
+      ctxB.fillText(memberCohort, 578, 398, 290);
+      ctxB.fillText(memberJoinDate, 396, 482, 290);
       ctxB.restore();
     }
 
@@ -333,7 +345,7 @@ export const memberCardComponent = {
           const ctxComp = compCanvas.getContext('2d');
 
           // Dark luxury textured background
-          ctxComp.fillStyle = '#1e2129';
+          ctxComp.fillStyle = '#070e20';
           ctxComp.fillRect(0, 0, compCanvas.width, compCanvas.height);
 
           const radGrad = ctxComp.createRadialGradient(
@@ -344,15 +356,15 @@ export const memberCardComponent = {
             compCanvas.height / 2,
             compCanvas.width * 0.7
           );
-          radGrad.addColorStop(0, 'rgba(30, 41, 59, 0.6)');
-          radGrad.addColorStop(1, 'rgba(15, 23, 42, 0.95)');
+          radGrad.addColorStop(0, 'rgba(20, 38, 76, 0.72)');
+          radGrad.addColorStop(1, 'rgba(6, 12, 28, 0.98)');
           ctxComp.fillStyle = radGrad;
           ctxComp.fillRect(0, 0, compCanvas.width, compCanvas.height);
 
           // Helper to draw each card with drop shadow and rounded corners
           const drawCardOnComposite = (cardCanvas, x, y, w, h, r) => {
             ctxComp.save();
-            ctxComp.shadowColor = 'rgba(0, 0, 0, 0.65)';
+            ctxComp.shadowColor = 'rgba(0, 0, 0, 0.7)';
             ctxComp.shadowBlur = 40;
             ctxComp.shadowOffsetX = 0;
             ctxComp.shadowOffsetY = 20;
@@ -368,9 +380,9 @@ export const memberCardComponent = {
             ctxComp.restore();
           };
 
-          // Draw Front Card on left (70, 36, 904, 1212) & Back Card on right (1072, 36, 904, 1212)
-          drawCardOnComposite(frontCanvas, 70, 36, 904, 1212, 44);
-          drawCardOnComposite(backCanvas, 1072, 36, 904, 1212, 44);
+          // Draw Front Card on left (70, 31, 904, 1212) & Back Card on right (1074, 31, 904, 1212)
+          drawCardOnComposite(frontCanvas, 70, 31, 904, 1212, 44);
+          drawCardOnComposite(backCanvas, 1074, 31, 904, 1212, 44);
 
           // Convert compCanvas to Blob
           const blob = await new Promise((resolve) => {

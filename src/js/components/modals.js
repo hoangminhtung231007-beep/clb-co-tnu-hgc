@@ -4726,26 +4726,31 @@ export const modalManager = {
     const curMonth = settings.month || '10/2026';
     const curAmount = settings.amount || 40000;
 
-    // Các tháng gợi ý nhanh
-    const presetMonths = ['10/2026', '11/2026', '12/2026', '01/2027', '02/2027', '03/2027'];
-    if (!presetMonths.includes(curMonth)) {
-      presetMonths.unshift(curMonth);
-    }
+    const curMonthNum = (() => {
+      const m = curMonth.match(/^(\d{1,2})/);
+      return m ? parseInt(m[1], 10) : (new Date().getMonth() + 1);
+    })();
 
     const contentHtml = `
       <div class="fund-settings-modal p-2" style="max-width: 540px;">
         <div class="mb-3">
           <span class="badge badge-gold">CÀI ĐẶT THU QUỸ SINH HOẠT</span>
           <h3 class="text-lg font-bold text-white mt-1">Thiết Lập Tháng & Số Tiền Thu</h3>
-          <p class="text-xs text-muted">Mỗi tháng CLB có thể thu một số tiền khác nhau. Chọn tháng bên dưới để hệ thống tự động đồng bộ tên đợt thu và mã VietQR.</p>
+          <p class="text-xs text-muted">Mỗi tháng CLB có thể thu một số tiền khác nhau. Chọn nhanh tháng bên dưới để hệ thống tự động đồng bộ tên đợt thu và mã VietQR.</p>
         </div>
 
         <div class="form-group mb-3">
-          <label class="form-label text-gold font-bold text-xs">Tháng Thu Quỹ (Định dạng MM/YYYY) *</label>
-          <div class="d-flex gap-1.5 mb-2 flex-wrap" id="presetFundMonthsContainer">
-            ${presetMonths.map((m) => `
-              <button type="button" class="btn ${m === curMonth ? 'btn-gold' : 'btn-outline'} btn-xs btn-preset-fund-month" data-month="${m}">
-                Tháng ${m}
+          <label class="form-label text-gold font-bold text-xs d-flex justify-between align-center">
+            <span>Tháng Thu Quỹ (Định dạng MM/YYYY) *</span>
+            <span class="text-dim text-xs font-normal">Bấm chọn nhanh tháng 1 - 12</span>
+          </label>
+          <div class="mb-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 5px;" id="presetFundMonthsContainer">
+            ${Array.from({ length: 12 }, (_, i) => i + 1).map((mNum) => `
+              <button type="button" 
+                      class="btn ${mNum === curMonthNum ? 'btn-gold' : 'btn-outline'} btn-xs btn-preset-fund-month" 
+                      data-month-num="${mNum}" 
+                      style="padding: 5px 2px; font-size: 11px; font-weight: 600;">
+                Tháng ${mNum}
               </button>
             `).join('')}
           </div>
@@ -4823,8 +4828,12 @@ export const modalManager = {
 
       const updatePresetsHighlight = () => {
         const curM = monthInput ? monthInput.value.trim() : '';
+        const mMatch = curM.match(/^(\d{1,2})/);
+        const curMNum = mMatch ? parseInt(mMatch[1], 10) : 0;
+
         modalEl.querySelectorAll('.btn-preset-fund-month').forEach((b) => {
-          if (b.getAttribute('data-month') === curM) {
+          const bNum = parseInt(b.getAttribute('data-month-num'), 10);
+          if (bNum === curMNum) {
             b.classList.remove('btn-outline');
             b.classList.add('btn-gold');
           } else {
@@ -4863,9 +4872,17 @@ export const modalManager = {
       modalEl.querySelectorAll('.btn-preset-fund-month').forEach((btn) => {
         btn.addEventListener('click', () => {
           sound.playClick();
-          const m = btn.getAttribute('data-month');
-          if (monthInput) monthInput.value = m;
-          syncFromMonth(m);
+          const mNum = parseInt(btn.getAttribute('data-month-num'), 10);
+          if (!mNum) return;
+
+          const currentVal = monthInput ? monthInput.value.trim() : '';
+          const yMatch = currentVal.match(/\/(\d{4})/);
+          const yyyy = yMatch ? yMatch[1] : String(new Date().getFullYear());
+          const mm = String(mNum).padStart(2, '0');
+          const newMonthStr = `${mm}/${yyyy}`;
+
+          if (monthInput) monthInput.value = newMonthStr;
+          syncFromMonth(newMonthStr);
         });
       });
 

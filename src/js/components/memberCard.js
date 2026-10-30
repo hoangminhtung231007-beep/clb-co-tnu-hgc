@@ -70,79 +70,140 @@ export const memberCardComponent = {
             
             <!-- ================= MẶT TRƯỚC (FRONT SIDE) ================= -->
             <div class="electronic-id-card id-card-front" id="digitalMemberPassFront">
-              <div class="card-glass-sheen"></div>
-              
-              <!-- Ảnh chân dung hội viên đặt lọt trọn vào khung vàng -->
-              <div class="vcard-avatar-box">
-                <img src="${member.avatar}" alt="${member.name}" class="vcard-avatar-img">
+              <div class="vcard-inner-frame"></div>
+              <div class="vcard-checkered-watermark"></div>
+              <img src="/vcard-front-art.png" alt="" class="vcard-bottom-art">
+
+              <!-- Header: Logo + Divider + Club Info -->
+              <div class="vcard-header">
+                <div class="vcard-logo-wrap">
+                  <img src="/logo-circle.png" alt="Logo CLB Cờ TNU - HGC" class="vcard-header-logo">
+                </div>
+                <div class="vcard-divider-v"></div>
+                <div class="vcard-header-text">
+                  <div class="vcard-club-name">CLB CỜ TNU - HGC</div>
+                  <div class="vcard-university-name">ĐẠI HỌC THÁI NGUYÊN PHÂN HIỆU TẠI HÀ GIANG</div>
+                </div>
               </div>
 
-              <!-- Cột thông tin bên phải ảnh chân dung -->
-              <div class="vcard-front-info">
-                <div class="vcard-member-name" title="${member.name}">
-                  <span class="vcard-name-text">${member.name}</span>
-                  <span class="vcard-sparkle">✦</span>
+              <!-- Gold Ribbon Banner: THẺ THÀNH VIÊN -->
+              <div class="vcard-ribbon-wrap">
+                <div class="vcard-crown">👑</div>
+                <div class="vcard-ribbon">
+                  <span class="vcard-ribbon-text">THẺ THÀNH VIÊN</span>
                 </div>
-                
-                <div class="vcard-info-rows">
-                  <div class="vcard-info-row">
-                    <span class="vcard-icon">📅</span>
-                    <span class="vcard-label">Ngày sinh:</span>
+                <div class="vcard-stars">★★★</div>
+              </div>
+
+              <!-- Middle: Avatar + Member Details -->
+              <div class="vcard-middle">
+                <!-- Avatar Frame with double gold border -->
+                <div class="vcard-avatar-frame">
+                  <img src="${member.avatar}" alt="${member.name}" class="vcard-avatar-img">
+                </div>
+
+                <!-- Member Details Column -->
+                <div class="vcard-details-col">
+                  <div class="vcard-member-name-row">
+                    <span class="vcard-member-name" title="${member.name}">${member.name}</span>
+                    <span class="vcard-sparkle">✦</span>
+                  </div>
+                  <div class="vcard-gold-line"></div>
+
+                  <div class="vcard-field-row">
+                    <span class="vcard-lbl">NGÀY SINH:</span>
                     <span class="vcard-val font-mono">${memberDob}</span>
                   </div>
-                  <div class="vcard-info-row">
-                    <span class="vcard-icon">🎓</span>
-                    <span class="vcard-label">Lớp:</span>
+                  <div class="vcard-field-row">
+                    <span class="vcard-lbl">LỚP:</span>
                     <span class="vcard-val" title="${memberClass}">${memberClass}</span>
                   </div>
-                  <div class="vcard-info-row">
-                    <span class="vcard-icon">👤</span>
-                    <span class="vcard-label">Chức vụ:</span>
+                  <div class="vcard-field-row">
+                    <span class="vcard-lbl">CHỨC VỤ:</span>
                     <span class="vcard-role-pill">${memberRoleTitle}</span>
                   </div>
                 </div>
               </div>
 
-              <!-- Ô mã QR động Smart QR Key ở góc dưới bên phải -->
-              <div class="vcard-qr-box">
-                <canvas id="memberFrontQrCanvas" class="vcard-qr-canvas"></canvas>
+              <!-- Bottom Right: SMART QR KEY -->
+              <div class="vcard-smart-qr-card">
+                <div class="vcard-qr-inner">
+                  <canvas id="memberFrontQrCanvas" class="vcard-qr-canvas"></canvas>
+                </div>
+                <div class="vcard-qr-label">SMART QR KEY</div>
               </div>
             </div>
 
             <!-- ================= MẶT SAU (BACK SIDE) ================= -->
             <div class="electronic-id-card id-card-back" id="digitalMemberPassBack">
-              <div class="card-glass-sheen"></div>
-              
-              <!-- Khu vực thông tin chi tiết kỳ thủ trên mặt sau -->
-              <div class="vcard-back-info-box">
-                <div class="vcard-back-row">
-                  <div class="vcard-back-col">
-                    <span class="vback-label">Mã thẻ:</span>
-                    <span class="vback-val vback-id font-mono">${member.id}</span>
+              <div class="vcard-inner-frame"></div>
+              <div class="vcard-checkered-watermark"></div>
+              <img src="/vcard-back-art.png" alt="" class="vcard-bottom-art">
+
+              <!-- Header: Logo + Divider + Club Info -->
+              <div class="vcard-header">
+                <div class="vcard-logo-wrap">
+                  <img src="/logo-circle.png" alt="Logo CLB Cờ TNU - HGC" class="vcard-header-logo">
+                </div>
+                <div class="vcard-divider-v"></div>
+                <div class="vcard-header-text">
+                  <div class="vcard-club-name">CLB CỜ TNU - HGC</div>
+                  <div class="vcard-university-name">ĐẠI HỌC THÁI NGUYÊN PHÂN HIỆU TẠI HÀ GIANG</div>
+                </div>
+              </div>
+
+              <!-- Member Data Table in Frosted Glass -->
+              <div class="vcard-back-data-card">
+                <div class="vback-grid-row">
+                  <div class="vback-item">
+                    <span class="vback-lbl">MÃ THẺ:</span>
+                    <span class="vback-val-id font-mono">${member.id}</span>
                   </div>
-                  <div class="vcard-back-col">
-                    <span class="vback-label">MSSV:</span>
-                    <span class="vback-val font-mono">${member.studentId || 'Chưa cập nhật'}</span>
+                  <div class="vback-item">
+                    <span class="vback-lbl">MSSV:</span>
+                    <span class="vback-val-mono font-mono">${member.studentId || 'Chưa cập nhật'}</span>
                   </div>
                 </div>
-
-                <div class="vcard-back-row">
-                  <div class="vcard-back-col">
-                    <span class="vback-icon">🎓</span>
-                    <span class="vback-label">Khoa:</span>
+                <div class="vback-grid-row">
+                  <div class="vback-item">
+                    <span class="vback-lbl">KHOA:</span>
                     <span class="vback-val" title="${memberFaculty}">${memberFaculty}</span>
                   </div>
-                  <div class="vcard-back-col">
-                    <span class="vback-label">Khóa:</span>
-                    <span class="vback-val font-mono">${memberCohort}</span>
+                  <div class="vback-item">
+                    <span class="vback-lbl">KHÓA:</span>
+                    <span class="vback-val-mono font-mono">${memberCohort}</span>
                   </div>
                 </div>
+                <div class="vback-grid-row">
+                  <div class="vback-item full">
+                    <span class="vback-lbl">NGÀY GIA NHẬP:</span>
+                    <span class="vback-val-mono font-mono">${memberJoinDate}</span>
+                  </div>
+                </div>
+              </div>
 
-                <div class="vcard-back-row">
-                  <div class="vcard-back-col full-w">
-                    <span class="vback-icon">🤝</span>
-                    <span class="vback-label">Ngày gia nhập:</span>
-                    <span class="vback-val font-mono">${memberJoinDate}</span>
+              <!-- Official Rules Box with Gold Border -->
+              <div class="vcard-rules-box">
+                <div class="vcard-rules-ribbon">
+                  <span class="vcard-crown-mini">👑</span>
+                  <span class="vcard-rules-title-pill">QUY ĐỊNH SỬ DỤNG THẺ</span>
+                </div>
+                <div class="vcard-rules-list">
+                  <div class="vcard-rule-item">
+                    <span class="vcard-rule-num">①</span>
+                    <span class="vcard-rule-txt">Thẻ chỉ có giá trị sử dụng trong CLB Cờ TNU - HGC.</span>
+                  </div>
+                  <div class="vcard-rule-item">
+                    <span class="vcard-rule-num">②</span>
+                    <span class="vcard-rule-txt">Giữ gìn thẻ cẩn thận, không làm mất hoặc hư hỏng.</span>
+                  </div>
+                  <div class="vcard-rule-item">
+                    <span class="vcard-rule-num">③</span>
+                    <span class="vcard-rule-txt">Không cho người khác mượn, sử dụng thẻ của mình.</span>
+                  </div>
+                  <div class="vcard-rule-item">
+                    <span class="vcard-rule-num">④</span>
+                    <span class="vcard-rule-txt">Khi có thay đổi thông tin, vui lòng liên hệ Ban Điều hành CLB.</span>
                   </div>
                 </div>
               </div>
@@ -173,9 +234,9 @@ export const memberCardComponent = {
     const canvas = containerEl.querySelector('#memberFrontQrCanvas');
     if (canvas) {
       await qrHelper.renderToCanvas(canvas, payload, {
-        width: 100,
-        margin: 1,
-        dark: '#070d1e',
+        width: 120,
+        margin: 0,
+        dark: '#071536',
         light: '#ffffff'
       });
     }

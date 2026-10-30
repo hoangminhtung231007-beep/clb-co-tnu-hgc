@@ -337,13 +337,17 @@
   border-radius: 22px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 35px rgba(212, 175, 55, 0.25);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 35px rgba(212, 175, 55, 0.25);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  background: radial-gradient(ellipse at 50% 12%, #103178 0%, #061845 55%, #020a1c 100%);
+  border: 1.5px solid rgba(212, 175, 55, 0.55);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .id-card-front {
-  background: url('/card-front-bg.png') center / 100% 100% no-repeat;
   transform: rotateY(0deg);
   z-index: 2;
 }
@@ -352,42 +356,450 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: url('/card-back-bg.png') center / 100% 100% no-repeat;
   transform: rotateY(180deg);
   z-index: 1;
 }
 
-/* ==========================================================================
-   VERTICAL MEMBER ID CARD (PORTRAIT VIP LUXURY BADGE)
-   ========================================================================== */
-.vcard-avatar-box {
+/* Inner Gold Decorative Frame & Corner Accents */
+.vcard-inner-frame {
   position: absolute;
-  left: 5.31%;
-  top: 35.0%;
-  width: 35.8%;
-  height: 30.5%;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.65);
+  inset: 5px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 17px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.vcard-checkered-watermark {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 140px;
+  height: 140px;
+  opacity: 0.08;
+  background-image: repeating-linear-gradient(0deg, #ffd700 0, #ffd700 14px, transparent 14px, transparent 28px),
+                    repeating-linear-gradient(90deg, #ffd700 0, #ffd700 14px, transparent 14px, transparent 28px);
+  mask-image: radial-gradient(circle at 100% 0%, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at 100% 0%, black 30%, transparent 80%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.vcard-bottom-art {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ==========================================================================
+   VERTICAL MEMBER ID CARD (PORTRAIT VIP LUXURY BADGE) - DESIGN 2.0
+   ========================================================================== */
+.vcard-header {
+  position: relative;
   z-index: 5;
+  display: flex;
+  align-items: center;
+  padding: 14px 18px 6px;
+  gap: 10px;
+}
+
+.vcard-logo-wrap {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7), 0 0 10px rgba(212, 175, 55, 0.4);
+  background: #02091c;
+  padding: 1px;
+}
+
+.vcard-header-logo {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.vcard-divider-v {
+  width: 2px;
+  height: 36px;
+  background: linear-gradient(180deg, transparent, #ffd700 35%, #d4af37 65%, transparent);
+  flex-shrink: 0;
+}
+
+.vcard-header-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.vcard-club-name {
+  font-size: clamp(0.96rem, 3.4vw, 1.15rem);
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 1.2px;
+  line-height: 1.2;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+}
+
+.vcard-university-name {
+  font-size: clamp(0.5rem, 1.8vw, 0.62rem);
+  font-weight: 600;
+  color: #cbd5e1;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  line-height: 1.3;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Gold Ribbon Banner: THẺ THÀNH VIÊN */
+.vcard-ribbon-wrap {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 2px 0 8px;
+}
+
+.vcard-crown {
+  font-size: 1.15rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(212, 175, 55, 0.6));
+  margin-bottom: -3px;
+  z-index: 2;
+}
+
+.vcard-ribbon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(180deg, #fbe8a6 0%, #e0b845 25%, #c49622 75%, #886307 100%);
+  border: 1px solid #ffd700;
+  border-radius: 999px;
+  padding: 4px 22px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 0 12px rgba(212, 175, 55, 0.4);
+}
+
+.vcard-ribbon-text {
+  font-size: clamp(0.85rem, 3.2vw, 1.05rem);
+  font-weight: 900;
+  color: #071536;
+  letter-spacing: 2.2px;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
+.vcard-stars {
+  color: #facc15;
+  font-size: 0.68rem;
+  letter-spacing: 3px;
+  line-height: 1;
+  margin-top: 3px;
+  filter: drop-shadow(0 0 4px #ffd700);
+}
+
+/* Middle: Avatar + Member Details */
+.vcard-middle {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  padding: 0 18px;
+  gap: 14px;
+  align-items: center;
+}
+
+.vcard-avatar-frame {
+  width: clamp(120px, 32vw, 142px);
+  height: clamp(140px, 37vw, 168px);
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ffd700 0%, #aa820a 50%, #fde047 100%);
+  padding: 2.5px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75), 0 0 12px rgba(212, 175, 55, 0.35);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .vcard-avatar-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 11.5px;
   display: block;
+}
+
+.vcard-details-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+}
+
+.vcard-member-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vcard-member-name {
+  font-size: clamp(0.95rem, 3.4vw, 1.25rem);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.4px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+.vcard-sparkle {
+  color: #ffd700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px #ffd700);
+}
+
+.vcard-gold-line {
+  width: 100%;
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.75), rgba(212, 175, 55, 0.1));
+  margin: 2px 0 4px;
+}
+
+.vcard-field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(0.68rem, 2.2vw, 0.78rem);
+}
+
+.vcard-lbl {
+  color: #cbd5e1;
+  font-weight: 700;
+  font-size: clamp(0.62rem, 2vw, 0.72rem);
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.vcard-val {
+  color: #ffffff;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vcard-val.font-mono {
+  color: #f1f5f9;
+  letter-spacing: 0.5px;
+}
+
+.vcard-role-pill {
+  background: linear-gradient(135deg, #fbe8a6 0%, #e0b845 35%, #b38515 100%);
+  color: #071536;
+  font-weight: 800;
+  font-size: clamp(0.64rem, 2vw, 0.74rem);
+  letter-spacing: 0.4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* Smart QR Key Badge */
+.vcard-smart-qr-card {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 5;
+  width: clamp(86px, 22vw, 100px);
+  background: #ffffff;
+  border: 2px solid #d4af37;
   border-radius: 12px;
+  padding: 6px 5px 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75), 0 0 10px rgba(212, 175, 55, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.vcard-qr-inner {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vcard-qr-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.vcard-qr-label {
+  font-size: 0.55rem;
+  font-weight: 900;
+  color: #071536;
+  letter-spacing: 0.8px;
+  margin-top: 3px;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   BACK SIDE DETAILS - DESIGN 2.0
+   ========================================================================== */
+.vcard-back-data-card {
+  position: relative;
+  z-index: 5;
+  margin: 6px 18px 10px;
+  background: rgba(8, 22, 58, 0.72);
+  border: 1.2px solid rgba(212, 175, 55, 0.45);
+  border-radius: 12px;
+  padding: 8px 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vback-grid-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vback-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(0.65rem, 2.1vw, 0.76rem);
+  min-width: 0;
+}
+
+.vback-item.full {
+  width: 100%;
+}
+
+.vback-lbl {
+  color: #cbd5e1;
+  font-weight: 700;
+  font-size: clamp(0.6rem, 2vw, 0.7rem);
+  flex-shrink: 0;
+}
+
+.vback-val {
+  color: #ffffff;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vback-val-id {
+  color: #38bdf8;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.vback-val-mono {
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+/* Rules Box */
+.vcard-rules-box {
+  position: relative;
+  z-index: 5;
+  margin: 0 18px;
+  background: rgba(8, 22, 58, 0.65);
+  border: 1.5px solid rgba(212, 175, 55, 0.5);
+  border-radius: 14px;
+  padding: 12px 12px 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+
+.vcard-rules-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: -20px;
+  margin-bottom: 8px;
+}
+
+.vcard-crown-mini {
+  font-size: 0.95rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(212, 175, 55, 0.6));
+}
+
+.vcard-rules-title-pill {
+  background: linear-gradient(180deg, #fbe8a6 0%, #e0b845 30%, #b38515 100%);
+  color: #071536;
+  font-weight: 900;
+  font-size: clamp(0.68rem, 2.3vw, 0.8rem);
+  letter-spacing: 1.5px;
+  padding: 3px 14px;
+  border-radius: 999px;
+  border: 1px solid #ffd700;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+.vcard-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vcard-rule-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: clamp(0.62rem, 2vw, 0.72rem);
+  line-height: 1.35;
+  color: #f1f5f9;
+}
+
+.vcard-rule-num {
+  color: #facc15;
+  font-weight: 800;
+  font-size: 0.76rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.vcard-rule-txt {
+  font-weight: 500;
 }
 
 /* Vô hiệu hóa toàn bộ hiệu ứng khi di chuột vào thẻ thành viên, chỉ giữ hiệu ứng lật thẻ 3D */
 .id-card-flip-container:hover,
 .electronic-id-card:hover,
-.vcard-avatar-box:hover,
-.vcard-avatar-img:hover,
-.vcard-avatar-box:hover .vcard-avatar-img {
+.vcard-avatar-frame:hover,
+.vcard-avatar-img:hover {
   transform: none !important;
   filter: none !important;
 }
@@ -395,186 +807,6 @@
 .id-card-flip-inner.is-flipped,
 .id-card-flip-inner.is-flipped:hover {
   transform: rotateY(180deg) !important;
-}
-
-/* Front Details Column (Right of Avatar) */
-.vcard-front-info {
-  position: absolute;
-  left: 45.0%;
-  top: 35.2%;
-  width: 51.5%;
-  height: 31.5%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  z-index: 5;
-  padding: 2px 0;
-}
-
-.vcard-member-name {
-  font-size: clamp(0.95rem, 3.8vw, 1.32rem);
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: 0.5px;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.28);
-  padding-bottom: 5px;
-  margin-bottom: 4px;
-}
-
-.vcard-name-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.vcard-sparkle {
-  color: #facc15;
-  font-size: 0.82rem;
-  flex-shrink: 0;
-  filter: drop-shadow(0 0 5px #facc15);
-}
-
-.vcard-info-rows {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-  flex: 1;
-  gap: 4px;
-}
-
-.vcard-info-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: clamp(0.68rem, 2.2vw, 0.8rem);
-  line-height: 1.3;
-}
-
-.vcard-icon {
-  font-size: 0.82rem;
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-.vcard-label {
-  color: #cbd5e1;
-  font-weight: 600;
-  font-size: clamp(0.65rem, 2vw, 0.76rem);
-  flex-shrink: 0;
-}
-
-.vcard-val {
-  color: #ffffff;
-  font-weight: 700;
-  font-size: clamp(0.68rem, 2.2vw, 0.8rem);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-}
-
-.vcard-role-pill {
-  background: linear-gradient(135deg, #f5d061 0%, #d4af37 50%, #aa8520 100%);
-  color: #070d1e;
-  font-size: clamp(0.65rem, 2.1vw, 0.76rem);
-  font-weight: 800;
-  letter-spacing: 0.3px;
-  padding: 2px 10px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  white-space: nowrap;
-  display: inline-block;
-}
-
-/* Smart QR Key Canvas */
-.vcard-qr-box {
-  position: absolute;
-  left: 77.5%;
-  top: 74.5%;
-  width: 18.6%;
-  height: 14.0%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 5;
-}
-
-.vcard-qr-canvas {
-  width: 96% !important;
-  height: 96% !important;
-  aspect-ratio: 1 / 1;
-  display: block;
-}
-
-/* ==========================================================================
-   BACK SIDE DETAILS
-   ========================================================================== */
-.vcard-back-info-box {
-  position: absolute;
-  left: 4.5%;
-  top: 22.8%;
-  width: 91.0%;
-  height: 20.8%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-  padding: 2px 6px;
-  z-index: 5;
-}
-
-.vcard-back-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.vcard-back-col {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  font-size: clamp(0.66rem, 2.2vw, 0.78rem);
-}
-
-.vcard-back-col.full-w {
-  width: 100%;
-}
-
-.vback-icon {
-  font-size: 0.8rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.vback-label {
-  color: #cbd5e1;
-  font-weight: 600;
-  font-size: clamp(0.64rem, 2vw, 0.75rem);
-  flex-shrink: 0;
-}
-
-.vback-val {
-  color: #ffffff;
-  font-weight: 700;
-  font-size: clamp(0.66rem, 2.2vw, 0.78rem);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.vback-val.vback-id {
-  color: #38bdf8;
-  font-weight: 800;
-  letter-spacing: 0.3px;
 }
 
 .card-glass-sheen {
@@ -1545,59 +1777,78 @@
     padding: 8px 12px;
   }
 
-  /* Electronic Member Pass on Mobile */
+  /* Electronic Member Pass on Mobile (Design 2.0 VIP) */
   .id-card-flip-container,
   .id-card-flip-inner,
   .electronic-id-card {
     min-height: 0;
-    max-width: 360px;
+    max-width: 350px;
   }
   .electronic-id-card {
     padding: 0;
     border-radius: 18px;
   }
-  .id-card-header {
-    padding-bottom: 10px;
+  .vcard-header {
+    padding: 10px 14px 4px;
+    gap: 8px;
   }
-  .id-logo-symbol,
-  .id-logo-img {
-    width: 28px;
+  .vcard-logo-wrap {
+    width: 38px;
+    height: 38px;
+  }
+  .vcard-divider-v {
     height: 28px;
-    font-size: 16px;
   }
-  .id-club-title {
-    font-size: 0.85rem;
+  .vcard-ribbon-wrap {
+    margin: 2px 0 6px;
   }
-  .id-club-sub {
-    font-size: 0.62rem;
+  .vcard-crown {
+    font-size: 1rem;
   }
-  .id-chip-gold {
-    width: 32px;
-    height: 22px;
+  .vcard-ribbon {
+    padding: 3px 16px;
   }
-  .id-card-title-simple {
-    font-size: 0.92rem;
-    letter-spacing: 2px;
-    margin: 12px 0 8px;
-  }
-  .id-front-body {
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 0;
-  }
-  .id-avatar {
-    width: 120px;
-    height: 140px;
-  }
-  .id-front-qr-box {
-    margin-top: 4px;
-  }
-  .id-back-body-2col {
-    flex-direction: column;
-    align-items: stretch;
+  .vcard-middle {
+    padding: 0 14px;
     gap: 10px;
-    padding: 8px 0;
+  }
+  .vcard-avatar-frame {
+    width: 108px;
+    height: 128px;
+  }
+  .vcard-details-col {
+    gap: 4px;
+  }
+  .vcard-smart-qr-card {
+    right: 12px;
+    bottom: 12px;
+    width: 78px;
+    padding: 4px;
+  }
+  .vcard-qr-label {
+    font-size: 0.48rem;
+  }
+  .vcard-back-data-card {
+    margin: 4px 14px 8px;
+    padding: 6px 10px;
+    gap: 4px;
+  }
+  .vcard-rules-box {
+    margin: 0 14px;
+    padding: 10px 10px 8px;
+  }
+  .vcard-rules-ribbon {
+    margin-top: -16px;
+    margin-bottom: 6px;
+  }
+  .vcard-rules-title-pill {
+    font-size: 0.65rem;
+    padding: 2px 10px;
+  }
+  .vcard-rule-item {
+    font-size: 0.58rem;
+    gap: 4px;
+    line-height: 1.25;
   }
   .back-rules-card-dark,
   .back-contact-card-dark {

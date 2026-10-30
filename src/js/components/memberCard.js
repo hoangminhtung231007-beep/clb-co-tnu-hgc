@@ -149,10 +149,10 @@ export const memberCardComponent = {
 
     // Load Full HD (1808x2424) template backgrounds & member avatar in parallel
     const [frontBgImg, backBgImg, avatarImg, fallbackLogoImg] = await Promise.all([
-      loadImage('/card-front-bg.png?v=15'),
-      loadImage('/card-back-bg.png?v=15'),
+      loadImage('/card-front-bg.png?v=16'),
+      loadImage('/card-back-bg.png?v=16'),
       loadImage(member.avatar),
-      loadImage('/logo-circle.png?v=15')
+      loadImage('/logo-circle.png?v=16')
     ]);
 
     const frontCanvas = containerEl.querySelector('#frontCardMasterCanvas');
@@ -217,7 +217,7 @@ export const memberCardComponent = {
       ctxF.fillText(memberName, 646, 490, 445);
       ctxF.restore();
 
-      // 3. Draw Ngày sinh & Lớp values aligned with unified 33px Bold labels (y=611, y=689)
+      // 3. Draw Ngày sinh, Lớp & Chức vụ values aligned with unified 33px Bold labels (y=611, y=689, y=769)
       ctxF.save();
       ctxF.font = '700 34px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif';
       ctxF.fillStyle = '#f8fafc';
@@ -227,33 +227,17 @@ export const memberCardComponent = {
       ctxF.shadowBlur = 10;
       ctxF.shadowOffsetX = 0;
       ctxF.shadowOffsetY = 3;
-      ctxF.fillText(memberDob, 670, 611, 196);
-      ctxF.fillText(memberClass, 670, 689, 196);
+      ctxF.fillText(memberDob, 670, 611, 204);
+      ctxF.fillText(memberClass, 670, 689, 204);
+      ctxF.fillText(memberRoleTitle, 670, 769, 204);
       ctxF.restore();
 
-      // 4. Draw Chức vụ value centered inside the 3D Gold Pill (x=766, y=770, maxWidth=176)
+      // 4. Draw Balanced Smart QR Key inside the Left-Shifted 3D Gold QR Frame (563, 868, 206, 206)
       ctxF.save();
-      let roleFontSize = 29;
-      ctxF.font = `700 ${roleFontSize}px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif`;
-      while (ctxF.measureText(memberRoleTitle).width > 174 && roleFontSize > 20) {
-        roleFontSize -= 1;
-        ctxF.font = `700 ${roleFontSize}px "Segoe UI", "Roboto", "Be Vietnam Pro", Arial, sans-serif`;
-      }
-      ctxF.fillStyle = '#081636';
-      ctxF.textAlign = 'center';
-      ctxF.textBaseline = 'middle';
-      ctxF.shadowColor = 'rgba(255, 248, 220, 0.45)';
-      ctxF.shadowBlur = 2;
-      ctxF.shadowOffsetY = 1;
-      ctxF.fillText(memberRoleTitle, 766, 770, 176);
-      ctxF.restore();
-
-      // 5. Draw Balanced Smart QR Key inside the Sleek 3D Gold QR Frame (621, 868, 206, 206)
-      ctxF.save();
-      drawRoundedRectPath(ctxF, 621, 868, 206, 206, 8);
+      drawRoundedRectPath(ctxF, 563, 868, 206, 206, 8);
       ctxF.clip();
       ctxF.imageSmoothingEnabled = false; // Crisp pixel-perfect QR modules
-      ctxF.drawImage(qrCanvas, 621, 868, 206, 206);
+      ctxF.drawImage(qrCanvas, 563, 868, 206, 206);
       ctxF.restore();
 
       ctxF.restore();

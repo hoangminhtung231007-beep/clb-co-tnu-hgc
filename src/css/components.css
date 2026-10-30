@@ -344,7 +344,7 @@
 
 .id-card-front,
 .id-card-front:hover {
-  background: url('/card-front-bg.png?v=15') center / 100% 100% no-repeat;
+  background: url('/card-front-bg.png?v=16') center / 100% 100% no-repeat;
   transform: rotateY(0deg) !important;
   -webkit-transform: rotateY(0deg) !important;
   z-index: 2;
@@ -357,7 +357,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: url('/card-back-bg.png?v=15') center / 100% 100% no-repeat;
+  background: url('/card-back-bg.png?v=16') center / 100% 100% no-repeat;
   transform: rotateY(180deg) !important;
   -webkit-transform: rotateY(180deg) !important;
   z-index: 1;

@@ -133,6 +133,9 @@ class Store {
           pendingApplications: cleanedPending,
           members: rawClubMembers.map((m, idx) => ({
             ...m,
+            avatar: typeof m.avatar === 'string' && m.avatar.includes('images.unsplash.com')
+              ? m.avatar.replace(/w=\d+/g, 'w=1080').replace(/q=\d+/g, 'q=95')
+              : m.avatar,
             role: m.role === 'admin' ? 'bdh' : m.role,
             roleTitle: (m.roleTitle === 'Hội viên' || m.roleTitle === 'Hội viên Mới' || m.roleTitle === 'Hội viên mới' || !m.roleTitle)
               ? (m.role === 'bdh' ? 'Chủ nhiệm' : 'Thành viên')
@@ -326,7 +329,7 @@ class Store {
     const newMember = {
       id: newId,
       name: memberData.name || 'Kỳ thủ TNU',
-      avatar: memberData.avatar || `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 5000)}?auto=format&fit=crop&w=400&q=80`,
+      avatar: memberData.avatar || `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 5000)}?auto=format&fit=crop&w=1080&q=95`,
       gender: memberData.gender || 'Nam',
       dob: memberData.dob || '2005-01-01',
       studentId: memberData.studentId || `HGC${2250000000 + Math.floor(Math.random() * 99999)}`,

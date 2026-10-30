@@ -95,6 +95,9 @@ export const memberCardComponent = {
           <button id="btnMemberPayFund" class="btn btn-sm" style="font-weight: 700; background: linear-gradient(135deg, #059669, #10b981); border: none; color: #ffffff; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); padding: 8px 16px;">
             <span class="btn-icon">💳</span> Nộp Quỹ CLB
           </button>
+          <button id="btnChangeAvatarCard" class="btn btn-outline btn-sm" style="border-color: rgba(245, 208, 97, 0.55); color: #fde68a; font-weight: 600;">
+            <span class="btn-icon">📸</span> Đổi ảnh thẻ Full HD
+          </button>
           <button id="btnEditMemberProfileCard" class="btn btn-outline btn-sm" style="border-color: rgba(56, 189, 248, 0.5); color: #38bdf8; font-weight: 600;">
             <span class="btn-icon">✏️</span> Sửa thông tin cá nhân
           </button>
@@ -102,11 +105,20 @@ export const memberCardComponent = {
       </div>
     `;
 
-    // Helper: load image safely with CORS fallback
+    // Helper: load image safely with CORS fallback & automatic Full HD URL upgrade
+    const upgradeAvatarUrlToFullHd = (rawUrl) => {
+      if (!rawUrl || typeof rawUrl !== 'string') return rawUrl;
+      if (rawUrl.includes('images.unsplash.com')) {
+        return rawUrl.replace(/w=\d+/g, 'w=1200').replace(/q=\d+/g, 'q=95');
+      }
+      return rawUrl;
+    };
+
     const loadImage = (src) => new Promise((resolve) => {
-      if (!src) return resolve(null);
+      const targetSrc = upgradeAvatarUrlToFullHd(src);
+      if (!targetSrc) return resolve(null);
       const img = new Image();
-      if (!src.startsWith('data:')) {
+      if (!targetSrc.startsWith('data:')) {
         img.crossOrigin = 'anonymous';
       }
       img.onload = () => resolve(img);
@@ -115,13 +127,99 @@ export const memberCardComponent = {
           const retryImg = new Image();
           retryImg.onload = () => resolve(retryImg);
           retryImg.onerror = () => resolve(null);
-          retryImg.src = src;
+          retryImg.src = targetSrc;
         } else {
           resolve(null);
         }
       };
-      img.src = src;
+      img.src = targetSrc;
     });
+
+    // Helper: Full HD Portrait Super-Sampling & Adaptive Unsharp Mask Engine (648 x 718 native physical px)
+    const renderFullHdPortraitCanvas = (sourceImg, targetW = 648, targetH = 718) => {
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = targetW;
+      outCanvas.height = targetH;
+      const outCtx = outCanvas.getContext('2d');
+      outCtx.imageSmoothingEnabled = true;
+      outCtx.imageSmoothingQuality = 'high';
+      outCtx.fillStyle = '#08183a';
+      outCtx.fillRect(0, 0, targetW, targetH);
+
+      if (!sourceImg) return outCanvas;
+
+      const srcW = sourceImg.naturalWidth || sourceImg.width || targetW;
+      const srcH = sourceImg.naturalHeight || sourceImg.height || targetH;
+
+      // Step 1: If source image is low-res (e.g. legacy 160x160 avatar), progressively 2x super-sample first
+      let workingSource = sourceImg;
+      let curW = srcW;
+      let curH = srcH;
+      while (curW * 1.6 < targetW || curH * 1.6 < targetH) {
+        const nextW = Math.min(targetW * 2, Math.round(curW * 2));
+        const nextH = Math.min(targetH * 2, Math.round(curH * 2));
+        const stepCanvas = document.createElement('canvas');
+        stepCanvas.width = nextW;
+        stepCanvas.height = nextH;
+        const stepCtx = stepCanvas.getContext('2d');
+        stepCtx.imageSmoothingEnabled = true;
+        stepCtx.imageSmoothingQuality = 'high';
+        stepCtx.drawImage(workingSource, 0, 0, nextW, nextH);
+        workingSource = stepCanvas;
+        curW = nextW;
+        curH = nextH;
+      }
+
+      // Step 2: Cover-fit into 648 x 718 native Full HD portrait frame
+      const scale = Math.max(targetW / curW, targetH / curH);
+      const drawW = curW * scale;
+      const drawH = curH * scale;
+      const drawX = (targetW - drawW) / 2;
+      const drawY = (targetH - drawH) / 2;
+      outCtx.drawImage(workingSource, drawX, drawY, drawW, drawH);
+
+      // Step 3: Adaptive Unsharp Mask (3x3 clarity convolution) for crystal-clear facial & edge definition
+      try {
+        const isUpscaled = srcW < 500 || srcH < 500;
+        const amount = isUpscaled ? 0.42 : 0.16;
+        const imgData = outCtx.getImageData(0, 0, targetW, targetH);
+        const srcPixels = imgData.data;
+        const copyPixels = new Uint8ClampedArray(srcPixels);
+        const w = targetW;
+        const h = targetH;
+
+        for (let y = 1; y < h - 1; y++) {
+          const rowOffset = y * w;
+          for (let x = 1; x < w - 1; x++) {
+            const idx = (rowOffset + x) * 4;
+            const topIdx = idx - w * 4;
+            const botIdx = idx + w * 4;
+            const leftIdx = idx - 4;
+            const rightIdx = idx + 4;
+
+            for (let c = 0; c < 3; c++) {
+              const center = copyPixels[idx + c];
+              const neighbors = (
+                copyPixels[topIdx + c] +
+                copyPixels[botIdx + c] +
+                copyPixels[leftIdx + c] +
+                copyPixels[rightIdx + c]
+              ) * 0.25;
+              const diff = center - neighbors;
+              if (Math.abs(diff) > 2) {
+                const val = center + diff * (amount * 3.2);
+                srcPixels[idx + c] = val < 0 ? 0 : (val > 255 ? 255 : val);
+              }
+            }
+          }
+        }
+        outCtx.putImageData(imgData, 0, 0);
+      } catch (_) {
+        // Fallback if cross-origin taint prevents pixel manipulation
+      }
+
+      return outCanvas;
+    };
 
     // Helper: rounded rectangle path
     const drawRoundedRectPath = (ctx, x, y, w, h, r) => {
@@ -149,10 +247,10 @@ export const memberCardComponent = {
 
     // Load Full HD (1808x2424) template backgrounds & member avatar in parallel
     const [frontBgImg, backBgImg, avatarImg, fallbackLogoImg] = await Promise.all([
-      loadImage('/card-front-bg.png?v=16'),
-      loadImage('/card-back-bg.png?v=16'),
+      loadImage('/card-front-bg.png?v=17'),
+      loadImage('/card-back-bg.png?v=17'),
       loadImage(member.avatar),
-      loadImage('/logo-circle.png?v=16')
+      loadImage('/logo-circle.png?v=17')
     ]);
 
     const frontCanvas = containerEl.querySelector('#frontCardMasterCanvas');
@@ -171,24 +269,13 @@ export const memberCardComponent = {
         ctxF.drawImage(frontBgImg, 0, 0, 904, 1212);
       }
 
-      // 1. Draw Member Portrait strictly INSIDE the 3D Gold Frame (47, 427, 324, 359, r=34)
+      // 1. Draw Full HD Member Portrait (648 x 718 physical px) strictly INSIDE the 3D Gold Frame (47, 427, 324, 359, r=34)
       const photoToDraw = avatarImg || fallbackLogoImg;
+      const fullHdPortraitCanvas = renderFullHdPortraitCanvas(photoToDraw, 648, 718);
       ctxF.save();
       drawRoundedRectPath(ctxF, 47, 427, 324, 359, 34);
       ctxF.clip();
-      ctxF.fillStyle = '#08183a';
-      ctxF.fillRect(47, 427, 324, 359);
-      if (photoToDraw) {
-        const boxX = 47, boxY = 427, boxW = 324, boxH = 359;
-        const imgW = photoToDraw.naturalWidth || photoToDraw.width || boxW;
-        const imgH = photoToDraw.naturalHeight || photoToDraw.height || boxH;
-        const scale = Math.max(boxW / imgW, boxH / imgH);
-        const drawW = imgW * scale;
-        const drawH = imgH * scale;
-        const drawX = boxX + (boxW - drawW) / 2;
-        const drawY = boxY + (boxH - drawH) / 2;
-        ctxF.drawImage(photoToDraw, drawX, drawY, drawW, drawH);
-      }
+      ctxF.drawImage(fullHdPortraitCanvas, 47, 427, 324, 359);
       ctxF.restore();
 
       // Draw crisp inner gold bezel rim over the portrait edge so the photo sits 100% inside the 3D gold frame
@@ -315,6 +402,17 @@ export const memberCardComponent = {
 
     const btnEditProfile = containerEl.querySelector('#btnEditMemberProfileCard');
     btnEditProfile?.addEventListener('click', triggerEditProfile);
+
+    // Chức năng Đổi Ảnh Thẻ Full HD nhanh
+    const btnChangeAvatar = containerEl.querySelector('#btnChangeAvatarCard');
+    btnChangeAvatar?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sound.playClick();
+      const latestMember = store.getMemberById(member.id) || member;
+      modalManager.openChangeAvatarModal(latestMember, (updatedMember) => {
+        memberCardComponent.render(containerEl, updatedMember);
+      });
+    });
 
     // Chức năng Nộp Quỹ CLB cá nhân hóa
     const btnPayFund = containerEl.querySelector('#btnMemberPayFund');

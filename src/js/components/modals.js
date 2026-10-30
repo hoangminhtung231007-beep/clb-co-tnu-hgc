@@ -260,7 +260,7 @@ export const modalManager = {
     const hideRole = !!opts.hideRole;
     const isEdit = !!memberToEdit;
     const m = memberToEdit || {};
-    const defaultAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+    const defaultAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1080&q=95';
     let currentRawSrc = m.avatar || defaultAvatar;
     const currentBdhTitle = m.role === 'bdh' ? (m.roleTitle || 'Chủ nhiệm') : 'Chủ nhiệm';
 
@@ -377,14 +377,14 @@ export const modalManager = {
           <div style="background: radial-gradient(circle at 50% 50%, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%); border: 1.5px dashed rgba(212,175,55,0.4); border-radius: 12px; padding: 16px;">
             <div style="display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap;">
               
-              <!-- Khung Canvas tương tác -->
+              <!-- Khung Canvas tương tác chuẩn tỷ lệ khung ảnh thẻ Full HD (324 x 359 -> 810 x 898 px) -->
               <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
-                <div id="avatarViewportFrame" style="position: relative; width: 190px; height: 190px; border-radius: 50%; overflow: hidden; border: 3px solid var(--border-gold); box-shadow: 0 4px 20px rgba(0,0,0,0.6); background: #0b1120; cursor: grab; user-select: none;">
-                  <canvas id="avatarCropCanvas" width="300" height="300" style="width: 190px; height: 190px; display: block;"></canvas>
-                  <div style="position: absolute; inset: 0; pointer-events: none; border: 1px dashed rgba(212,175,55,0.45); border-radius: 50%;"></div>
+                <div id="avatarViewportFrame" style="position: relative; width: 190px; height: 210px; border-radius: 20px; overflow: hidden; border: 3px solid var(--border-gold); box-shadow: 0 4px 20px rgba(0,0,0,0.6); background: #0b1120; cursor: grab; user-select: none;">
+                  <canvas id="avatarCropCanvas" width="810" height="898" style="width: 190px; height: 210px; display: block;"></canvas>
+                  <div style="position: absolute; inset: 0; pointer-events: none; border: 1px dashed rgba(212,175,55,0.45); border-radius: 20px;"></div>
                   <span style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; background: rgba(0,0,0,0.7); color: #f8fafc; padding: 2px 8px; border-radius: 10px; pointer-events: none; white-space: nowrap;">👆 Kéo để di chuyển</span>
                 </div>
-                <span class="text-xs text-dim">Bố cục hiển thị trên thẻ</span>
+                <span class="text-xs text-dim">Chuẩn khung thẻ Full HD (810 × 898 px)</span>
               </div>
 
               <!-- Bảng điều khiển bố cục thủ công -->
@@ -574,30 +574,35 @@ export const modalManager = {
       let isDragging = false;
       let startDragX = 0;
       let startDragY = 0;
+      let avatarDirty = !isEdit;
 
       const updateFinalExport = () => {
+        if (!avatarDirty) return;
         try {
           if (canvas && img.complete && img.naturalWidth) {
             const expCanvas = document.createElement('canvas');
-            expCanvas.width = 160;
-            expCanvas.height = 160;
+            const cw = 810;
+            const ch = 898;
+            expCanvas.width = cw;
+            expCanvas.height = ch;
             const ectx = expCanvas.getContext('2d');
-            const cw = 160;
-            const ch = 160;
+            ectx.imageSmoothingEnabled = true;
+            ectx.imageSmoothingQuality = 'high';
             const nw = img.naturalWidth;
             const nh = img.naturalHeight;
             const aspect = nw / nh;
-            let baseW = aspect > 1 ? ch * aspect : cw;
-            let baseH = aspect > 1 ? ch : cw / aspect;
-            const scaleDpi = 160 / canvas.width;
+            const frameAspect = cw / ch;
+            let baseW = aspect > frameAspect ? ch * aspect : cw;
+            let baseH = aspect > frameAspect ? ch : cw / aspect;
+            const scaleDpi = cw / 190;
             const drawW = baseW * zoom;
             const drawH = baseH * zoom;
             const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
             const drawY = (ch - drawH) / 2 + (offsetY * scaleDpi);
-            ectx.fillStyle = '#0f172a';
+            ectx.fillStyle = '#08183a';
             ectx.fillRect(0, 0, cw, ch);
             ectx.drawImage(img, drawX, drawY, drawW, drawH);
-            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.75);
+            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.95);
           }
         } catch (e) {
           finalAvatarExport = currentRawSrc;
@@ -609,19 +614,23 @@ export const modalManager = {
         const cw = canvas.width;
         const ch = canvas.height;
         ctx.clearRect(0, 0, cw, ch);
-        ctx.fillStyle = '#0f172a';
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.fillStyle = '#08183a';
         ctx.fillRect(0, 0, cw, ch);
 
         const nw = img.naturalWidth;
         const nh = img.naturalHeight;
         const aspect = nw / nh;
-        let baseW = aspect > 1 ? ch * aspect : cw;
-        let baseH = aspect > 1 ? ch : cw / aspect;
+        const frameAspect = cw / ch;
+        let baseW = aspect > frameAspect ? ch * aspect : cw;
+        let baseH = aspect > frameAspect ? ch : cw / aspect;
 
+        const scaleDpi = cw / 190;
         const drawW = baseW * zoom;
         const drawH = baseH * zoom;
-        const drawX = (cw - drawW) / 2 + offsetX;
-        const drawY = (ch - drawH) / 2 + offsetY;
+        const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
+        const drawY = (ch - drawH) / 2 + (offsetY * scaleDpi);
 
         ctx.drawImage(img, drawX, drawY, drawW, drawH);
         updateFinalExport();
@@ -636,11 +645,14 @@ export const modalManager = {
         if (posYLabel) posYLabel.textContent = `${Math.round(offsetY)}px`;
       };
 
-      const loadSource = (src) => {
+      const loadSource = (src, markDirty = false) => {
         currentRawSrc = src;
         finalAvatarExport = src;
+        if (markDirty) avatarDirty = true;
         img = new Image();
-        img.crossOrigin = 'anonymous';
+        if (src && !src.startsWith('data:')) {
+          img.crossOrigin = 'anonymous';
+        }
         img.onload = () => {
           zoom = 1.0;
           offsetX = 0;
@@ -672,6 +684,7 @@ export const modalManager = {
         };
         const onMove = (cx, cy) => {
           if (!isDragging) return;
+          avatarDirty = true;
           offsetX = Math.max(-150, Math.min(150, cx - startDragX));
           offsetY = Math.max(-150, Math.min(150, cy - startDragY));
           updateControls();
@@ -698,6 +711,7 @@ export const modalManager = {
 
         viewport.addEventListener('wheel', (e) => {
           e.preventDefault();
+          avatarDirty = true;
           const delta = e.deltaY < 0 ? 0.08 : -0.08;
           zoom = Math.max(0.5, Math.min(3.0, zoom + delta));
           updateControls();
@@ -707,21 +721,25 @@ export const modalManager = {
 
       // Slider events
       zoomSlider?.addEventListener('input', (e) => {
+        avatarDirty = true;
         zoom = parseFloat(e.target.value);
         if (zoomLabel) zoomLabel.textContent = `${zoom.toFixed(2)}x`;
         draw();
       });
       posXSlider?.addEventListener('input', (e) => {
+        avatarDirty = true;
         offsetX = parseFloat(e.target.value);
         if (posXLabel) posXLabel.textContent = `${Math.round(offsetX)}px`;
         draw();
       });
       posYSlider?.addEventListener('input', (e) => {
+        avatarDirty = true;
         offsetY = parseFloat(e.target.value);
         if (posYLabel) posYLabel.textContent = `${Math.round(offsetY)}px`;
         draw();
       });
       resetBtn?.addEventListener('click', () => {
+        avatarDirty = true;
         zoom = 1.0;
         offsetX = 0;
         offsetY = 0;
@@ -729,6 +747,7 @@ export const modalManager = {
         draw();
       });
       fitBtn?.addEventListener('click', () => {
+        avatarDirty = true;
         zoom = 1.15;
         offsetX = 0;
         offsetY = 0;
@@ -743,7 +762,7 @@ export const modalManager = {
           const reader = new FileReader();
           reader.onload = (re) => {
             if (urlInput) urlInput.value = '';
-            loadSource(re.target.result);
+            loadSource(re.target.result, true);
           };
           reader.readAsDataURL(file);
         }
@@ -753,12 +772,12 @@ export const modalManager = {
       urlInput?.addEventListener('input', (e) => {
         const val = e.target.value.trim();
         if (val && (val.startsWith('http') || val.startsWith('data:'))) {
-          loadSource(val);
+          loadSource(val, true);
         }
       });
 
-      // Load initial image
-      loadSource(currentRawSrc);
+      // Load initial image without degrading existing saved quality unless edited
+      loadSource(currentRawSrc, false);
     }
   },
 
@@ -2413,7 +2432,7 @@ export const modalManager = {
 
   // 10. Club Registration Modal (Đăng Ký Tham Gia CLB Cờ TNU - HGC)
   openClubRegistrationModal() {
-    const defaultAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+    const defaultAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1080&q=95';
     let currentRawSrc = defaultAvatar;
     let finalAvatarExport = defaultAvatar;
 
@@ -2498,14 +2517,14 @@ export const modalManager = {
           <div style="background: radial-gradient(circle at 50% 50%, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%); border: 1.5px dashed rgba(212,175,55,0.4); border-radius: 12px; padding: 16px;">
             <div style="display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap;">
               
-              <!-- Khung Canvas tương tác -->
+              <!-- Khung Canvas tương tác chuẩn khung thẻ Full HD (810 x 898 px) -->
               <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
-                <div id="crAvatarViewportFrame" style="position: relative; width: 190px; height: 190px; border-radius: 50%; overflow: hidden; border: 3px solid var(--border-gold); box-shadow: 0 4px 20px rgba(0,0,0,0.6); background: #0b1120; cursor: grab; user-select: none;">
-                  <canvas id="crAvatarCropCanvas" width="300" height="300" style="width: 190px; height: 190px; display: block;"></canvas>
-                  <div style="position: absolute; inset: 0; pointer-events: none; border: 1px dashed rgba(212,175,55,0.45); border-radius: 50%;"></div>
+                <div id="crAvatarViewportFrame" style="position: relative; width: 190px; height: 210px; border-radius: 20px; overflow: hidden; border: 3px solid var(--border-gold); box-shadow: 0 4px 20px rgba(0,0,0,0.6); background: #0b1120; cursor: grab; user-select: none;">
+                  <canvas id="crAvatarCropCanvas" width="810" height="898" style="width: 190px; height: 210px; display: block;"></canvas>
+                  <div style="position: absolute; inset: 0; pointer-events: none; border: 1px dashed rgba(212,175,55,0.45); border-radius: 20px;"></div>
                   <span style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; background: rgba(0,0,0,0.7); color: #f8fafc; padding: 2px 8px; border-radius: 10px; pointer-events: none; white-space: nowrap;">👆 Kéo để di chuyển</span>
                 </div>
-                <span class="text-xs text-dim">Bố cục ảnh hiển thị trên thẻ</span>
+                <span class="text-xs text-dim">Chuẩn khung thẻ Full HD (810 × 898 px)</span>
               </div>
 
               <!-- Bảng điều khiển bố cục thủ công -->
@@ -2629,25 +2648,28 @@ export const modalManager = {
         try {
           if (canvas && img.complete && img.naturalWidth) {
             const expCanvas = document.createElement('canvas');
-            expCanvas.width = 160;
-            expCanvas.height = 160;
+            const cw = 810;
+            const ch = 898;
+            expCanvas.width = cw;
+            expCanvas.height = ch;
             const ectx = expCanvas.getContext('2d');
-            const cw = 160;
-            const ch = 160;
+            ectx.imageSmoothingEnabled = true;
+            ectx.imageSmoothingQuality = 'high';
             const nw = img.naturalWidth;
             const nh = img.naturalHeight;
             const aspect = nw / nh;
-            let baseW = aspect > 1 ? ch * aspect : cw;
-            let baseH = aspect > 1 ? ch : cw / aspect;
-            const scaleDpi = 160 / canvas.width;
+            const frameAspect = cw / ch;
+            let baseW = aspect > frameAspect ? ch * aspect : cw;
+            let baseH = aspect > frameAspect ? ch : cw / aspect;
+            const scaleDpi = cw / 190;
             const drawW = baseW * zoom;
             const drawH = baseH * zoom;
             const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
             const drawY = (ch - drawH) / 2 + (offsetY * scaleDpi);
-            ectx.fillStyle = '#0f172a';
+            ectx.fillStyle = '#08183a';
             ectx.fillRect(0, 0, cw, ch);
             ectx.drawImage(img, drawX, drawY, drawW, drawH);
-            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.75);
+            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.95);
           }
         } catch (e) {
           finalAvatarExport = currentRawSrc;
@@ -2659,19 +2681,23 @@ export const modalManager = {
         const cw = canvas.width;
         const ch = canvas.height;
         ctx.clearRect(0, 0, cw, ch);
-        ctx.fillStyle = '#0f172a';
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.fillStyle = '#08183a';
         ctx.fillRect(0, 0, cw, ch);
 
         const nw = img.naturalWidth;
         const nh = img.naturalHeight;
         const aspect = nw / nh;
-        let baseW = aspect > 1 ? ch * aspect : cw;
-        let baseH = aspect > 1 ? ch : cw / aspect;
+        const frameAspect = cw / ch;
+        let baseW = aspect > frameAspect ? ch * aspect : cw;
+        let baseH = aspect > frameAspect ? ch : cw / aspect;
 
+        const scaleDpi = cw / 190;
         const drawW = baseW * zoom;
         const drawH = baseH * zoom;
-        const drawX = (cw - drawW) / 2 + offsetX;
-        const drawY = (ch - drawH) / 2 + offsetY;
+        const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
+        const drawY = (ch - drawH) / 2 + (offsetY * scaleDpi);
 
         ctx.drawImage(img, drawX, drawY, drawW, drawH);
         updateFinalExport();
@@ -5481,14 +5507,14 @@ export const modalManager = {
         <div style="background: radial-gradient(circle at 50% 50%, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%); border: 1.5px dashed rgba(212,175,55,0.45); border-radius: 14px; padding: 16px;">
           <div style="display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap;">
             
-            <!-- Khung Canvas tương tác chuẩn tỷ lệ thẻ 125x152 -->
+            <!-- Khung Canvas tương tác chuẩn tỷ lệ thẻ Full HD (810 x 898 px) -->
             <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-              <div id="changeAvatarViewportFrame" style="position: relative; width: 150px; height: 182px; border-radius: 14px; overflow: hidden; border: 2.5px solid var(--border-gold); box-shadow: 0 6px 24px rgba(0,0,0,0.7); background: #0b1120; cursor: grab; user-select: none;">
-                <canvas id="changeAvatarCropCanvas" width="375" height="456" style="width: 150px; height: 182px; display: block;"></canvas>
-                <div style="position: absolute; inset: 0; pointer-events: none; border: 1px dashed rgba(212,175,55,0.4); border-radius: 14px;"></div>
+              <div id="changeAvatarViewportFrame" style="position: relative; width: 164px; height: 182px; border-radius: 16px; overflow: hidden; border: 2.5px solid var(--border-gold); box-shadow: 0 6px 24px rgba(0,0,0,0.7); background: #0b1120; cursor: grab; user-select: none;">
+                <canvas id="changeAvatarCropCanvas" width="810" height="898" style="width: 164px; height: 182px; display: block;"></canvas>
+                <div style="position: absolute; inset: 0; pointer-events: none; border: 1px dashed rgba(212,175,55,0.4); border-radius: 16px;"></div>
                 <span style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; background: rgba(0,0,0,0.75); color: #f8fafc; padding: 2px 8px; border-radius: 10px; pointer-events: none; white-space: nowrap;">👆 Kéo để di chuyển</span>
               </div>
-              <span class="badge badge-gold text-xs" style="font-size: 0.7rem; font-weight: 600;">Chuẩn khung thẻ 125 × 152</span>
+              <span class="badge badge-gold text-xs" style="font-size: 0.7rem; font-weight: 600;">Chuẩn Full HD (810 × 898 px)</span>
             </div>
 
             <!-- Thanh trượt điều khiển Zoom, Trục X, Trục Y -->
@@ -5570,12 +5596,7 @@ export const modalManager = {
       const updateFinalExport = () => {
         try {
           if (canvas && img.complete && img.naturalWidth) {
-            const expCanvas = document.createElement('canvas');
-            expCanvas.width = 160;
-            expCanvas.height = 195;
-            const ectx = expCanvas.getContext('2d');
-            ectx.drawImage(canvas, 0, 0, 160, 195);
-            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.75);
+            finalAvatarExport = canvas.toDataURL('image/jpeg', 0.95);
           }
         } catch (e) {
           finalAvatarExport = currentRawSrc;
@@ -5584,10 +5605,12 @@ export const modalManager = {
 
       const draw = () => {
         if (!ctx || !img.complete || !img.naturalWidth) return;
-        const cw = canvas.width; // 375
-        const ch = canvas.height; // 456
+        const cw = canvas.width; // 810
+        const ch = canvas.height; // 898
         ctx.clearRect(0, 0, cw, ch);
-        ctx.fillStyle = '#0f172a';
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.fillStyle = '#08183a';
         ctx.fillRect(0, 0, cw, ch);
 
         const nw = img.naturalWidth;
@@ -5604,7 +5627,7 @@ export const modalManager = {
           baseH = cw / aspect;
         }
 
-        const scaleDpi = cw / 150; // 2.5
+        const scaleDpi = cw / 164;
         const drawW = baseW * zoom;
         const drawH = baseH * zoom;
         const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);

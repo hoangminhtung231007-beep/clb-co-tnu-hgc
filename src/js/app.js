@@ -2436,14 +2436,12 @@ class App {
               <div class="admin-nav-left">
                 <span>📷</span> <span>Điểm danh</span>
               </div>
-              <span class="admin-nav-badge active-glow">LIVE</span>
             </div>
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-proofs' ? 'active' : ''}" data-sub="admin-proofs">
               <div class="admin-nav-left">
                 <span>📱</span> <span>Xác nhận minh chứng</span>
               </div>
-              <span class="admin-nav-badge active-glow">FANPAGE</span>
             </div>
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-users' ? 'active' : ''}" data-sub="admin-users">
@@ -2459,28 +2457,24 @@ class App {
               <div class="admin-nav-left">
                 <span>🏆</span> <span>Giải đấu - Sự kiện</span>
               </div>
-              <span class="admin-nav-badge">${state.events.length}</span>
             </div>
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-swiss' ? 'active' : ''}" data-sub="admin-swiss">
               <div class="admin-nav-left">
                 <span>⚔️</span> <span>Xếp bảng</span>
               </div>
-              <span class="admin-nav-badge">${(state.events || []).filter((e) => e.type === 'tournament' || e.swissData).length}</span>
             </div>
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-funds' ? 'active' : ''}" data-sub="admin-funds">
               <div class="admin-nav-left">
                 <span>💰</span> <span>Quản lý Quỹ CLB</span>
               </div>
-              <span class="admin-nav-badge">${(state.fundRecords || []).length}</span>
             </div>
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-cms' ? 'active' : ''}" data-sub="admin-cms">
               <div class="admin-nav-left">
                 <span>📝</span> <span>Quản trị CMS Tin bài</span>
               </div>
-              <span class="admin-nav-badge">${state.articles.length}</span>
             </div>
 
             <div class="admin-nav-item ${this.adminSubView === 'admin-analytics' ? 'active' : ''}" data-sub="admin-analytics">
@@ -2493,9 +2487,6 @@ class App {
               <div class="admin-nav-left">
                 <span>☁️</span> <span>Firebase Cloud</span>
               </div>
-              <span class="admin-nav-badge ${firebaseService.status === 'connected' ? 'badge-emerald active-glow' : ''}" id="adminFirebaseSidebarBadge">
-                ${!this.firebaseUnlocked ? '🔒 ' : ''}${firebaseService.status === 'connected' ? 'ONLINE' : (firebaseService.status === 'connecting' ? 'CONNECTING' : 'LOCAL')}
-              </span>
             </div>
           </aside>
 

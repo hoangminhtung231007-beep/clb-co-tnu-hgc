@@ -49,6 +49,9 @@ export const modalManager = {
     } else if (contentHtml.includes('change-avatar-modal-wrap')) {
       dialogEl.style.maxWidth = '640px';
       dialogEl.style.width = '95%';
+    } else if (contentHtml.includes('proof-members-modal-wrap')) {
+      dialogEl.style.maxWidth = '760px';
+      dialogEl.style.width = '96%';
     } else {
       dialogEl.style.maxWidth = '';
     }
@@ -5856,6 +5859,139 @@ export const modalManager = {
       // Initial load
       loadSource(currentRawSrc);
     }, 60);
+  },
+
+  // 18. Xem Danh Sách Kỳ Thủ Nộp Minh Chứng Hoạt Động (Fanpage/Zalo)
+  openProofMembersModal(campaignEvent, onUpdated = null) {
+    if (!campaignEvent) return;
+
+    const buildContent = (searchQ = '') => {
+      const curState = store.getState();
+      const curEvent = curState.events.find((e) => e.id === campaignEvent.id) || campaignEvent;
+      const registeredIds = curEvent.registeredMembers || [];
+      const approvedList = registeredIds.map((mId) => curState.members.find((m) => m.id === mId)).filter(Boolean);
+
+      const q = (searchQ || '').trim().toLowerCase();
+      const filtered = approvedList.filter((m) => {
+        if (!q) return true;
+        const name = (m.name || m.fullName || '').toLowerCase();
+        const studentId = (m.studentId || '').toLowerCase();
+        const unit = (m.university || m.faculty || m.class || '').toLowerCase();
+        return name.includes(q) || studentId.includes(q) || unit.includes(q);
+      });
+
+      return `
+        <div class="proof-members-modal-wrap" style="max-width: 740px; margin: 0 auto;">
+          <div style="background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.25); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div class="text-white font-bold" style="font-size: 0.95rem;">📱 ${campaignEvent.title}</div>
+              <div class="text-xs text-muted font-mono mt-0.5">🗓️ Ngày ghi nhận: <span class="text-gold font-medium">${campaignEvent.date || campaignEvent.dateTime || 'Hôm nay'}</span> ${campaignEvent.time ? `• ${campaignEvent.time}` : ''}</div>
+            </div>
+            <span class="badge badge-cyan font-bold" id="proofModalCountBadge" style="font-size: 0.8rem; padding: 5px 12px;">👥 ${approvedList.length} kỳ thủ</span>
+          </div>
+
+          <div class="mb-3 d-flex justify-between align-center gap-2 flex-wrap">
+            <input type="text" id="proofMemberSearchInput" class="form-control form-control-sm flex-1" style="min-width: 240px; font-size: 0.82rem;" placeholder="🔍 Tìm kiếm nhanh tên, MSSV, khoa/lớp..." value="${searchQ}">
+            <span class="text-xs text-muted">Hiển thị: <strong class="text-gold" id="proofModalFilterCount">${filtered.length}</strong> / ${approvedList.length}</span>
+          </div>
+
+          <div class="table-responsive" style="max-height: 380px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+            <table class="data-table" style="font-size: 0.82rem; margin-bottom: 0;">
+              <thead style="position: sticky; top: 0; background: #161a23; z-index: 2;">
+                <tr>
+                  <th style="width: 45px; text-align: center;">STT</th>
+                  <th>Họ và Tên</th>
+                  <th style="width: 120px;">MSSV / Mã</th>
+                  <th>Khoa / Lớp</th>
+                  <th style="width: 100px; text-align: center;">Tổng Hoạt Động</th>
+                  <th style="width: 80px; text-align: center;">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody id="proofMembersModalTbody">
+                ${filtered.length === 0 ? `
+                  <tr>
+                    <td colspan="6" class="text-center text-muted p-4">
+                      ${approvedList.length === 0 ? 'Chưa có thành viên nào trong danh sách hoạt động này.' : 'Không tìm thấy thành viên phù hợp với từ khóa.'}
+                    </td>
+                  </tr>
+                ` : filtered.map((m, idx) => `
+                  <tr>
+                    <td style="text-align: center;" class="text-dim">${idx + 1}</td>
+                    <td><strong class="text-white">${m.name || m.fullName}</strong></td>
+                    <td class="font-mono text-gold text-xs">${m.studentId || m.id || '-'}</td>
+                    <td class="text-muted text-xs">${m.university || m.faculty || m.class || 'CLB Cờ'}</td>
+                    <td style="text-align: center;">
+                      <span class="badge badge-gold font-bold">${m.activitiesJoined || 0}</span>
+                    </td>
+                    <td style="text-align: center;">
+                      <button type="button" class="btn btn-outline btn-xs btn-modal-revert-member" data-member-id="${m.id}" title="Hủy xác nhận cho thành viên này" style="color: #f87171; border-color: rgba(248,113,113,0.3); padding: 2px 7px;">
+                        ❌ Hủy
+                      </button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    };
+
+    let curSearchQuery = '';
+
+    const refreshModalBody = () => {
+      const modalEl = document.getElementById('globalAppModal');
+      if (!modalEl) return;
+      const bodyEl = modalEl.querySelector('.modal-body');
+      if (bodyEl) {
+        bodyEl.innerHTML = buildContent(curSearchQuery);
+        bindModalEvents();
+        const searchInp = modalEl.querySelector('#proofMemberSearchInput');
+        if (searchInp) {
+          searchInp.focus();
+          searchInp.selectionStart = searchInp.selectionEnd = searchInp.value.length;
+        }
+      }
+    };
+
+    const bindModalEvents = () => {
+      const modalEl = document.getElementById('globalAppModal');
+      if (!modalEl) return;
+
+      const searchInput = modalEl.querySelector('#proofMemberSearchInput');
+      searchInput?.addEventListener('input', (e) => {
+        curSearchQuery = e.target.value;
+        refreshModalBody();
+      });
+
+      modalEl.querySelectorAll('.btn-modal-revert-member').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          sound.playClick();
+          const memberId = btn.getAttribute('data-member-id');
+          const stateNow = store.getState();
+          const member = (stateNow.members || []).find((m) => m.id === memberId);
+          const mName = member?.name || member?.fullName || 'thành viên';
+
+          modalManager.showConfirm(
+            `Hủy xác nhận minh chứng và trừ lại 1 điểm hoạt động cho kỳ thủ [${mName}]?`,
+            () => {
+              store.revertFanpageProof(campaignEvent.id, memberId);
+              sound.playSuccess();
+              refreshModalBody();
+              if (typeof onUpdated === 'function') onUpdated();
+            },
+            null,
+            { title: 'HỦY MINH CHỨNG THÀNH VIÊN', confirmText: '❌ Xác nhận hủy', danger: true }
+          );
+        });
+      });
+    };
+
+    this.open(`📋 Danh Sách Thành Viên Minh Chứng`, buildContent(''), null, 'Đóng');
+
+    setTimeout(() => {
+      bindModalEvents();
+    }, 40);
   }
 };
 

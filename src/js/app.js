@@ -3422,61 +3422,29 @@ class App {
               <p class="text-xs text-muted mb-0">Khi bạn xác nhận minh chứng ở trên, đợt duyệt sẽ hiển thị ngay tại bảng này.</p>
             </div>
           ` : `
-            <div class="d-flex flex-column gap-3">
+            <div class="d-flex flex-column gap-2.5">
               ${proofEvents.map((pev, pIdx) => {
                 const approvedList = (pev.registeredMembers || []).map((mId) => members.find((m) => m.id === mId)).filter(Boolean);
                 return `
-                  <div class="card p-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(212,175,55,0.22); border-radius: 10px;">
-                    <div class="d-flex justify-between align-center flex-wrap gap-2 mb-2 pb-2" style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-                      <div class="d-flex align-center gap-2 flex-wrap">
-                        <span class="badge badge-gold font-bold text-xs">#${pIdx + 1}</span>
-                        <h4 class="text-white font-bold text-sm mb-0">${escapeHtml(pev.title)}</h4>
-                        <span class="badge badge-cyan text-xs">👥 ${approvedList.length} thành viên</span>
+                  <div class="card p-3" style="background: rgba(15, 23, 42, 0.78); border: 1px solid rgba(212,175,55,0.28); border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; transition: all 0.2s ease;">
+                    <div style="flex: 1; min-width: 250px;">
+                      <div class="d-flex align-center gap-2 flex-wrap mb-1">
+                        <span class="badge badge-gold font-bold text-xs" style="padding: 2px 7px;">#${pIdx + 1}</span>
+                        <h4 class="text-white font-bold text-sm mb-0" style="letter-spacing: 0.01em;">${escapeHtml(pev.title)}</h4>
+                        <span class="badge badge-cyan text-xs font-semibold">👥 ${approvedList.length} kỳ thủ</span>
                       </div>
-                      <div class="d-flex align-center gap-2">
-                        <span class="text-xs text-dim font-mono">🗓️ ${pev.date || pev.dateTime || 'Hôm nay'} ${pev.time ? `• ${pev.time}` : ''}</span>
-                        <button type="button" class="btn btn-danger btn-xs btn-del-proof-campaign" data-campaign-id="${pev.id}" title="Xóa đợt minh chứng này và trừ lại 1 điểm hoạt động">
-                          🗑️ Xóa đợt
-                        </button>
+                      <div class="text-xs text-muted font-mono">
+                        🗓️ Ghi nhận: <span class="text-gold font-medium">${pev.date || pev.dateTime || 'Hôm nay'}</span> ${pev.time ? `• ${pev.time}` : ''}
                       </div>
                     </div>
 
-                    <!-- Bảng danh sách thành viên trong đợt minh chứng này -->
-                    <div class="table-responsive" style="max-height: 240px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;">
-                      <table class="data-table" style="font-size: 0.78rem; margin-bottom: 0;">
-                        <thead style="position: sticky; top: 0; background: #111827; z-index: 1;">
-                          <tr>
-                            <th style="width: 40px; text-align: center;">STT</th>
-                            <th>Họ và Tên</th>
-                            <th style="width: 120px;">MSSV / Mã</th>
-                            <th>Khoa / Lớp</th>
-                            <th style="width: 90px; text-align: center;">Tổng Hoạt Động</th>
-                            <th style="width: 75px; text-align: center;">Thao Tác</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          ${approvedList.length === 0 ? `
-                            <tr>
-                              <td colspan="6" class="text-center text-muted p-2">Không còn thành viên nào trong đợt này.</td>
-                            </tr>
-                          ` : approvedList.map((m, mIdx) => `
-                            <tr>
-                              <td style="text-align: center;" class="text-dim">${mIdx + 1}</td>
-                              <td><strong class="text-white">${escapeHtml(m.name || m.fullName)}</strong></td>
-                              <td class="font-mono text-gold text-xs">${escapeHtml(m.studentId || m.id || '-')}</td>
-                              <td class="text-muted text-xs">${escapeHtml(m.university || m.faculty || m.class || 'CLB Cờ')}</td>
-                              <td style="text-align: center;">
-                                <span class="badge badge-gold font-bold">${m.activitiesJoined || 0}</span>
-                              </td>
-                              <td style="text-align: center;">
-                                <button type="button" class="btn btn-outline btn-xs btn-revert-member-proof" data-campaign-id="${pev.id}" data-member-id="${m.id}" title="Hủy xác nhận cho thành viên này" style="color: #f87171; border-color: rgba(248,113,113,0.3); padding: 2px 7px;">
-                                  ❌ Hủy
-                                </button>
-                              </td>
-                            </tr>
-                          `).join('')}
-                        </tbody>
-                      </table>
+                    <div class="d-flex align-center gap-2 flex-wrap">
+                      <button type="button" class="btn btn-gold btn-sm btn-view-proof-members font-semibold" data-campaign-id="${pev.id}" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 0.82rem;">
+                        <span>👁️ Xem danh sách (${approvedList.length})</span>
+                      </button>
+                      <button type="button" class="btn btn-outline btn-sm btn-del-proof-campaign text-xs" data-campaign-id="${pev.id}" title="Xóa đợt minh chứng này và trừ lại 1 điểm hoạt động" style="color: #f87171; border-color: rgba(248,113,113,0.3); padding: 7px 12px;">
+                        🗑️ Xóa đợt
+                      </button>
                     </div>
                   </div>
                 `;
@@ -3573,6 +3541,21 @@ class App {
       } catch (err) {
         modalManager.showAlert('Lỗi: ' + err.message);
       }
+    });
+
+    // Xem danh sách thành viên trong đợt minh chứng (Mở modal chuyên dụng)
+    container.querySelectorAll('.btn-view-proof-members').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const campaignId = btn.getAttribute('data-campaign-id');
+        const stateNow = store.getState();
+        const ev = (stateNow.events || []).find((e) => e.id === campaignId);
+        if (!ev) return;
+
+        modalManager.openProofMembersModal(ev, () => {
+          this.renderAdminProofs(container);
+        });
+      });
     });
 
     // Xóa toàn bộ đợt minh chứng

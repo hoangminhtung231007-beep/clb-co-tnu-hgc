@@ -1526,33 +1526,6 @@ class App {
             </div>
           </div>
         </section>
-
-        <!-- Quick Experience Hubs -->
-        <section class="home-quick-hubs-grid">
-          <div class="home-hub-card" id="btnHomeQuickRegister">
-            <div class="home-hub-icon-wrap text-gold">👑</div>
-            <div>
-              <div class="home-hub-title">Gia Nhập CLB Cờ</div>
-              <div class="home-hub-desc">Đăng ký kết nạp sinh viên, nhận ngay thẻ PVC 2 mặt chuẩn nhận diện</div>
-            </div>
-          </div>
-
-          <div class="home-hub-card" id="btnHomeQuickLeaderboard">
-            <div class="home-hub-icon-wrap text-cyan">🏆</div>
-            <div>
-              <div class="home-hub-title">Bảng Vàng Kỳ Thủ</div>
-              <div class="home-hub-desc">Theo dõi thứ hạng Elo Cờ Vua, Cờ Tướng và bảng phong thần thi đấu</div>
-            </div>
-          </div>
-
-          <div class="home-hub-card" id="btnHomeQuickZalo">
-            <div class="home-hub-icon-wrap text-emerald">💬</div>
-            <div>
-              <div class="home-hub-title">Cộng Đồng Zalo CLB</div>
-              <div class="home-hub-desc">Tham gia giao lưu, hỏi đáp và kết nối với hơn 45 kỳ thủ toàn trường</div>
-            </div>
-          </div>
-        </section>
       </div>
     `;
 
@@ -1606,23 +1579,6 @@ class App {
           window.location.hash = '#news';
         }
       });
-    });
-
-    // Quick Hub actions
-    container.querySelector('#btnHomeQuickRegister')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      sound.playClick();
-      modalManager.openRegisterModal();
-    });
-    container.querySelector('#btnHomeQuickLeaderboard')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      sound.playClick();
-      window.location.hash = '#leaderboard';
-    });
-    container.querySelector('#btnHomeQuickZalo')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      sound.playClick();
-      window.open(state.clubInfo.zaloGroupLink || 'https://zalo.me/g/ugejmj655', '_blank');
     });
   }
 

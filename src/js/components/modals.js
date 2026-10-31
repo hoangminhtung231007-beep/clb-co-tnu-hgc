@@ -585,8 +585,8 @@ export const modalManager = {
           try {
             if (canvas && img.complete && img.naturalWidth) {
               const expCanvas = document.createElement('canvas');
-              const cw = 810;
-              const ch = 898;
+              const cw = 320;
+              const ch = 356;
               expCanvas.width = cw;
               expCanvas.height = ch;
               const ectx = expCanvas.getContext('2d');
@@ -606,10 +606,14 @@ export const modalManager = {
               ectx.fillStyle = '#08183a';
               ectx.fillRect(0, 0, cw, ch);
               ectx.drawImage(img, drawX, drawY, drawW, drawH);
-              finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.95);
+              let exported = expCanvas.toDataURL('image/jpeg', 0.80);
+              if (exported.length > 25000) {
+                exported = expCanvas.toDataURL('image/jpeg', 0.65);
+              }
+              finalAvatarExport = exported;
             }
           } catch (e) {
-            finalAvatarExport = currentRawSrc;
+            finalAvatarExport = (typeof currentRawSrc === 'string' && currentRawSrc.length < 30000) ? currentRawSrc : '';
           }
         };
 
@@ -2653,9 +2657,9 @@ export const modalManager = {
         try {
           if (canvas && img.complete && img.naturalWidth) {
             const expCanvas = document.createElement('canvas');
-            // Optimal size for member avatar: 405x449 px (high DPI 2x Retina, sharp and lightweight ~25KB)
-            const cw = 405;
-            const ch = 449;
+            // Optimal size for member avatar: 320x356 px (crisp HD Retina, ultra-lightweight ~15KB)
+            const cw = 320;
+            const ch = 356;
             expCanvas.width = cw;
             expCanvas.height = ch;
             const ectx = expCanvas.getContext('2d');
@@ -2675,14 +2679,16 @@ export const modalManager = {
             ectx.fillStyle = '#08183a';
             ectx.fillRect(0, 0, cw, ch);
             ectx.drawImage(img, drawX, drawY, drawW, drawH);
-            let exported = expCanvas.toDataURL('image/jpeg', 0.85);
-            if (exported.length > 50000) {
-              exported = expCanvas.toDataURL('image/jpeg', 0.72);
+            let exported = expCanvas.toDataURL('image/jpeg', 0.80);
+            if (exported.length > 25000) {
+              exported = expCanvas.toDataURL('image/jpeg', 0.65);
             }
             finalAvatarExport = exported;
           }
         } catch (e) {
-          finalAvatarExport = currentRawSrc;
+          finalAvatarExport = (typeof currentRawSrc === 'string' && currentRawSrc.length < 30000)
+            ? currentRawSrc
+            : defaultAvatar;
         }
       };
 
@@ -5606,10 +5612,19 @@ export const modalManager = {
       const updateFinalExport = () => {
         try {
           if (canvas && img.complete && img.naturalWidth) {
-            finalAvatarExport = canvas.toDataURL('image/jpeg', 0.95);
+            const expCanvas = document.createElement('canvas');
+            expCanvas.width = 320;
+            expCanvas.height = 356;
+            const ectx = expCanvas.getContext('2d');
+            ectx.drawImage(canvas, 0, 0, 320, 356);
+            let exported = expCanvas.toDataURL('image/jpeg', 0.80);
+            if (exported.length > 25000) {
+              exported = expCanvas.toDataURL('image/jpeg', 0.65);
+            }
+            finalAvatarExport = exported;
           }
         } catch (e) {
-          finalAvatarExport = currentRawSrc;
+          finalAvatarExport = (typeof currentRawSrc === 'string' && currentRawSrc.length < 30000) ? currentRawSrc : '';
         }
       };
 

@@ -33,11 +33,55 @@ class Store {
   }
 
   initFirebaseSync() {
-    firebaseService.init((remoteData, metadata) => {
-      if (!remoteData) return;
-      if (metadata && metadata.hasPendingWrites) return;
-      this.applyRemoteData(remoteData);
-    });
+    firebaseService.init(
+      (remoteData, metadata) => {
+        if (!remoteData) return;
+        if (metadata && metadata.hasPendingWrites) return;
+        this.applyRemoteData(remoteData);
+      },
+      (remoteApplications) => {
+        if (Array.isArray(remoteApplications)) {
+          this.applyRemoteApplications(remoteApplications);
+        }
+      }
+    );
+  }
+
+  applyRemoteApplications(remoteApplications) {
+    if (!Array.isArray(remoteApplications)) return;
+    this.isRemoteUpdating = true;
+    try {
+      const map = new Map();
+      remoteApplications.forEach((app) => {
+        if (app && app.id && (!app.status || app.status === 'pending')) {
+          map.set(app.id, app);
+        }
+      });
+
+      // Also preserve any newly added local pending application
+      if (Array.isArray(this.state.pendingApplications)) {
+        this.state.pendingApplications.forEach((app) => {
+          if (app && app.id && !map.has(app.id) && (!app.status || app.status === 'pending')) {
+            map.set(app.id, app);
+          }
+        });
+      }
+
+      this.state.pendingApplications = Array.from(map.values()).sort((a, b) => {
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      });
+
+      this.saveState();
+      this.listeners.forEach((listener) => {
+        try {
+          listener(this.state);
+        } catch (e) {
+          console.error('Error in state listener for applications update:', e);
+        }
+      });
+    } finally {
+      this.isRemoteUpdating = false;
+    }
   }
 
   applyRemoteData(remoteData) {
@@ -457,6 +501,7 @@ class Store {
       };
       this.state.pendingApplications.unshift(updatedApp);
       this.saveState();
+      firebaseService.saveApplication(updatedApp);
       firebaseService.syncToFirestore(this.state, true);
       this.notify(true);
       return updatedApp;
@@ -491,6 +536,7 @@ class Store {
 
     this.state.pendingApplications.unshift(newApp);
     this.saveState();
+    firebaseService.saveApplication(newApp);
     firebaseService.syncToFirestore(this.state, true);
     this.notify(true);
     return newApp;
@@ -519,6 +565,9 @@ class Store {
     });
 
     this.state.pendingApplications.splice(appIndex, 1);
+    this.saveState();
+    firebaseService.deleteApplication(appId);
+    firebaseService.syncToFirestore(this.state, true);
     this.notify(true);
     return newMember;
   }
@@ -528,6 +577,9 @@ class Store {
     const appIndex = this.state.pendingApplications.findIndex((a) => a.id === appId);
     if (appIndex === -1) return false;
     this.state.pendingApplications.splice(appIndex, 1);
+    this.saveState();
+    firebaseService.deleteApplication(appId);
+    firebaseService.syncToFirestore(this.state, true);
     this.notify(true);
     return true;
   }

@@ -4,15 +4,62 @@ import {
   doc, 
   getDoc, 
   setDoc, 
+  deleteDoc,
+  collection,
   onSnapshot 
 } from 'firebase/firestore';
 import { getFirebaseConfig, saveFirebaseConfig, clearFirebaseConfig } from '../config/firebaseConfig.js';
+
+// Helper to sanitize avatar payloads so Firestore document clubs/tnu_hgc never exceeds 1MB limit
+function sanitizeAvatarString(av) {
+  if (typeof av !== 'string') return av;
+  // If base64 avatar exceeds 25,000 characters (~25KB), downsample to safe placeholder or standard URL
+  if (av.startsWith('data:image/') && av.length > 25000) {
+    return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+  }
+  return av;
+}
+
+function sanitizeStateForClubDoc(state) {
+  const members = Array.isArray(state.members) ? state.members.map(m => {
+    if (!m) return m;
+    return {
+      ...m,
+      avatar: sanitizeAvatarString(m.avatar)
+    };
+  }) : [];
+
+  const pendingApplications = Array.isArray(state.pendingApplications) ? state.pendingApplications.map(a => {
+    if (!a) return a;
+    return {
+      ...a,
+      avatar: sanitizeAvatarString(a.avatar)
+    };
+  }) : [];
+
+  return {
+    members,
+    events: state.events || [],
+    attendanceLogs: state.attendanceLogs || [],
+    articles: state.articles || [],
+    pendingApplications,
+    alumniBoard: state.alumniBoard || [],
+    alumniMembers: state.alumniMembers || [],
+    clubInfo: state.clubInfo || {},
+    eventFeedback: state.eventFeedback || [],
+    fundRecords: state.fundRecords || [],
+    fundCampaigns: state.fundCampaigns || [],
+    fundSettings: state.fundSettings || {},
+    updatedAt: new Date().toISOString()
+  };
+}
 
 class FirebaseService {
   constructor() {
     this.app = null;
     this.db = null;
     this.unsubscribeSnapshot = null;
+    this.unsubscribeApps = null;
     this.status = 'unconfigured'; // 'unconfigured' | 'connecting' | 'connected' | 'disconnected' | 'error'
     this.statusListeners = new Set();
     this.lastSyncTime = null;
@@ -42,7 +89,7 @@ class FirebaseService {
     return !!getFirebaseConfig();
   }
 
-  init(onRemoteDataCallback) {
+  init(onRemoteDataCallback, onApplicationsCallback) {
     const config = getFirebaseConfig();
     if (!config) {
       this.notifyStatus('unconfigured');
@@ -58,7 +105,7 @@ class FirebaseService {
       }
       this.db = getFirestore(this.app);
 
-      // Start listening to the shared document: clubs/tnu_hgc
+      // 1. Start listening to the shared club document: clubs/tnu_hgc
       const docRef = doc(this.db, 'clubs', 'tnu_hgc');
 
       if (this.unsubscribeSnapshot) {
@@ -89,10 +136,68 @@ class FirebaseService {
         }
       );
 
+      // 2. Start listening to dedicated collection: club_applications (Guarantees zero overflow!)
+      if (this.unsubscribeApps) {
+        this.unsubscribeApps();
+        this.unsubscribeApps = null;
+      }
+
+      const appsColRef = collection(this.db, 'club_applications');
+      this.unsubscribeApps = onSnapshot(
+        appsColRef,
+        (snap) => {
+          const appsList = [];
+          snap.forEach((d) => {
+            if (d.id === 'pending_list') return; // ignore legacy aggregator doc
+            const data = d.data();
+            if (data && data.id && (!data.status || data.status === 'pending')) {
+              appsList.push(data);
+            }
+          });
+
+          // Sort descending by creation date
+          appsList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+          if (typeof onApplicationsCallback === 'function') {
+            onApplicationsCallback(appsList);
+          }
+        },
+        (appErr) => {
+          console.warn('Firestore club_applications collection listener notice:', appErr);
+        }
+      );
+
       return true;
     } catch (e) {
       console.error('Failed to initialize Firebase:', e);
       this.notifyStatus('error');
+      return false;
+    }
+  }
+
+  // Save an individual application directly into club_applications/{id}
+  async saveApplication(app) {
+    if (!this.db || !app || !app.id) return false;
+    try {
+      const cleanApp = JSON.parse(JSON.stringify(app));
+      const appDocRef = doc(this.db, 'club_applications', app.id);
+      await setDoc(appDocRef, cleanApp, { merge: true });
+      return true;
+    } catch (err) {
+      console.error('Error saving application to club_applications collection:', err);
+      return false;
+    }
+  }
+
+  // Delete an individual application from club_applications/{id} when approved or rejected
+  async deleteApplication(appId) {
+    if (!this.db || !appId) return false;
+    try {
+      const appDocRef = doc(this.db, 'club_applications', appId);
+      await deleteDoc(appDocRef);
+      return true;
+    } catch (err) {
+      console.warn('Error deleting application doc from club_applications:', err);
       return false;
     }
   }
@@ -104,39 +209,12 @@ class FirebaseService {
     const performSync = async () => {
       try {
         const docRef = doc(this.db, 'clubs', 'tnu_hgc');
-        const payload = {
-          members: state.members || [],
-          events: state.events || [],
-          attendanceLogs: state.attendanceLogs || [],
-          articles: state.articles || [],
-          pendingApplications: state.pendingApplications || [],
-          alumniBoard: state.alumniBoard || [],
-          alumniMembers: state.alumniMembers || [],
-          clubInfo: state.clubInfo || {},
-          eventFeedback: state.eventFeedback || [],
-          fundRecords: state.fundRecords || [],
-          fundCampaigns: state.fundCampaigns || [],
-          fundSettings: state.fundSettings || {},
-          updatedAt: new Date().toISOString()
-        };
+        const payload = sanitizeStateForClubDoc(state);
 
         // Clean undefined values
         const cleanPayload = JSON.parse(JSON.stringify(payload));
 
         await setDoc(docRef, cleanPayload, { merge: true });
-
-        // Also backup applications to dedicated club_applications/pending_list
-        if (Array.isArray(state.pendingApplications)) {
-          try {
-            const appDocRef = doc(this.db, 'club_applications', 'pending_list');
-            await setDoc(appDocRef, {
-              applications: JSON.parse(JSON.stringify(state.pendingApplications)),
-              updatedAt: new Date().toISOString()
-            }, { merge: false });
-          } catch (appErr) {
-            console.warn('Backup write to club_applications warning:', appErr);
-          }
-        }
 
         this.lastSyncTime = new Date();
         this.notifyStatus('connected');
@@ -189,35 +267,9 @@ class FirebaseService {
       throw new Error('Firebase chưa được cấu hình hoặc chưa khởi tạo.');
     }
     const docRef = doc(this.db, 'clubs', 'tnu_hgc');
-    const payload = {
-      members: state.members || [],
-      events: state.events || [],
-      attendanceLogs: state.attendanceLogs || [],
-      articles: state.articles || [],
-      pendingApplications: state.pendingApplications || [],
-      alumniBoard: state.alumniBoard || [],
-      alumniMembers: state.alumniMembers || [],
-      clubInfo: state.clubInfo || {},
-      eventFeedback: state.eventFeedback || [],
-      fundRecords: state.fundRecords || [],
-      fundCampaigns: state.fundCampaigns || [],
-      fundSettings: state.fundSettings || {},
-      updatedAt: new Date().toISOString()
-    };
+    const payload = sanitizeStateForClubDoc(state);
     const cleanPayload = JSON.parse(JSON.stringify(payload));
     await setDoc(docRef, cleanPayload, { merge: true });
-
-    if (Array.isArray(state.pendingApplications)) {
-      try {
-        const appDocRef = doc(this.db, 'club_applications', 'pending_list');
-        await setDoc(appDocRef, {
-          applications: JSON.parse(JSON.stringify(state.pendingApplications)),
-          updatedAt: new Date().toISOString()
-        }, { merge: false });
-      } catch (appErr) {
-        console.warn('Backup push to club_applications warning:', appErr);
-      }
-    }
 
     this.lastSyncTime = new Date();
     this.notifyStatus('connected');
@@ -228,6 +280,10 @@ class FirebaseService {
     if (this.unsubscribeSnapshot) {
       this.unsubscribeSnapshot();
       this.unsubscribeSnapshot = null;
+    }
+    if (this.unsubscribeApps) {
+      this.unsubscribeApps();
+      this.unsubscribeApps = null;
     }
     this.app = null;
     this.db = null;

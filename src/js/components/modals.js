@@ -5891,7 +5891,7 @@ export const modalManager = {
           </div>
 
           <div class="mb-3 d-flex justify-between align-center gap-2 flex-wrap">
-            <input type="text" id="proofMemberSearchInput" class="form-control form-control-sm flex-1" style="min-width: 240px; font-size: 0.82rem;" placeholder="🔍 Tìm kiếm nhanh tên, MSSV, khoa/lớp..." value="${searchQ}">
+            <input type="text" id="proofMemberSearchInput" class="form-input form-input-sm flex-1" style="min-width: 240px; background: #0f172a; color: #ffffff; border: 1px solid rgba(212,175,55,0.4); border-radius: 6px; padding: 8px 12px; font-size: 0.82rem;" placeholder="🔍 Tìm kiếm nhanh tên, MSSV, khoa/lớp..." value="${searchQ}">
             <span class="text-xs text-muted">Hiển thị: <strong class="text-gold" id="proofModalFilterCount">${filtered.length}</strong> / ${approvedList.length}</span>
           </div>
 

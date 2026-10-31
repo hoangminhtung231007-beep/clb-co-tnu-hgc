@@ -3336,7 +3336,7 @@ class App {
             <label class="form-label text-gold font-bold text-xs mb-1">
               1. Thêm Tên Bài Viết / Hoạt Động:
             </label>
-            <input type="text" class="form-control text-white" id="simpleProofTitleInput" value="${escapeHtml(this.simpleProofState.title)}" placeholder="Ví dụ: Chia sẻ bài tuyển thành viên, bài khai mạc giải cờ..." style="font-size: 0.88rem;">
+            <input type="text" class="form-input text-white" id="simpleProofTitleInput" value="${escapeHtml(this.simpleProofState.title)}" placeholder="Ví dụ: Chia sẻ bài tuyển thành viên, bài khai mạc giải cờ..." style="width: 100%; background: #0f172a; color: #ffffff; border: 1.5px solid rgba(212,175,55,0.45); border-radius: 8px; padding: 10px 14px; font-size: 0.9rem;">
           </div>
 
           <!-- 2. Tích chọn người đã gửi minh chứng -->
@@ -3346,7 +3346,7 @@ class App {
                 2. Tích Chọn Thành Viên Đã Gửi Minh Chứng:
               </label>
               <div class="d-flex gap-1.5 align-center flex-wrap">
-                <input type="text" class="form-control form-control-sm" id="simpleProofSearchInput" value="${escapeHtml(this.simpleProofState.searchQuery)}" placeholder="🔍 Tìm nhanh tên hoặc MSSV..." style="width: 220px; font-size: 0.8rem;">
+                <input type="text" class="form-input form-input-sm" id="simpleProofSearchInput" value="${escapeHtml(this.simpleProofState.searchQuery)}" placeholder="🔍 Tìm nhanh tên hoặc MSSV..." style="width: 240px; background: #0f172a; color: #ffffff; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 6px 12px; font-size: 0.82rem;">
                 <button type="button" class="btn btn-xs btn-outline" id="btnSimpleSelectAll">Chọn tất cả</button>
                 <button type="button" class="btn btn-xs btn-outline" id="btnSimpleUnselectAll">Bỏ chọn</button>
               </div>

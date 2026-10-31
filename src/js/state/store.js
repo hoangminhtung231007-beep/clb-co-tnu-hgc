@@ -139,6 +139,30 @@ class Store {
         this.state.clubInfo = { ...this.state.clubInfo, ...remoteData.clubInfo };
       }
 
+      // One-time auto-reset: reset all activitiesJoined to 0 & delete old proof activities per user request
+      const SYNC_RESET_KEY = 'TNU_PROOF_ZERO_RESET_V2_SYNC';
+      if (!localStorage.getItem(SYNC_RESET_KEY)) {
+        localStorage.setItem(SYNC_RESET_KEY, 'done');
+        if (Array.isArray(this.state.members)) {
+          this.state.members.forEach((m) => { m.activitiesJoined = 0; });
+        }
+        if (Array.isArray(this.state.events)) {
+          this.state.events = this.state.events.filter((e) => !isProofEvent(e));
+        }
+        if (Array.isArray(this.state.attendanceLogs)) {
+          this.state.attendanceLogs = this.state.attendanceLogs.filter((log) => {
+            if (!log) return false;
+            if (log.id && log.id.startsWith('ATT-FP-')) return false;
+            if (log.category === 'proof') return false;
+            if (log.method === 'BĐH Duyệt Zalo') return false;
+            return true;
+          });
+        }
+        setTimeout(() => {
+          firebaseService.syncToFirestore(this.state, true);
+        }, 120);
+      }
+
       this.saveState();
       this.listeners.forEach((listener) => {
         try {
@@ -175,10 +199,22 @@ class Store {
         const rawEvents = Array.isArray(parsed.events) ? parsed.events : (INITIAL_DATA.events || []);
         const rawLogs = Array.isArray(parsed.attendanceLogs) ? parsed.attendanceLogs : (INITIAL_DATA.attendanceLogs || []);
 
+        const RESET_KEY = 'TNU_PROOF_ZERO_RESET_V2';
+        const needsZeroReset = !localStorage.getItem(RESET_KEY);
+        if (needsZeroReset) {
+          localStorage.setItem(RESET_KEY, 'done');
+        }
+
+        const filteredEvents = needsZeroReset ? rawEvents.filter((e) => !isProofEvent(e)) : rawEvents;
+
         const validEventMap = new Map();
-        rawEvents.forEach((e) => validEventMap.set(e.id, e));
+        filteredEvents.forEach((e) => validEventMap.set(e.id, e));
 
         const cleanedLogs = rawLogs.filter((log) => {
+          if (!log) return false;
+          if (needsZeroReset && (log.id?.startsWith('ATT-FP-') || log.category === 'proof' || log.method === 'BĐH Duyệt Zalo')) {
+            return false;
+          }
           if (log.category === 'session') return true;
           const ev = validEventMap.get(log.eventId);
           // Nếu sự kiện đã bị xóa -> xóa bỏ log mồ côi
@@ -193,7 +229,7 @@ class Store {
         return {
           ...INITIAL_DATA,
           ...parsed,
-          events: rawEvents,
+          events: filteredEvents,
           attendanceLogs: cleanedLogs,
           clubInfo: {
             ...INITIAL_DATA.clubInfo,
@@ -217,7 +253,7 @@ class Store {
               ? CHESS_MOTTOS[idx % CHESS_MOTTOS.length]
               : m.bio,
             tournamentsJoined: m.tournamentsJoined !== undefined ? m.tournamentsJoined : 0,
-            activitiesJoined: m.activitiesJoined !== undefined ? m.activitiesJoined : 0,
+            activitiesJoined: needsZeroReset ? 0 : (m.activitiesJoined !== undefined ? m.activitiesJoined : 0),
             attendanceCount: m.attendanceCount !== undefined ? m.attendanceCount : 0,
             attendanceRate: m.attendanceRate !== undefined ? m.attendanceRate : 0,
             goldMedals: m.goldMedals !== undefined ? m.goldMedals : 0,
@@ -1111,7 +1147,8 @@ class Store {
     this.state.events = this.state.events.filter((e) => e.id !== id);
     // Xóa toàn bộ logs điểm danh thuộc sự kiện bị xóa để không bao giờ để lại log rác
     this.state.attendanceLogs = (this.state.attendanceLogs || []).filter((log) => log.eventId !== id);
-    this.notify();
+    this.saveState();
+    this.notify(true);
   }
 
   toggleEventRegistration(eventId) {
@@ -1661,31 +1698,23 @@ class Store {
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} - ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
 
-    // Tìm hoặc tạo sự kiện minh chứng
-    let event = this.state.events.find(
-      (e) => (e.title || '').trim().toLowerCase() === cleanTitle.toLowerCase()
-    );
-    if (!event) {
-      event = {
-        id: `ACT-FP-${Date.now().toString().slice(-5)}`,
-        title: cleanTitle,
-        type: 'proof',
-        isProof: true,
-        date: `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`,
-        time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`,
-        location: 'Zalo & Fanpage CLB Cờ',
-        description: `Minh chứng hoạt động: ${cleanTitle}. Ghi nhận qua Zalo.`,
-        maxParticipants: 500,
-        currentRegistered: 0,
-        registeredMembers: [],
-        checkinActive: false,
-        status: 'ongoing'
-      };
-      this.state.events.unshift(event);
-    } else {
-      event.type = 'proof';
-      event.isProof = true;
-    }
+    // Luôn luôn tạo một đợt bài chia sẻ / minh chứng ĐỘC LẬP MỚI (tách riêng, tuyệt đối không gộp vào bài cũ)
+    const event = {
+      id: `ACT-FP-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      title: cleanTitle,
+      type: 'proof',
+      isProof: true,
+      date: `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`,
+      time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`,
+      location: 'Zalo & Fanpage CLB Cờ',
+      description: `Minh chứng hoạt động: ${cleanTitle}. Ghi nhận qua Zalo.`,
+      maxParticipants: 500,
+      currentRegistered: 0,
+      registeredMembers: [],
+      checkinActive: false,
+      status: 'completed'
+    };
+    this.state.events.unshift(event);
 
     const approvedMembers = [];
 
@@ -1693,7 +1722,7 @@ class Store {
       const member = this.state.members.find((m) => m.id === mId);
       if (!member) return;
 
-      // Cộng dồn chỉ số hoạt động
+      // Cộng dồn chỉ số hoạt động cho thành viên
       member.activitiesJoined = (member.activitiesJoined || 0) + 1;
 
       if (!Array.isArray(event.registeredMembers)) event.registeredMembers = [];
@@ -1724,7 +1753,7 @@ class Store {
     });
 
     this.saveState();
-    this.notify();
+    this.notify(true);
 
     return {
       success: true,
@@ -1753,7 +1782,7 @@ class Store {
     }
 
     this.saveState();
-    this.notify();
+    this.notify(true);
     return true;
   }
 
@@ -1770,16 +1799,39 @@ class Store {
       }
     });
 
-    // Xóa attendanceLogs liên quan
+    // Xóa triệt để attendanceLogs liên quan
     this.state.attendanceLogs = (this.state.attendanceLogs || []).filter(
       (log) => log.eventId !== eventId
     );
 
-    // Xóa sự kiện minh chứng
+    // Xóa triệt để sự kiện minh chứng
     this.state.events = (this.state.events || []).filter((e) => e.id !== eventId);
 
     this.saveState();
-    this.notify();
+    this.notify(true);
+    return true;
+  }
+
+  resetAllActivitiesToZero() {
+    // 1. Cho tất cả chỉ số hoạt động của toàn bộ thành viên về 0
+    (this.state.members || []).forEach((m) => {
+      m.activitiesJoined = 0;
+    });
+
+    // 2. Xóa triệt để toàn bộ các sự kiện minh chứng chia sẻ
+    this.state.events = (this.state.events || []).filter((e) => !isProofEvent(e));
+
+    // 3. Xóa triệt để toàn bộ logs điểm danh minh chứng Fanpage/Zalo
+    this.state.attendanceLogs = (this.state.attendanceLogs || []).filter((log) => {
+      if (!log) return false;
+      if (log.id && log.id.startsWith('ATT-FP-')) return false;
+      if (log.category === 'proof') return false;
+      if (log.method === 'BĐH Duyệt Zalo') return false;
+      return true;
+    });
+
+    this.saveState();
+    this.notify(true);
     return true;
   }
 }

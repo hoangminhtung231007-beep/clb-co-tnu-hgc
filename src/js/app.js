@@ -3410,9 +3410,14 @@ class App {
             <div>
               <span class="badge badge-gold font-bold">📜 LỊCH SỬ MINH CHỨNG ĐÃ GHI NHẬN</span>
               <h3 class="text-base font-bold text-white mt-1 mb-0">Danh Sách Hoạt Động Minh Chứng</h3>
-              <p class="text-muted text-xs mb-0">Lưu trữ các đợt duyệt Fanpage/Zalo. Dữ liệu hiển thị trực tiếp tại đây thay vì trang Lịch trình hoạt động.</p>
+              <p class="text-muted text-xs mb-0">Mỗi bài chia sẻ được lưu thành 1 hoạt động riêng biệt, đi kèm nút xem danh sách thành viên.</p>
             </div>
-            <span class="badge badge-cyan font-bold">${proofEvents.length} đợt minh chứng</span>
+            <div class="d-flex align-center gap-2 flex-wrap">
+              <span class="badge badge-cyan font-bold">${proofEvents.length} hoạt động</span>
+              <button type="button" class="btn btn-outline btn-xs" id="btnResetAllActivities" title="Đặt lại toàn bộ hoạt động về 0 và xóa trắng minh chứng" style="color: #f87171; border-color: rgba(248,113,113,0.3); padding: 4px 10px;">
+                🔄 Đặt lại tất cả về 0
+              </button>
+            </div>
           </div>
 
           ${proofEvents.length === 0 ? `
@@ -3541,6 +3546,23 @@ class App {
       } catch (err) {
         modalManager.showAlert('Lỗi: ' + err.message);
       }
+    });
+
+    // Đặt lại toàn bộ hoạt động về 0 & xóa sạch minh chứng
+    container.querySelector('#btnResetAllActivities')?.addEventListener('click', () => {
+      sound.playClick();
+      modalManager.showConfirm(
+        'Bạn có chắc chắn muốn đặt lại toàn bộ điểm hoạt động của tất cả thành viên về 0 và xóa tất cả các bài minh chứng?\nCác hoạt động bị xóa sẽ hoàn toàn biến mất như chưa từng tồn tại.',
+        () => {
+          store.resetAllActivitiesToZero();
+          sound.playSuccess();
+          modalManager.showAlert('Đã xóa sạch các hoạt động minh chứng và đưa toàn bộ điểm hoạt động về 0!');
+          this.renderAdminProofs(container);
+          this.renderNotificationsList();
+        },
+        null,
+        { title: 'ĐẶT LẠI HOẠT ĐỘNG VỀ 0', confirmText: '🔄 Đặt lại về 0', danger: true }
+      );
     });
 
     // Xem danh sách thành viên trong đợt minh chứng (Mở modal chuyên dụng)

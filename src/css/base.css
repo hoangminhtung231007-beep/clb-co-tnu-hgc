@@ -65,7 +65,8 @@
 html {
   font-family: var(--font-system);
   font-size: 15px;
-  line-height: 1.5;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
   color: var(--text-main);
   background-color: var(--bg-primary);
   scroll-behavior: auto;
@@ -75,6 +76,7 @@ html {
 
 body {
   min-height: 100vh;
+  line-height: 1.6;
   background: 
     radial-gradient(circle at 15% 10%, rgba(212, 175, 55, 0.07) 0%, transparent 40%),
     radial-gradient(circle at 85% 80%, rgba(56, 189, 248, 0.05) 0%, transparent 40%),

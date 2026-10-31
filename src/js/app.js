@@ -2165,10 +2165,16 @@ class App {
                   </div>
 
                   <h3 class="font-bold text-white text-base mb-2">${ev.title}</h3>
-                  <p class="text-xs text-muted mb-3">${ev.description}</p>
+                  <p class="text-xs text-muted mb-3" style="line-height: 1.55;">${ev.description || 'Chưa có mô tả chi tiết.'}</p>
                   
-                  <div class="text-xs mb-1">📍 <strong>Địa điểm:</strong> ${ev.location}</div>
-                  <div class="text-xs mb-1">📅 <strong>Thời gian:</strong> ${ev.dateTime}</div>
+                  <div class="d-flex align-center gap-2 text-xs mb-1.5 flex-wrap">
+                    <span class="text-gold font-bold">📅 Thời gian:</span> 
+                    <span class="badge badge-outline font-mono text-xs" style="padding: 3px 9px; border-color: rgba(212,175,55,0.35); color: var(--gold-light); font-weight: 600;">${ev.dateTime}</span>
+                  </div>
+                  <div class="d-flex align-center gap-2 text-xs mb-3 flex-wrap">
+                    <span class="text-cyan font-bold">📍 Địa điểm:</span> 
+                    <span class="text-white">${ev.location || 'CLB Cờ TNU - HGC'}</span>
+                  </div>
                   <div class="text-xs mb-3">
                     👥 <strong>Đã điểm danh tham gia:</strong> 
                     <span class="text-gold font-bold">${ev.currentRegistered || 0} kỳ thủ</span>
@@ -2248,49 +2254,108 @@ class App {
   }
 
   openCreateEventModal() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const defaultDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const defaultStart = '14:00';
+    const defaultEnd = '17:30';
+
+    const formatVnDateTime = (dateStr, startStr, endStr) => {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      if (parts.length < 3) return dateStr;
+      const y = parseInt(parts[0]);
+      const m = parseInt(parts[1]);
+      const d = parseInt(parts[2]);
+      const dObj = new Date(y, m - 1, d);
+      const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+      const dayName = isNaN(dObj.getTime()) ? '' : days[dObj.getDay()];
+      const timePart = startStr && endStr ? `${startStr} - ${endStr}` : startStr || endStr || '';
+      return `${timePart ? timePart + ' • ' : ''}${dayName ? dayName + ', ' : ''}${pad(d)}/${pad(m)}/${y}`;
+    };
+
+    const initialFormatted = formatVnDateTime(defaultDate, defaultStart, defaultEnd);
+
     const contentHtml = `
-      <form class="app-form">
-        <div class="form-group">
-          <label class="form-label">Tên giải đấu / Buổi sinh hoạt *</label>
-          <input type="text" id="evTitle" class="form-input" required placeholder="Giải Vô Địch Cờ TNU...">
+      <form class="app-form" id="formCreateEventModal">
+        <!-- Tên sự kiện -->
+        <div class="form-group mb-3">
+          <label class="form-label font-bold text-white mb-1">Tên giải đấu / Buổi sinh hoạt *</label>
+          <input type="text" id="evTitle" class="form-input" required placeholder="Ví dụ: Giải Vô Địch Cờ Vua Mùa Đông 2026...">
         </div>
-        <div class="form-group">
+
+        <!-- Phân loại sự kiện -->
+        <div class="form-group mb-3">
           <label class="form-label font-bold text-white mb-2" style="display: flex; align-items: center; gap: 6px;">
             <span>🏷️</span> <span>Loại sự kiện *</span>
           </label>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px;">
-            <label class="radio-option-card" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 8px; border: 1.5px solid var(--border-gold); background: rgba(212,175,55,0.08); cursor: pointer; transition: all 0.2s;">
+            <label class="radio-option-card" id="cardEvTypeActivity" style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1.5px solid var(--border-gold); background: rgba(212,175,55,0.12); cursor: pointer; transition: all 0.2s;">
               <input type="radio" name="evTypeSelect" value="activity" checked style="margin-top: 3px; accent-color: var(--gold-color);">
               <div>
-                <strong class="text-gold" style="display: block; font-size: 0.92rem; margin-bottom: 3px;">🎯 1. Hoạt Động</strong>
-                <span class="text-xs text-muted" style="display: block; line-height: 1.35;">Sinh hoạt thường kỳ, tập huấn chuyên môn. <em>(Tự động tính vào số Hoạt Động tham gia của kỳ thủ khi quét thẻ)</em></span>
+                <strong class="text-gold" style="display: block; font-size: 0.94rem; margin-bottom: 3px;">🎯 1. Hoạt Động Thường Kỳ</strong>
+                <span class="text-xs text-muted" style="display: block; line-height: 1.45;">Sinh hoạt thường kỳ, tập huấn chuyên môn. <em>(Tự động tính vào số Hoạt Động tham gia của kỳ thủ khi quét thẻ)</em></span>
               </div>
             </label>
 
-            <label class="radio-option-card" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 8px; border: 1.5px solid rgba(6,182,212,0.4); background: rgba(6,182,212,0.05); cursor: pointer; transition: all 0.2s;">
-              <input type="radio" name="evTypeSelect" value="tournament" style="margin-top: 3px; accent-color: #06b6d4;">
+            <label class="radio-option-card" id="cardEvTypeTournament" style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); cursor: pointer; transition: all 0.2s;">
+              <input type="radio" name="evTypeSelect" value="tournament" style="margin-top: 3px; accent-color: #38bdf8;">
               <div>
-                <strong class="text-cyan" style="display: block; font-size: 0.92rem; margin-bottom: 3px;">🏆 2. Giải Đấu</strong>
-                <span class="text-xs text-muted" style="display: block; line-height: 1.35;">Giải vô địch CLB, Cup TNU, giải cờ tranh cúp. <em>(Tự động tính vào số Giải Đấu tham gia của kỳ thủ khi quét thẻ)</em></span>
+                <strong class="text-cyan" style="display: block; font-size: 0.94rem; margin-bottom: 3px;">🏆 2. Giải Đấu Tranh Cúp</strong>
+                <span class="text-xs text-muted" style="display: block; line-height: 1.45;">Giải vô địch CLB, Cup TNU, giải cờ tranh cúp. <em>(Tự động tính vào số Giải Đấu tham gia của kỳ thủ khi quét thẻ)</em></span>
               </div>
             </label>
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label class="form-label">Thời gian tổ chức *</label>
-            <input type="text" id="evDateTime" class="form-input" value="2026-10-24 14:00 - 17:30" placeholder="VD: 2026-10-24 14:00 - 17:30">
+        <!-- Khung Thời gian tổ chức tách riêng Ngày & Giờ chuẩn đẹp -->
+        <div class="card p-3 mb-3" style="background: rgba(15,23,42,0.65); border: 1px solid rgba(212,175,55,0.25); border-radius: 12px;">
+          <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
+            <span class="text-xs font-bold text-gold d-flex align-center gap-1">
+              <span>🗓️</span> <span>THỜI GIAN TỔ CHỨC (CHUẨN NGÀY & KHUNG GIỜ)</span>
+            </span>
+            <span class="text-xs text-dim">Chọn từ lịch & đồng hồ</span>
           </div>
-          <div class="form-group flex-1">
-            <label class="form-label">Địa điểm tổ chức *</label>
-            <input type="text" id="evLocation" class="form-input" value="Trung tâm Học liệu - CNTT - ĐHTN" placeholder="VD: Phòng Hội thảo, Sảnh A...">
+
+          <div class="form-row flex-wrap gap-3">
+            <!-- Chọn ngày -->
+            <div class="form-group flex-1" style="min-width: 170px; margin-bottom: 0;">
+              <label class="form-label text-xs font-bold text-white mb-1">📅 Ngày tổ chức *</label>
+              <input type="date" id="evDate" class="form-input" value="${defaultDate}" required style="font-family: var(--font-system); font-weight: 600;">
+            </div>
+
+            <!-- Giờ bắt đầu -->
+            <div class="form-group" style="width: 130px; margin-bottom: 0;">
+              <label class="form-label text-xs font-bold text-white mb-1">⏰ Giờ bắt đầu *</label>
+              <input type="time" id="evTimeStart" class="form-input text-center" value="${defaultStart}" required style="font-family: var(--font-mono); font-weight: 700; color: var(--gold-light);">
+            </div>
+
+            <!-- Giờ kết thúc -->
+            <div class="form-group" style="width: 130px; margin-bottom: 0;">
+              <label class="form-label text-xs font-bold text-white mb-1">🏁 Giờ kết thúc *</label>
+              <input type="time" id="evTimeEnd" class="form-input text-center" value="${defaultEnd}" required style="font-family: var(--font-mono); font-weight: 700; color: #38bdf8;">
+            </div>
+          </div>
+
+          <!-- Dòng xem trước thời gian thực chuẩn tiếng Việt -->
+          <div class="mt-2 pt-2 d-flex align-center justify-between flex-wrap gap-2" style="border-top: 1px dashed rgba(255,255,255,0.08);">
+            <span class="text-xs text-muted">Hiển thị chuẩn:</span>
+            <span id="evDateTimePreview" class="badge badge-gold font-bold font-mono" style="font-size: 0.82rem; padding: 5px 12px; letter-spacing: 0.02em;">
+              ${initialFormatted}
+            </span>
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Mô tả / Thể thức thi đấu</label>
-          <textarea id="evDesc" class="form-textarea" rows="3" placeholder="Thể thức Thụy Sĩ 7 ván, thời gian 5 phút + 3 giây..."></textarea>
+        <!-- Địa điểm tổ chức -->
+        <div class="form-group mb-3">
+          <label class="form-label font-bold text-white mb-1">📍 Địa điểm tổ chức *</label>
+          <input type="text" id="evLocation" class="form-input" value="Trung tâm Học liệu - CNTT - ĐHTN" placeholder="VD: Phòng Hội thảo tầng 2, Sảnh A...">
+        </div>
+
+        <!-- Mô tả -->
+        <div class="form-group mb-2">
+          <label class="form-label font-bold text-white mb-1">📝 Mô tả / Thể thức thi đấu</label>
+          <textarea id="evDesc" class="form-textarea" rows="3" placeholder="Ví dụ: Thi đấu Thụy Sĩ 7 ván, thời gian 5 phút + 3 giây..."></textarea>
         </div>
       </form>
     `;
@@ -2303,12 +2368,20 @@ class App {
       }
       const selectedType = modal.querySelector('input[name="evTypeSelect"]:checked')?.value || 'activity';
 
+      const dateVal = modal.querySelector('#evDate')?.value || defaultDate;
+      const startVal = modal.querySelector('#evTimeStart')?.value || defaultStart;
+      const endVal = modal.querySelector('#evTimeEnd')?.value || defaultEnd;
+      const finalDateTime = formatVnDateTime(dateVal, startVal, endVal);
+
       const newEv = store.addEvent({
         title,
         type: selectedType, // 'activity' | 'tournament'
-        dateTime: modal.querySelector('#evDateTime').value.trim(),
+        dateTime: finalDateTime,
+        eventDate: dateVal,
+        startTime: startVal,
+        endTime: endVal,
         maxParticipants: null,
-        location: modal.querySelector('#evLocation').value.trim(),
+        location: modal.querySelector('#evLocation').value.trim() || 'CLB Cờ TNU - HGC',
         description: modal.querySelector('#evDesc').value.trim(),
         registrationOpen: false,
         status: 'upcoming'
@@ -2316,9 +2389,8 @@ class App {
 
       // Kích hoạt ngay thông báo thiết bị cục bộ (Đổ chuông & Banner màn hình)
       const evLabel = selectedType === 'tournament' ? '🏆 GIẢI ĐẤU MỚI' : '🎯 HOẠT ĐỘNG MỚI';
-      const evTime = modal.querySelector('#evDateTime').value.trim() || 'Sắp diễn ra';
       const evLoc = modal.querySelector('#evLocation').value.trim() || 'CLB Cờ TNU';
-      const notifBody = `Thời gian: ${evTime} • Địa điểm: ${evLoc}. Bấm để xem chi tiết!`;
+      const notifBody = `Thời gian: ${finalDateTime} • Địa điểm: ${evLoc}. Bấm để xem chi tiết!`;
 
       this.sendDevicePushNotification(
         `${evLabel}: ${title}`,
@@ -2337,9 +2409,60 @@ class App {
         }
       }).catch((e) => console.warn('Broadcast push error:', e));
 
-      modalManager.showAlert(`Đã lên lịch ${selectedType === 'tournament' ? 'giải đấu' : 'hoạt động'} mới thành công!\n(Trạng thái: SẮP DIỄN RA ⏰ • Đã kích hoạt thông báo tới các thiết bị!)`);
+      modalManager.showAlert(`Đã lên lịch ${selectedType === 'tournament' ? 'giải đấu' : 'hoạt động'} mới thành công!\n(Thời gian: ${finalDateTime} • Đã kích hoạt thông báo tới các thiết bị!)`);
       return true;
     }, 'Tạo sự kiện');
+
+    // Kích hoạt tương tác cập nhật ngày giờ & Radio card sau khi modal mở
+    setTimeout(() => {
+      const modalEl = document.getElementById('globalAppModal');
+      if (!modalEl) return;
+
+      const dateInp = modalEl.querySelector('#evDate');
+      const startInp = modalEl.querySelector('#evTimeStart');
+      const endInp = modalEl.querySelector('#evTimeEnd');
+      const preview = modalEl.querySelector('#evDateTimePreview');
+
+      const refreshPreview = () => {
+        if (preview && dateInp && startInp && endInp) {
+          preview.textContent = formatVnDateTime(dateInp.value, startInp.value, endInp.value);
+        }
+      };
+
+      dateInp?.addEventListener('input', refreshPreview);
+      dateInp?.addEventListener('change', refreshPreview);
+      startInp?.addEventListener('input', refreshPreview);
+      startInp?.addEventListener('change', refreshPreview);
+      endInp?.addEventListener('input', refreshPreview);
+      endInp?.addEventListener('change', refreshPreview);
+
+      // Radio Selection highlight
+      const cardActivity = modalEl.querySelector('#cardEvTypeActivity');
+      const cardTournament = modalEl.querySelector('#cardEvTypeTournament');
+      modalEl.querySelectorAll('input[name="evTypeSelect"]').forEach((r) => {
+        r.addEventListener('change', (e) => {
+          if (e.target.value === 'tournament') {
+            if (cardTournament) {
+              cardTournament.style.borderColor = '#38bdf8';
+              cardTournament.style.background = 'rgba(56,189,248,0.12)';
+            }
+            if (cardActivity) {
+              cardActivity.style.borderColor = 'rgba(255,255,255,0.1)';
+              cardActivity.style.background = 'rgba(255,255,255,0.02)';
+            }
+          } else {
+            if (cardActivity) {
+              cardActivity.style.borderColor = 'var(--border-gold)';
+              cardActivity.style.background = 'rgba(212,175,55,0.12)';
+            }
+            if (cardTournament) {
+              cardTournament.style.borderColor = 'rgba(255,255,255,0.1)';
+              cardTournament.style.background = 'rgba(255,255,255,0.02)';
+            }
+          }
+        });
+      });
+    }, 50);
   }
 
   // ==========================================
@@ -3812,7 +3935,11 @@ class App {
                         : '<span class="badge badge-gold">🎯 Hoạt Động</span>'
                       }
                     </td>
-                    <td data-label="Thời Gian"><span class="text-xs">${ev.dateTime}</span></td>
+                    <td data-label="Thời Gian">
+                      <span class="badge badge-outline text-xs font-mono font-semibold" style="letter-spacing: 0.01em; padding: 4px 8px; border-color: rgba(255,255,255,0.15); color: #e2e8f0; white-space: normal; line-height: 1.4;">
+                        🗓️ ${ev.dateTime || 'Chưa định'}
+                      </span>
+                    </td>
                     <td data-label="Trạng Thái">
                       ${ev.status === 'ongoing' 
                         ? '<span class="badge badge-emerald active-glow">🟢 Đang diễn ra</span>' 

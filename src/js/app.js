@@ -1439,21 +1439,7 @@ class App {
                   <span class="text-cyan font-bold">📍 Địa điểm:</span>
                   <span class="text-white">${featuredEvent.location || 'CLB Cờ TNU - HGC'}</span>
                 </div>
-                <div class="d-flex align-center gap-2">
-                  <span class="text-emerald font-bold">👥 Đã tham gia:</span>
-                  <span class="text-gold font-bold font-mono">${featuredEvent.currentRegistered || 0} kỳ thủ</span>
-                </div>
               </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="d-flex gap-2 pt-3 flex-wrap align-center" style="border-top: 1px solid rgba(255,255,255,0.08);">
-              <button class="btn btn-gold btn-sm flex-1" id="btnHomeJoinEvent" style="font-weight: 700;">
-                ⚔️ Xem Chi Tiết & Đăng Ký
-              </button>
-              <button class="btn btn-outline btn-sm" id="btnHomeViewAllEvents">
-                📅 Lịch Trình CLB
-              </button>
             </div>
           </div>
 
@@ -1549,16 +1535,6 @@ class App {
     };
     updateCountdown();
     this._homeCdInterval = setInterval(updateCountdown, 1000);
-
-    // Event actions
-    container.querySelector('#btnHomeJoinEvent')?.addEventListener('click', () => {
-      sound.playClick();
-      window.location.hash = '#events';
-    });
-    container.querySelector('#btnHomeViewAllEvents')?.addEventListener('click', () => {
-      sound.playClick();
-      window.location.hash = '#events';
-    });
 
     // News item clicks
     container.querySelectorAll('.home-news-item').forEach((item) => {

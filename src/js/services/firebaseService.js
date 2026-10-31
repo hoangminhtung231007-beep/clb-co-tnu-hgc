@@ -97,9 +97,64 @@ class FirebaseService {
     }
   }
 
-  // Push local state to Firestore with debouncing
-  syncToFirestore(state) {
+  // Push local state to Firestore (supports immediate or debounced sync)
+  syncToFirestore(state, immediate = false) {
     if (!this.db) return Promise.resolve(false);
+
+    const performSync = async () => {
+      try {
+        const docRef = doc(this.db, 'clubs', 'tnu_hgc');
+        const payload = {
+          members: state.members || [],
+          events: state.events || [],
+          attendanceLogs: state.attendanceLogs || [],
+          articles: state.articles || [],
+          pendingApplications: state.pendingApplications || [],
+          alumniBoard: state.alumniBoard || [],
+          alumniMembers: state.alumniMembers || [],
+          clubInfo: state.clubInfo || {},
+          eventFeedback: state.eventFeedback || [],
+          fundRecords: state.fundRecords || [],
+          fundCampaigns: state.fundCampaigns || [],
+          fundSettings: state.fundSettings || {},
+          updatedAt: new Date().toISOString()
+        };
+
+        // Clean undefined values
+        const cleanPayload = JSON.parse(JSON.stringify(payload));
+
+        await setDoc(docRef, cleanPayload, { merge: true });
+
+        // Also backup applications to dedicated club_applications/pending_list
+        if (Array.isArray(state.pendingApplications)) {
+          try {
+            const appDocRef = doc(this.db, 'club_applications', 'pending_list');
+            await setDoc(appDocRef, {
+              applications: JSON.parse(JSON.stringify(state.pendingApplications)),
+              updatedAt: new Date().toISOString()
+            }, { merge: false });
+          } catch (appErr) {
+            console.warn('Backup write to club_applications warning:', appErr);
+          }
+        }
+
+        this.lastSyncTime = new Date();
+        this.notifyStatus('connected');
+        return true;
+      } catch (e) {
+        console.error('Error syncing to Firestore:', e);
+        this.notifyStatus('error');
+        return false;
+      }
+    };
+
+    if (immediate) {
+      if (this.pendingSyncTimer) {
+        clearTimeout(this.pendingSyncTimer);
+        this.pendingSyncTimer = null;
+      }
+      return performSync();
+    }
 
     return new Promise((resolve) => {
       if (this.pendingSyncTimer) {
@@ -107,50 +162,8 @@ class FirebaseService {
       }
 
       this.pendingSyncTimer = setTimeout(async () => {
-        try {
-          const docRef = doc(this.db, 'clubs', 'tnu_hgc');
-          const payload = {
-            members: state.members || [],
-            events: state.events || [],
-            attendanceLogs: state.attendanceLogs || [],
-            articles: state.articles || [],
-            pendingApplications: state.pendingApplications || [],
-            alumniBoard: state.alumniBoard || [],
-            alumniMembers: state.alumniMembers || [],
-            clubInfo: state.clubInfo || {},
-            eventFeedback: state.eventFeedback || [],
-            fundRecords: state.fundRecords || [],
-            fundCampaigns: state.fundCampaigns || [],
-            fundSettings: state.fundSettings || {},
-            updatedAt: new Date().toISOString()
-          };
-
-          // Clean undefined values
-          const cleanPayload = JSON.parse(JSON.stringify(payload));
-
-          await setDoc(docRef, cleanPayload, { merge: true });
-
-          // Also backup applications to dedicated club_applications/pending_list
-          if (Array.isArray(state.pendingApplications)) {
-            try {
-              const appDocRef = doc(this.db, 'club_applications', 'pending_list');
-              await setDoc(appDocRef, {
-                applications: JSON.parse(JSON.stringify(state.pendingApplications)),
-                updatedAt: new Date().toISOString()
-              }, { merge: false });
-            } catch (appErr) {
-              console.warn('Backup write to club_applications warning:', appErr);
-            }
-          }
-
-          this.lastSyncTime = new Date();
-          this.notifyStatus('connected');
-          resolve(true);
-        } catch (e) {
-          console.error('Error syncing to Firestore:', e);
-          this.notifyStatus('error');
-          resolve(false);
-        }
+        const res = await performSync();
+        resolve(res);
       }, 350); // 350ms debounce
     });
   }

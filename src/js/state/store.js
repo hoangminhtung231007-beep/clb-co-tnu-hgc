@@ -441,20 +441,23 @@ class Store {
     });
 
     if (existingIndex !== -1) {
+      const oldApp = this.state.pendingApplications.splice(existingIndex, 1)[0];
       const updatedApp = {
-        ...this.state.pendingApplications[existingIndex],
-        name: cleanName || this.state.pendingApplications[existingIndex].name,
-        faculty: data.faculty || this.state.pendingApplications[existingIndex].faculty,
-        class: data.class || this.state.pendingApplications[existingIndex].class,
-        cohort: data.cohort || this.state.pendingApplications[existingIndex].cohort,
-        dob: data.dob || this.state.pendingApplications[existingIndex].dob,
-        gender: data.gender || this.state.pendingApplications[existingIndex].gender,
-        phone: data.phone || this.state.pendingApplications[existingIndex].phone,
-        avatar: data.avatar || this.state.pendingApplications[existingIndex].avatar,
+        ...oldApp,
+        name: cleanName || oldApp.name,
+        faculty: data.faculty || oldApp.faculty,
+        class: data.class || oldApp.class,
+        cohort: data.cohort || oldApp.cohort,
+        dob: data.dob || oldApp.dob,
+        gender: data.gender || oldApp.gender,
+        phone: data.phone || oldApp.phone,
+        avatar: data.avatar || oldApp.avatar,
         status: 'pending',
         updatedAt: new Date().toISOString()
       };
-      this.state.pendingApplications[existingIndex] = updatedApp;
+      this.state.pendingApplications.unshift(updatedApp);
+      this.saveState();
+      firebaseService.syncToFirestore(this.state, true);
       this.notify(true);
       return updatedApp;
     }
@@ -487,6 +490,8 @@ class Store {
     };
 
     this.state.pendingApplications.unshift(newApp);
+    this.saveState();
+    firebaseService.syncToFirestore(this.state, true);
     this.notify(true);
     return newApp;
   }

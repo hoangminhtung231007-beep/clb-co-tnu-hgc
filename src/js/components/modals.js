@@ -2653,8 +2653,9 @@ export const modalManager = {
         try {
           if (canvas && img.complete && img.naturalWidth) {
             const expCanvas = document.createElement('canvas');
-            const cw = 810;
-            const ch = 898;
+            // Optimal size for member avatar: 405x449 px (high DPI 2x Retina, sharp and lightweight ~25KB)
+            const cw = 405;
+            const ch = 449;
             expCanvas.width = cw;
             expCanvas.height = ch;
             const ectx = expCanvas.getContext('2d');
@@ -2674,7 +2675,11 @@ export const modalManager = {
             ectx.fillStyle = '#08183a';
             ectx.fillRect(0, 0, cw, ch);
             ectx.drawImage(img, drawX, drawY, drawW, drawH);
-            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.95);
+            let exported = expCanvas.toDataURL('image/jpeg', 0.85);
+            if (exported.length > 50000) {
+              exported = expCanvas.toDataURL('image/jpeg', 0.72);
+            }
+            finalAvatarExport = exported;
           }
         } catch (e) {
           finalAvatarExport = currentRawSrc;

@@ -96,7 +96,7 @@ export const memberCardComponent = {
             <span class="btn-icon">💳</span> Nộp Quỹ CLB
           </button>
           <button id="btnChangeAvatarCard" class="btn btn-outline btn-sm" style="border-color: rgba(245, 208, 97, 0.55); color: #fde68a; font-weight: 600;">
-            <span class="btn-icon">📸</span> Đổi ảnh thẻ Full HD
+            <span class="btn-icon">📸</span> Đổi ảnh thẻ
           </button>
           <button id="btnEditMemberProfileCard" class="btn btn-outline btn-sm" style="border-color: rgba(56, 189, 248, 0.5); color: #38bdf8; font-weight: 600;">
             <span class="btn-icon">✏️</span> Sửa thông tin cá nhân
@@ -397,7 +397,7 @@ export const memberCardComponent = {
       const latestMember = store.getMemberById(member.id) || member;
       modalManager.openMemberModal(latestMember, (updatedMember) => {
         memberCardComponent.render(containerEl, updatedMember);
-      }, { hideRole: true });
+      }, { hideRole: true, hideAvatar: true });
     };
 
     const btnEditProfile = containerEl.querySelector('#btnEditMemberProfileCard');

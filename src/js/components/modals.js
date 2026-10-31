@@ -258,6 +258,7 @@ export const modalManager = {
       onSaved = typeof options === 'function' ? options : null;
     }
     const hideRole = !!opts.hideRole;
+    const hideAvatar = !!opts.hideAvatar || hideRole;
     const isEdit = !!memberToEdit;
     const m = memberToEdit || {};
     const defaultAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1080&q=95';
@@ -353,6 +354,7 @@ export const modalManager = {
           <input type="tel" id="mPhone" class="form-input" value="${m.phone || ''}" placeholder="0987.123.456">
         </div>
 
+        ${!hideAvatar ? `
         <!-- Chọn ảnh & Sửa bố cục ảnh thủ công -->
         <div class="form-group mt-3" style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
           <div class="d-flex justify-between align-center mb-2 flex-wrap gap-2">
@@ -422,6 +424,7 @@ export const modalManager = {
             </div>
           </div>
         </div>
+        ` : ''}
       </form>
     `;
 
@@ -553,115 +556,107 @@ export const modalManager = {
       }
 
       const canvas = modalEl.querySelector('#avatarCropCanvas');
-      const ctx = canvas ? canvas.getContext('2d') : null;
-      const fileInput = modalEl.querySelector('#mAvatarFileInput');
-      const urlInput = modalEl.querySelector('#mAvatarUrlInput');
-      const zoomSlider = modalEl.querySelector('#avatarZoomSlider');
-      const posXSlider = modalEl.querySelector('#avatarPosXSlider');
-      const posYSlider = modalEl.querySelector('#avatarPosYSlider');
-      const zoomLabel = modalEl.querySelector('#zoomValueLabel');
-      const posXLabel = modalEl.querySelector('#posXValueLabel');
-      const posYLabel = modalEl.querySelector('#posYValueLabel');
-      const resetBtn = modalEl.querySelector('#btnResetAvatarFraming');
-      const fitBtn = modalEl.querySelector('#btnFitAvatar');
-      const viewport = modalEl.querySelector('#avatarViewportFrame');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        const fileInput = modalEl.querySelector('#mAvatarFileInput');
+        const urlInput = modalEl.querySelector('#mAvatarUrlInput');
+        const zoomSlider = modalEl.querySelector('#avatarZoomSlider');
+        const posXSlider = modalEl.querySelector('#avatarPosXSlider');
+        const posYSlider = modalEl.querySelector('#avatarPosYSlider');
+        const zoomLabel = modalEl.querySelector('#zoomValueLabel');
+        const posXLabel = modalEl.querySelector('#posXValueLabel');
+        const posYLabel = modalEl.querySelector('#posYValueLabel');
+        const resetBtn = modalEl.querySelector('#btnResetAvatarFraming');
+        const fitBtn = modalEl.querySelector('#btnFitAvatar');
+        const viewport = modalEl.querySelector('#avatarViewportFrame');
 
-      let img = new Image();
-      img.crossOrigin = 'anonymous';
-      let zoom = 1.0;
-      let offsetX = 0;
-      let offsetY = 0;
-      let isDragging = false;
-      let startDragX = 0;
-      let startDragY = 0;
-      let avatarDirty = !isEdit;
+        let img = new Image();
+        img.crossOrigin = 'anonymous';
+        let zoom = 1.0;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let startDragX = 0;
+        let startDragY = 0;
+        let avatarDirty = !isEdit;
 
-      const updateFinalExport = () => {
-        if (!avatarDirty) return;
-        try {
-          if (canvas && img.complete && img.naturalWidth) {
-            const expCanvas = document.createElement('canvas');
-            const cw = 810;
-            const ch = 898;
-            expCanvas.width = cw;
-            expCanvas.height = ch;
-            const ectx = expCanvas.getContext('2d');
-            ectx.imageSmoothingEnabled = true;
-            ectx.imageSmoothingQuality = 'high';
-            const nw = img.naturalWidth;
-            const nh = img.naturalHeight;
-            const aspect = nw / nh;
-            const frameAspect = cw / ch;
-            let baseW = aspect > frameAspect ? ch * aspect : cw;
-            let baseH = aspect > frameAspect ? ch : cw / aspect;
-            const scaleDpi = cw / 190;
-            const drawW = baseW * zoom;
-            const drawH = baseH * zoom;
-            const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
-            const drawY = (ch - drawH) / 2 + (offsetY * scaleDpi);
-            ectx.fillStyle = '#08183a';
-            ectx.fillRect(0, 0, cw, ch);
-            ectx.drawImage(img, drawX, drawY, drawW, drawH);
-            finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.95);
+        const updateFinalExport = () => {
+          if (!avatarDirty) return;
+          try {
+            if (canvas && img.complete && img.naturalWidth) {
+              const expCanvas = document.createElement('canvas');
+              const cw = 810;
+              const ch = 898;
+              expCanvas.width = cw;
+              expCanvas.height = ch;
+              const ectx = expCanvas.getContext('2d');
+              ectx.imageSmoothingEnabled = true;
+              ectx.imageSmoothingQuality = 'high';
+              const nw = img.naturalWidth;
+              const nh = img.naturalHeight;
+              const aspect = nw / nh;
+              const frameAspect = cw / ch;
+              let baseW = aspect > frameAspect ? ch * aspect : cw;
+              let baseH = aspect > frameAspect ? ch : cw / aspect;
+              const scaleDpi = cw / 190;
+              const drawW = baseW * zoom;
+              const drawH = baseH * zoom;
+              const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
+              const drawY = (ch - drawH) / 2 + (offsetY * scaleDpi);
+              ectx.fillStyle = '#08183a';
+              ectx.fillRect(0, 0, cw, ch);
+              ectx.drawImage(img, drawX, drawY, drawW, drawH);
+              finalAvatarExport = expCanvas.toDataURL('image/jpeg', 0.95);
+            }
+          } catch (e) {
+            finalAvatarExport = currentRawSrc;
           }
-        } catch (e) {
-          finalAvatarExport = currentRawSrc;
-        }
-      };
-
-      const draw = () => {
-        if (!ctx || !img.complete || !img.naturalWidth) return;
-        const cw = canvas.width;
-        const ch = canvas.height;
-        ctx.clearRect(0, 0, cw, ch);
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.fillStyle = '#08183a';
-        ctx.fillRect(0, 0, cw, ch);
-
-        const nw = img.naturalWidth;
-        const nh = img.naturalHeight;
-        const aspect = nw / nh;
-        const frameAspect = cw / ch;
-        let baseW = aspect > frameAspect ? ch * aspect : cw;
-        let baseH = aspect > frameAspect ? ch : cw / aspect;
-
-        const scaleDpi = cw / 190;
-        const drawW = baseW * zoom;
-        const drawH = baseH * zoom;
-        const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
-        const drawY = (ch - drawH) / 2 + (offsetY * scaleDpi);
-
-        ctx.drawImage(img, drawX, drawY, drawW, drawH);
-        updateFinalExport();
-      };
-
-      const updateControls = () => {
-        if (zoomSlider) zoomSlider.value = zoom;
-        if (posXSlider) posXSlider.value = Math.round(offsetX);
-        if (posYSlider) posYSlider.value = Math.round(offsetY);
-        if (zoomLabel) zoomLabel.textContent = `${zoom.toFixed(2)}x`;
-        if (posXLabel) posXLabel.textContent = `${Math.round(offsetX)}px`;
-        if (posYLabel) posYLabel.textContent = `${Math.round(offsetY)}px`;
-      };
-
-      const loadSource = (src, markDirty = false) => {
-        currentRawSrc = src;
-        finalAvatarExport = src;
-        if (markDirty) avatarDirty = true;
-        img = new Image();
-        if (src && !src.startsWith('data:')) {
-          img.crossOrigin = 'anonymous';
-        }
-        img.onload = () => {
-          zoom = 1.0;
-          offsetX = 0;
-          offsetY = 0;
-          updateControls();
-          draw();
         };
-        img.onerror = () => {
+
+        const draw = () => {
+          if (!ctx || !img.complete || !img.naturalWidth) return;
+          const cw = canvas.width;
+          const ch = canvas.height;
+          ctx.clearRect(0, 0, cw, ch);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.fillStyle = '#08183a';
+          ctx.fillRect(0, 0, cw, ch);
+
+          const nw = img.naturalWidth;
+          const nh = img.naturalHeight;
+          const aspect = nw / nh;
+          const frameAspect = cw / ch;
+          let baseW = aspect > frameAspect ? ch * aspect : cw;
+          let baseH = aspect > frameAspect ? ch : cw / aspect;
+
+          const scaleDpi = cw / 190;
+          const drawW = baseW * zoom;
+          const drawH = baseH * zoom;
+          const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
+          const drawY = (ch - drawH) / 2 + (offsetY * scaleDpi);
+
+          ctx.drawImage(img, drawX, drawY, drawW, drawH);
+          updateFinalExport();
+        };
+
+        const updateControls = () => {
+          if (zoomSlider) zoomSlider.value = zoom;
+          if (posXSlider) posXSlider.value = Math.round(offsetX);
+          if (posYSlider) posYSlider.value = Math.round(offsetY);
+          if (zoomLabel) zoomLabel.textContent = `${zoom.toFixed(2)}x`;
+          if (posXLabel) posXLabel.textContent = `${Math.round(offsetX)}px`;
+          if (posYLabel) posYLabel.textContent = `${Math.round(offsetY)}px`;
+        };
+
+        const loadSource = (src, markDirty = false) => {
+          currentRawSrc = src;
+          finalAvatarExport = src;
+          if (markDirty) avatarDirty = true;
           img = new Image();
+          if (src && !src.startsWith('data:')) {
+            img.crossOrigin = 'anonymous';
+          }
           img.onload = () => {
             zoom = 1.0;
             offsetX = 0;
@@ -669,115 +664,125 @@ export const modalManager = {
             updateControls();
             draw();
           };
+          img.onerror = () => {
+            img = new Image();
+            img.onload = () => {
+              zoom = 1.0;
+              offsetX = 0;
+              offsetY = 0;
+              updateControls();
+              draw();
+            };
+            img.src = src;
+          };
           img.src = src;
         };
-        img.src = src;
-      };
 
-      // Drag interaction
-      if (viewport) {
-        const onStart = (cx, cy) => {
-          isDragging = true;
-          startDragX = cx - offsetX;
-          startDragY = cy - offsetY;
-          viewport.style.cursor = 'grabbing';
-        };
-        const onMove = (cx, cy) => {
-          if (!isDragging) return;
-          avatarDirty = true;
-          offsetX = Math.max(-150, Math.min(150, cx - startDragX));
-          offsetY = Math.max(-150, Math.min(150, cy - startDragY));
-          updateControls();
-          draw();
-        };
-        const onEnd = () => {
-          if (isDragging) {
-            isDragging = false;
-            viewport.style.cursor = 'grab';
-          }
-        };
-
-        viewport.addEventListener('mousedown', (e) => onStart(e.clientX, e.clientY));
-        window.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
-        window.addEventListener('mouseup', onEnd);
-
-        viewport.addEventListener('touchstart', (e) => {
-          if (e.touches.length === 1) onStart(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: true });
-        window.addEventListener('touchmove', (e) => {
-          if (isDragging && e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: true });
-        window.addEventListener('touchend', onEnd);
-
-        viewport.addEventListener('wheel', (e) => {
-          e.preventDefault();
-          avatarDirty = true;
-          const delta = e.deltaY < 0 ? 0.08 : -0.08;
-          zoom = Math.max(0.5, Math.min(3.0, zoom + delta));
-          updateControls();
-          draw();
-        }, { passive: false });
-      }
-
-      // Slider events
-      zoomSlider?.addEventListener('input', (e) => {
-        avatarDirty = true;
-        zoom = parseFloat(e.target.value);
-        if (zoomLabel) zoomLabel.textContent = `${zoom.toFixed(2)}x`;
-        draw();
-      });
-      posXSlider?.addEventListener('input', (e) => {
-        avatarDirty = true;
-        offsetX = parseFloat(e.target.value);
-        if (posXLabel) posXLabel.textContent = `${Math.round(offsetX)}px`;
-        draw();
-      });
-      posYSlider?.addEventListener('input', (e) => {
-        avatarDirty = true;
-        offsetY = parseFloat(e.target.value);
-        if (posYLabel) posYLabel.textContent = `${Math.round(offsetY)}px`;
-        draw();
-      });
-      resetBtn?.addEventListener('click', () => {
-        avatarDirty = true;
-        zoom = 1.0;
-        offsetX = 0;
-        offsetY = 0;
-        updateControls();
-        draw();
-      });
-      fitBtn?.addEventListener('click', () => {
-        avatarDirty = true;
-        zoom = 1.15;
-        offsetX = 0;
-        offsetY = 0;
-        updateControls();
-        draw();
-      });
-
-      // File input
-      fileInput?.addEventListener('change', (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (re) => {
-            if (urlInput) urlInput.value = '';
-            loadSource(re.target.result, true);
+        // Drag interaction
+        if (viewport) {
+          const onStart = (cx, cy) => {
+            isDragging = true;
+            startDragX = cx - offsetX;
+            startDragY = cy - offsetY;
+            viewport.style.cursor = 'grabbing';
           };
-          reader.readAsDataURL(file);
-        }
-      });
+          const onMove = (cx, cy) => {
+            if (!isDragging) return;
+            avatarDirty = true;
+            offsetX = Math.max(-150, Math.min(150, cx - startDragX));
+            offsetY = Math.max(-150, Math.min(150, cy - startDragY));
+            updateControls();
+            draw();
+          };
+          const onEnd = () => {
+            if (isDragging) {
+              isDragging = false;
+              viewport.style.cursor = 'grab';
+            }
+          };
 
-      // URL input
-      urlInput?.addEventListener('input', (e) => {
-        const val = e.target.value.trim();
-        if (val && (val.startsWith('http') || val.startsWith('data:'))) {
-          loadSource(val, true);
-        }
-      });
+          viewport.addEventListener('mousedown', (e) => onStart(e.clientX, e.clientY));
+          window.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+          window.addEventListener('mouseup', onEnd);
 
-      // Load initial image without degrading existing saved quality unless edited
-      loadSource(currentRawSrc, false);
+          viewport.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) onStart(e.touches[0].clientX, e.touches[0].clientY);
+          }, { passive: true });
+          window.addEventListener('touchmove', (e) => {
+            if (isDragging && e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY);
+          }, { passive: true });
+          window.addEventListener('touchend', onEnd);
+
+          viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            avatarDirty = true;
+            const delta = e.deltaY < 0 ? 0.08 : -0.08;
+            zoom = Math.max(0.5, Math.min(3.0, zoom + delta));
+            updateControls();
+            draw();
+          }, { passive: false });
+        }
+
+        // Slider events
+        zoomSlider?.addEventListener('input', (e) => {
+          avatarDirty = true;
+          zoom = parseFloat(e.target.value);
+          if (zoomLabel) zoomLabel.textContent = `${zoom.toFixed(2)}x`;
+          draw();
+        });
+        posXSlider?.addEventListener('input', (e) => {
+          avatarDirty = true;
+          offsetX = parseFloat(e.target.value);
+          if (posXLabel) posXLabel.textContent = `${Math.round(offsetX)}px`;
+          draw();
+        });
+        posYSlider?.addEventListener('input', (e) => {
+          avatarDirty = true;
+          offsetY = parseFloat(e.target.value);
+          if (posYLabel) posYLabel.textContent = `${Math.round(offsetY)}px`;
+          draw();
+        });
+        resetBtn?.addEventListener('click', () => {
+          avatarDirty = true;
+          zoom = 1.0;
+          offsetX = 0;
+          offsetY = 0;
+          updateControls();
+          draw();
+        });
+        fitBtn?.addEventListener('click', () => {
+          avatarDirty = true;
+          zoom = 1.15;
+          offsetX = 0;
+          offsetY = 0;
+          updateControls();
+          draw();
+        });
+
+        // File input
+        fileInput?.addEventListener('change', (e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (re) => {
+              if (urlInput) urlInput.value = '';
+              loadSource(re.target.result, true);
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+
+        // URL input
+        urlInput?.addEventListener('input', (e) => {
+          const val = e.target.value.trim();
+          if (val && (val.startsWith('http') || val.startsWith('data:'))) {
+            loadSource(val, true);
+          }
+        });
+
+        // Load initial image without degrading existing saved quality unless edited
+        loadSource(currentRawSrc, false);
+      }
     }
   },
 

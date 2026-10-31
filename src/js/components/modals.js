@@ -583,10 +583,10 @@ export const modalManager = {
         const updateFinalExport = () => {
           if (!avatarDirty) return;
           try {
-            if (canvas && img.complete && img.naturalWidth) {
+            if (img && img.complete && img.naturalWidth) {
               const expCanvas = document.createElement('canvas');
-              const cw = 320;
-              const ch = 356;
+              const cw = 280;
+              const ch = 312;
               expCanvas.width = cw;
               expCanvas.height = ch;
               const ectx = expCanvas.getContext('2d');
@@ -606,14 +606,18 @@ export const modalManager = {
               ectx.fillStyle = '#08183a';
               ectx.fillRect(0, 0, cw, ch);
               ectx.drawImage(img, drawX, drawY, drawW, drawH);
-              let exported = expCanvas.toDataURL('image/jpeg', 0.80);
-              if (exported.length > 25000) {
-                exported = expCanvas.toDataURL('image/jpeg', 0.65);
+
+              let quality = 0.82;
+              let exported = expCanvas.toDataURL('image/jpeg', quality);
+              while (exported.length > 22000 && quality > 0.35) {
+                quality -= 0.08;
+                exported = expCanvas.toDataURL('image/jpeg', quality);
               }
               finalAvatarExport = exported;
             }
           } catch (e) {
-            finalAvatarExport = (typeof currentRawSrc === 'string' && currentRawSrc.length < 30000) ? currentRawSrc : '';
+            console.warn('updateFinalExport notice:', e);
+            finalAvatarExport = currentRawSrc;
           }
         };
 
@@ -5571,12 +5575,14 @@ export const modalManager = {
     `;
 
     this.open(`📸 Đổi Ảnh Thẻ Thành Viên: ${latestMember.name}`, contentHtml, () => {
-      if (finalAvatarExport) {
-        const updated = store.updateMember(latestMember.id, { avatar: finalAvatarExport });
-        sound.playSuccess();
+      const avatarToSave = finalAvatarExport || currentRawSrc;
+      if (avatarToSave) {
+        const updated = store.updateMember(latestMember.id, { avatar: avatarToSave });
+        firebaseService.syncToFirestore(store.getState(), true);
+        sound.playSuccess?.();
         modalManager.showAlert(`Đã cập nhật ảnh đại diện thẻ thành công cho kỳ thủ [${latestMember.name}]!`);
         if (typeof onComplete === 'function') {
-          onComplete(updated || { ...latestMember, avatar: finalAvatarExport });
+          onComplete(updated || { ...latestMember, avatar: avatarToSave });
         }
       }
       return true;
@@ -5601,7 +5607,6 @@ export const modalManager = {
       const viewport = modalEl.querySelector('#changeAvatarViewportFrame');
 
       let img = new Image();
-      img.crossOrigin = 'anonymous';
       let zoom = 1.0;
       let offsetX = 0;
       let offsetY = 0;
@@ -5611,20 +5616,41 @@ export const modalManager = {
 
       const updateFinalExport = () => {
         try {
-          if (canvas && img.complete && img.naturalWidth) {
+          if (img && img.complete && img.naturalWidth) {
             const expCanvas = document.createElement('canvas');
-            expCanvas.width = 320;
-            expCanvas.height = 356;
+            const cw = 280;
+            const ch = 312;
+            expCanvas.width = cw;
+            expCanvas.height = ch;
             const ectx = expCanvas.getContext('2d');
-            ectx.drawImage(canvas, 0, 0, 320, 356);
-            let exported = expCanvas.toDataURL('image/jpeg', 0.80);
-            if (exported.length > 25000) {
-              exported = expCanvas.toDataURL('image/jpeg', 0.65);
+            ectx.imageSmoothingEnabled = true;
+            ectx.imageSmoothingQuality = 'high';
+            const nw = img.naturalWidth;
+            const nh = img.naturalHeight;
+            const aspect = nw / nh;
+            const frameAspect = cw / ch;
+            let baseW = aspect > frameAspect ? ch * aspect : cw;
+            let baseH = aspect > frameAspect ? ch : cw / aspect;
+            const scaleDpi = cw / 164;
+            const drawW = baseW * zoom;
+            const drawH = baseH * zoom;
+            const drawX = (cw - drawW) / 2 + (offsetX * scaleDpi);
+            const drawY = (ch - drawH) / 2 + (offsetY * scaleDpi);
+            ectx.fillStyle = '#08183a';
+            ectx.fillRect(0, 0, cw, ch);
+            ectx.drawImage(img, drawX, drawY, drawW, drawH);
+
+            let quality = 0.82;
+            let exported = expCanvas.toDataURL('image/jpeg', quality);
+            while (exported.length > 22000 && quality > 0.35) {
+              quality -= 0.08;
+              exported = expCanvas.toDataURL('image/jpeg', quality);
             }
             finalAvatarExport = exported;
           }
         } catch (e) {
-          finalAvatarExport = (typeof currentRawSrc === 'string' && currentRawSrc.length < 30000) ? currentRawSrc : '';
+          console.warn('updateFinalExport notice:', e);
+          finalAvatarExport = currentRawSrc;
         }
       };
 
@@ -5672,10 +5698,13 @@ export const modalManager = {
       };
 
       const loadSource = (src) => {
+        if (!src) return;
         currentRawSrc = src;
         finalAvatarExport = src;
         img = new Image();
-        img.crossOrigin = 'anonymous';
+        if (!src.startsWith('data:')) {
+          img.crossOrigin = 'anonymous';
+        }
         img.onload = () => {
           zoom = 1.0;
           offsetX = 0;
@@ -5684,15 +5713,17 @@ export const modalManager = {
           draw();
         };
         img.onerror = () => {
-          img = new Image();
-          img.onload = () => {
-            zoom = 1.0;
-            offsetX = 0;
-            offsetY = 0;
-            updateControls();
-            draw();
-          };
-          img.src = src;
+          if (img.crossOrigin) {
+            img = new Image();
+            img.onload = () => {
+              zoom = 1.0;
+              offsetX = 0;
+              offsetY = 0;
+              updateControls();
+              draw();
+            };
+            img.src = src;
+          }
         };
         img.src = src;
       };

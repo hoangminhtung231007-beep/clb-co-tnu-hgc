@@ -13,8 +13,8 @@ import { getFirebaseConfig, saveFirebaseConfig, clearFirebaseConfig } from '../c
 // Helper to sanitize avatar payloads so Firestore document clubs/tnu_hgc never exceeds 1MB limit
 function sanitizeAvatarString(av) {
   if (typeof av !== 'string') return av;
-  // If base64 avatar exceeds 25,000 characters (~25KB), downsample to safe placeholder or standard URL
-  if (av.startsWith('data:image/') && av.length > 25000) {
+  // Guard against massive uncompressed images (> 55KB) to protect Firestore 1MB document limit
+  if (av.startsWith('data:image/') && av.length > 55000) {
     return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
   }
   return av;

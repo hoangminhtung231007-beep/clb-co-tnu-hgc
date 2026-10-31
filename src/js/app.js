@@ -153,7 +153,7 @@ class App {
       if (link) {
         const li = link.closest('li') || link;
         if (isAdmin) {
-          li.style.display = 'none';
+          li.style.display = (this.currentView === 'admin') ? 'none' : '';
         } else if (isGuest && v === 'member-pass') {
           li.style.display = 'none';
         } else {
@@ -163,7 +163,7 @@ class App {
       const mobileBtn = document.querySelector(`.mobile-nav-btn[data-view="${v}"]`);
       if (mobileBtn) {
         if (isAdmin) {
-          mobileBtn.style.display = 'none';
+          mobileBtn.style.display = (this.currentView === 'admin') ? 'none' : '';
         } else if (isGuest && v === 'member-pass') {
           mobileBtn.style.display = 'none';
         } else {
@@ -189,7 +189,7 @@ class App {
 
     const mobileBottomBar = document.getElementById('mobileBottomBar');
     if (mobileBottomBar) {
-      mobileBottomBar.style.display = isAdmin ? 'none' : '';
+      mobileBottomBar.style.display = (isAdmin && this.currentView === 'admin') ? 'none' : '';
     }
 
     if (guestNavActions) {
@@ -202,7 +202,40 @@ class App {
       btnAdminPortal.style.display = isAdmin ? 'inline-flex' : 'none';
     }
     if (navUserBadge) {
-      navUserBadge.innerHTML = '';
+      if (isAdmin) {
+        navUserBadge.innerHTML = `
+          <button type="button" class="btn btn-gold btn-sm btn-nav-admin-return" id="btnNavAdminReturn" style="font-weight: 700; padding: 6px 14px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 10px rgba(212,175,55,0.35); border-radius: 8px;">
+            <span>👑</span> <span>${this.currentView === 'admin' ? 'Buồng Lái Admin' : 'Về Trang Admin'}</span>
+          </button>
+        `;
+        const btnReturn = navUserBadge.querySelector('#btnNavAdminReturn');
+        if (btnReturn) {
+          btnReturn.onclick = (e) => {
+            e.stopPropagation();
+            sound.playClick();
+            const isMobile = window.innerWidth <= 768;
+            this.adminSubView = isMobile ? 'admin-checkin' : (this.adminSubView || 'admin-overview');
+            this.navigateTo('admin', this.adminSubView);
+          };
+        }
+      } else if (!isGuest && activeMember) {
+        navUserBadge.innerHTML = `
+          <div class="user-avatar-pill" id="btnNavUserPill" title="Xem thẻ thành viên cá nhân" style="cursor: pointer;">
+            <img src="${activeMember.avatar}" alt="${activeMember.name}" style="object-fit:cover; border-radius:50%; width: 28px; height: 28px;">
+            <span class="user-avatar-name" style="font-weight: 600; font-size: 0.82rem; color: #fff;">${activeMember.name}</span>
+          </div>
+        `;
+        const pill = navUserBadge.querySelector('#btnNavUserPill');
+        if (pill) {
+          pill.onclick = (e) => {
+            e.stopPropagation();
+            sound.playClick();
+            this.navigateTo('member-pass');
+          };
+        }
+      } else {
+        navUserBadge.innerHTML = '';
+      }
     }
 
     // 3. Update Mobile Bottom Bar Center FAB (Đăng ký for Guest, Thẻ TV for Member)
@@ -239,8 +272,14 @@ class App {
       const v = item.getAttribute('data-view');
       item.classList.toggle('active', v === this.currentView);
       if (isAdmin) {
-        // Chế độ Admin trên điện thoại: Chỉ hiển thị duy nhất mục Quét QR Điểm Danh
-        item.style.display = (v === 'admin') ? 'flex' : 'none';
+        // Chế độ Admin: Luôn ưu tiên hiển thị Buồng Lái Quản Trị và các trang công khai để kiểm tra
+        if (v === 'admin') {
+          item.style.display = 'flex';
+        } else if (v === 'member-pass') {
+          item.style.display = 'none';
+        } else {
+          item.style.display = 'flex';
+        }
       } else {
         if (v === 'admin') {
           item.style.display = 'none';
@@ -389,6 +428,142 @@ class App {
     const notifications = [];
     const events = state.events || [];
 
+    // =========================================================================
+    // 👑 CHẾ ĐỘ QUẢN TRỊ VIÊN (ADMIN ONLY): THÔNG BÁO DÀNH RIÊNG CHO ADMIN
+    // Chỉ hiển thị các thông báo nghiệp vụ Quản trị, bấm vào chuyển ngay đến
+    // tab tương ứng trong Buồng Lái Admin, không nhảy sang giao diện thành viên.
+    // =========================================================================
+    if (isAdmin) {
+      // 1. ĐƠN ĐĂNG KÝ GIA NHẬP MỚI CHỜ DUYỆT
+      const pendingApps = (state.pendingApplications || []).filter((a) => !a.status || a.status === 'pending');
+      if (pendingApps.length > 0) {
+        notifications.push({
+          id: `notif_admin_pending_apps_${pendingApps.length}`,
+          icon: '📝',
+          title: `Đơn gia nhập mới chờ duyệt (${pendingApps.length})`,
+          desc: `Có ${pendingApps.length} tân kỳ thủ vừa gửi đơn gia nhập CLB đang chờ duyệt hồ sơ. Bấm để mở tab Duyệt đơn!`,
+          time: 'Cần duyệt',
+          badge: 'Duyệt Đơn',
+          targetView: 'admin',
+          targetSubView: 'admin-users'
+        });
+      }
+
+      // 2. QUẢN LÝ HOẠT ĐỘNG & GIẢI ĐẤU
+      if (events.length > 0) {
+        const latestEvent = events[0];
+        notifications.push({
+          id: `notif_admin_events_${latestEvent.id || 'overview'}`,
+          icon: '🏆',
+          title: `Quản lý giải đấu: ${latestEvent.title || 'Sự kiện CLB'}`,
+          desc: `Thời gian: ${latestEvent.dateTime || latestEvent.date || 'Sắp tới'} • Bấm để quản lý danh sách đăng ký, mở điểm danh hoặc cập nhật kết quả.`,
+          time: latestEvent.date || 'Sự kiện',
+          badge: 'Sự Kiện',
+          targetView: 'admin',
+          targetSubView: 'admin-events'
+        });
+      } else {
+        notifications.push({
+          id: 'notif_admin_events_empty',
+          icon: '🎯',
+          title: 'Tổ chức sự kiện & giải đấu mới',
+          desc: 'Hiện chưa có giải đấu nào được lên lịch. Bấm để tạo sự kiện giao lưu hoặc giải cờ mới cho CLB.',
+          time: 'Kế hoạch',
+          badge: 'Tạo Mới',
+          targetView: 'admin',
+          targetSubView: 'admin-events'
+        });
+      }
+
+      // 3. VẬN HÀNH BỐC THĂM HỆ THỤY SĨ (Swiss Tournament)
+      const swissEvent = events.find((ev) => ev.swissData && ev.swissData.rounds && ev.swissData.rounds.length > 0);
+      if (swissEvent) {
+        const curR = swissEvent.swissData.currentRound || 1;
+        notifications.push({
+          id: `notif_admin_swiss_${swissEvent.id}_r${curR}`,
+          icon: '⚔️',
+          title: `Vận hành Hệ Thụy Sĩ: ${swissEvent.title}`,
+          desc: `Đang ở Vòng ${curR}. Bấm để xem kết quả các bàn đấu, nhập tỷ số hoặc bốc thăm vòng tiếp theo.`,
+          time: `Vòng ${curR}`,
+          badge: 'Hệ Thụy Sĩ',
+          targetView: 'admin',
+          targetSubView: 'admin-swiss'
+        });
+      }
+
+      // 4. QUÉT MÃ QR ĐIỂM DANH BUỔI SINH HOẠT
+      notifications.push({
+        id: 'notif_admin_checkin_fast',
+        icon: '📷',
+        title: 'Quét mã QR Thẻ Điểm danh',
+        desc: 'Mở nhanh camera quét thẻ PVC hoặc mã QR điện tử của kỳ thủ khi đến sinh hoạt CLB.',
+        time: 'Sinh hoạt',
+        badge: 'Điểm Danh',
+        targetView: 'admin',
+        targetSubView: 'admin-checkin'
+      });
+
+      // 5. CẢNH BÁO KỲ THỦ VẮNG SINH HOẠT
+      const sessionLogs = (state.attendanceLogs || []).filter((log) => log.category === 'session' && log.timestamp);
+      const sessionDates = [...new Set(sessionLogs.map((l) => l.timestamp.slice(0, 10)))].sort().reverse();
+      if (sessionDates.length >= 2) {
+        const lastDate1 = sessionDates[0];
+        const lastDate2 = sessionDates[1];
+        const absentMembers = (state.members || []).filter((m) => {
+          const attended1 = sessionLogs.some((l) => l.memberId === m.id && l.status === 'success' && l.timestamp.startsWith(lastDate1));
+          const attended2 = sessionLogs.some((l) => l.memberId === m.id && l.status === 'success' && l.timestamp.startsWith(lastDate2));
+          return !attended1 && !attended2;
+        });
+        if (absentMembers.length > 0) {
+          notifications.push({
+            id: `notif_admin_absent_members_${lastDate1}`,
+            icon: '⚠️',
+            title: `Cảnh báo chuyên cần: Có ${absentMembers.length} kỳ thủ vắng 2 buổi`,
+            desc: `Có ${absentMembers.length} thành viên vắng 2 buổi sinh hoạt gần nhất. Bấm để xem và quản lý danh sách chuyên cần!`,
+            time: 'Chuyên cần',
+            badge: 'Cảnh Báo',
+            targetView: 'admin',
+            targetSubView: 'admin-overview'
+          });
+        }
+      }
+
+      // 6. QUẢN LÝ QUỸ & TÀI CHÍNH CLB
+      const fundCampaigns = state.fundCampaigns || [];
+      const activeCampaign = fundCampaigns.find((c) => c.status === 'active') || fundCampaigns[0];
+      notifications.push({
+        id: 'notif_admin_funds_monitor',
+        icon: '💰',
+        title: 'Quản lý Quỹ & Thu chi CLB',
+        desc: activeCampaign
+          ? `Chiến dịch "${activeCampaign.title}" đang hoạt động. Bấm để kiểm tra số dư và duyệt đóng quỹ.`
+          : 'Bấm để quản lý quỹ sinh hoạt, xem lịch sử đóng quỹ và thiết lập số tài khoản CLB.',
+        time: 'Tài chính',
+        badge: 'Quỹ CLB',
+        targetView: 'admin',
+        targetSubView: 'admin-funds'
+      });
+
+      // 7. CẢNH BÁO / TRẠNG THÁI FIREBASE CLOUD
+      const isOnline = navigator.onLine;
+      notifications.push({
+        id: `notif_admin_firebase_${isOnline ? 'online' : 'offline'}`,
+        icon: isOnline ? '☁️' : '⚠️',
+        title: isOnline ? 'Đồng bộ Đám mây: TRỰC TUYẾN' : 'Cảnh báo: MẤT KẾT NỐI MẠNG',
+        desc: isOnline
+          ? 'Hệ thống Firebase đang kết nối ổn định và tự động đồng bộ 2 chiều thời gian thực.'
+          : 'Không có kết nối Internet. Dữ liệu đang lưu cục bộ trên máy và sẽ tự động đồng bộ khi có mạng.',
+        time: 'Hệ thống',
+        badge: isOnline ? 'Online' : 'Offline',
+        targetView: 'admin',
+        targetSubView: 'admin-firebase'
+      });
+
+      return notifications;
+    }
+
+    // =========================================================================
+    // 👥 THÔNG BÁO CHO THÀNH VIÊN VÀ KHÁCH (MEMBER & GUEST ONLY)
     // =========================================================================
     // 1. HOẠT ĐỘNG HOẶC GIẢI ĐẤU MỚI (Báo ngay khi thêm, không cần mở đăng ký)
     // =========================================================================
@@ -593,46 +768,6 @@ class App {
       targetView: 'home'
     });
 
-
-
-    // =========================================================================
-    // 10. (ADMIN) CÓ ĐƠN ĐĂNG KÝ MỚI CHỜ DUYỆT
-    // =========================================================================
-    if (isAdmin) {
-      const pendingApps = (state.pendingApplications || []).filter((a) => a.status === 'pending');
-      if (pendingApps.length > 0) {
-        notifications.push({
-          id: `notif_pending_apps_${pendingApps.length}`,
-          icon: '📝',
-          title: 'Đơn đăng ký mới chờ duyệt',
-          desc: `Có ${pendingApps.length} đơn đăng ký gia nhập CLB đang chờ phê duyệt.`,
-          time: 'Cần xử lý',
-          badge: 'Admin',
-          targetView: 'admin',
-          targetSubView: 'admin-users'
-        });
-      }
-    }
-
-    // =========================================================================
-    // 11. (ADMIN) CẢNH BÁO ĐỒNG BỘ DỮ LIỆU FIREBASE
-    // =========================================================================
-    if (isAdmin) {
-      const isOnline = navigator.onLine;
-      notifications.push({
-        id: `notif_firebase_status_${isOnline ? 'online' : 'offline'}`,
-        icon: isOnline ? '☁️' : '⚠️',
-        title: isOnline ? 'Cơ sở dữ liệu đám mây: TRỰC TUYẾN' : 'Cảnh báo: MẤT KẾT NỐI MẠNG',
-        desc: isOnline
-          ? 'Hệ thống Firebase đang kết nối ổn định và tự động đồng bộ thời gian thực.'
-          : 'Không có kết nối mạng Internet. Dữ liệu đang được lưu cục bộ (Local Storage).',
-        time: 'Hệ thống',
-        badge: isOnline ? 'Online' : 'Offline',
-        targetView: 'admin',
-        targetSubView: 'admin-firebase'
-      });
-    }
-
     return notifications;
   }
 
@@ -786,6 +921,12 @@ class App {
     const listEl = document.getElementById('notificationList');
     const badgeDot = document.getElementById('navNotificationBadge');
     if (!listEl) return;
+
+    const notifHeaderTitle = document.querySelector('#notificationDropdown .notification-header .font-bold');
+    const isAdminRole = store.getState().currentSession?.role === 'admin';
+    if (notifHeaderTitle) {
+      notifHeaderTitle.textContent = isAdminRole ? 'THÔNG BÁO QUẢN TRỊ (ADMIN)' : 'THÔNG BÁO CLB';
+    }
 
     const notifs = this.getNotificationsList();
     const readIds = this.getReadNotificationIds();
@@ -1145,6 +1286,33 @@ class App {
         break;
       default:
         this.renderHome(container);
+    }
+
+    // Khi Admin xem các trang khác, hiển thị thanh banner thông báo kèm nút quay lại Buồng Lái Admin
+    const curRole = store.getState().currentSession?.role;
+    if (curRole === 'admin' && this.currentView !== 'admin') {
+      const banner = document.createElement('div');
+      banner.id = 'adminViewingClientBanner';
+      banner.className = 'admin-viewing-client-banner animate-fadeIn';
+      banner.style.cssText = 'background: linear-gradient(90deg, #1e1b4b 0%, #0f172a 100%); border: 1.5px solid var(--border-gold); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 auto 16px; max-width: 1200px; border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,0.6);';
+      banner.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: #fde68a;">
+          <span style="font-size: 1.25rem;">👑</span>
+          <div>
+            <strong>Chế độ Quản trị viên:</strong> Bạn đang xem giao diện công khai / thành viên.
+          </div>
+        </div>
+        <button type="button" class="btn btn-gold btn-sm" id="btnBannerReturnAdmin" style="font-weight: 700; padding: 6px 16px; font-size: 0.82rem; white-space: nowrap; box-shadow: 0 2px 8px rgba(245,158,11,0.4); border-radius: 6px;">
+          <span>👑</span> Quay lại Buồng Lái Admin
+        </button>
+      `;
+      container.insertBefore(banner, container.firstChild);
+      banner.querySelector('#btnBannerReturnAdmin')?.addEventListener('click', () => {
+        sound.playClick();
+        const isMobile = window.innerWidth <= 768;
+        this.adminSubView = isMobile ? 'admin-checkin' : (this.adminSubView || 'admin-overview');
+        this.navigateTo('admin', this.adminSubView);
+      });
     }
   }
 

@@ -2314,13 +2314,28 @@ class App {
         status: 'upcoming'
       });
 
-      // Kích hoạt ngay thông báo thiết bị (Đổ chuông & Banner màn hình)
+      // Kích hoạt ngay thông báo thiết bị cục bộ (Đổ chuông & Banner màn hình)
       const evLabel = selectedType === 'tournament' ? '🏆 GIẢI ĐẤU MỚI' : '🎯 HOẠT ĐỘNG MỚI';
+      const evTime = modal.querySelector('#evDateTime').value.trim() || 'Sắp diễn ra';
+      const evLoc = modal.querySelector('#evLocation').value.trim() || 'CLB Cờ TNU';
+      const notifBody = `Thời gian: ${evTime} • Địa điểm: ${evLoc}. Bấm để xem chi tiết!`;
+
       this.sendDevicePushNotification(
         `${evLabel}: ${title}`,
-        `Thời gian: ${modal.querySelector('#evDateTime').value.trim() || 'Sắp diễn ra'} • Địa điểm: ${modal.querySelector('#evLocation').value.trim() || 'CLB Cờ TNU'}. Bấm để xem chi tiết!`,
+        notifBody,
         '/#events'
       );
+
+      // Tự động phát sóng Web Push qua máy chủ Google FCM tới toàn thể điện thoại thành viên (Kể cả khi tắt web)
+      pushNotificationService.broadcastPushNotification(
+        `${evLabel}: ${title}`,
+        notifBody,
+        '/#events'
+      ).then((res) => {
+        if (res && res.sentCount > 0) {
+          console.log(`Đã phát sóng thông báo tới ${res.sentCount} thiết bị thành viên.`);
+        }
+      }).catch((e) => console.warn('Broadcast push error:', e));
 
       modalManager.showAlert(`Đã lên lịch ${selectedType === 'tournament' ? 'giải đấu' : 'hoạt động'} mới thành công!\n(Trạng thái: SẮP DIỄN RA ⏰ • Đã kích hoạt thông báo tới các thiết bị!)`);
       return true;
@@ -5605,11 +5620,11 @@ class App {
               <p class="text-xs text-muted mb-0">Hệ thống gửi thông báo giải đấu, sự kiện đến màn hình điện thoại & máy tính thành viên qua Firebase Cloud Messaging (Web Push Service Worker).</p>
             </div>
             <div class="d-flex gap-2 align-center flex-wrap">
-              <button type="button" id="btnTestDevicePushAdmin" class="btn btn-gold btn-sm">
-                <span>🔔</span> <span>Bật & Thử Thông Báo</span>
+              <button type="button" id="btnTestDevicePushAdmin" class="btn btn-outline btn-sm">
+                <span>🔔</span> <span>Bật & Thử Trên Máy Này</span>
               </button>
-              <button type="button" id="btnTestBgPush5s" class="btn btn-outline btn-sm" title="Hẹn giờ 5s để bạn tắt web/khóa máy thử">
-                <span>⏱️</span> <span>Thử Nhận Sau 5s (Khi Đóng Web)</span>
+              <button type="button" id="btnBroadcastTestToAll" class="btn btn-gold btn-sm" title="Phát sóng thông báo thử nghiệm qua Vercel & Google FCM tới mọi máy kể cả khi đóng web">
+                <span>🚀</span> <span>Bắn Thử Toàn CLB (Đóng Web Vẫn Nhận)</span>
               </button>
             </div>
           </div>
@@ -6149,31 +6164,38 @@ service cloud.firestore {
       });
     });
 
-    const btnTestBgPush5s = container.querySelector('#btnTestBgPush5s');
-    btnTestBgPush5s?.addEventListener('click', async () => {
+    const btnBroadcastToAll = container.querySelector('#btnBroadcastTestToAll');
+    btnBroadcastToAll?.addEventListener('click', async () => {
       sound.playClick();
-      if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
-        modalManager.showAlert({
-          type: 'warning',
-          title: 'Chưa cấp quyền',
-          message: 'Vui lòng bấm nút "Bật & Thử Thông Báo" trước để cho phép nhận thông báo trên máy này!'
-        });
-        return;
-      }
+      const origHtml = btnBroadcastToAll.innerHTML;
+      btnBroadcastToAll.innerHTML = '<span>⏳</span> <span>Đang phát sóng tới Cloud...</span>';
+      btnBroadcastToAll.disabled = true;
 
-      modalManager.showAlert({
-        type: 'info',
-        title: '⏱️ Đã kích hoạt hẹn giờ 5 giây!',
-        message: 'Bây giờ bạn hãy chuyển tab, thu nhỏ trình duyệt hoặc khóa màn hình. Sau 5 giây, thông báo sẽ tự động hiện lên!'
-      });
-
-      setTimeout(() => {
-        pushNotificationService.showNativeNotification(
-          '♟️ [Test Nền] CLB Cờ TNU - HGC',
-          'Thông báo nền ngầm khi đóng web đang hoạt động hoàn hảo trên thiết bị của bạn!',
+      try {
+        const res = await pushNotificationService.broadcastPushNotification(
+          '🏆 [THỬ NGHIỆM] CLB Cờ TNU - HGC',
+          'Chào bạn! Tính năng thông báo tự động khi đóng website/khóa màn hình đang hoạt động hoàn hảo!',
           '/'
         );
-      }, 5000);
+        sound.playSuccess();
+        const sent = res?.sentCount || 0;
+        const total = res?.totalTargets || 0;
+        modalManager.showAlert({
+          type: 'success',
+          title: '🚀 ĐÃ PHÁT SÓNG THÀNH CÔNG!',
+          message: `Lệnh thông báo đã được gửi qua Vercel & Google FCM tới ${sent}/${total} thiết bị đã đăng ký!\n\nBạn hãy thử đóng hoàn toàn web hoặc khóa màn hình điện thoại để kiểm tra thông báo nảy lên.`
+        });
+      } catch (err) {
+        sound.playAlert();
+        modalManager.showAlert({
+          type: 'error',
+          title: 'Chưa thể phát sóng',
+          message: err.message || 'Lỗi khi gửi yêu cầu tới máy chủ phát sóng.'
+        });
+      } finally {
+        btnBroadcastToAll.innerHTML = origHtml;
+        btnBroadcastToAll.disabled = false;
+      }
     });
   }
 

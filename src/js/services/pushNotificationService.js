@@ -3,16 +3,31 @@
 
 import { getApps, initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
-import { doc, getFirestore, setDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getFirestore, setDoc, arrayUnion, collection, getDocs } from 'firebase/firestore';
 import { DEFAULT_FIREBASE_CONFIG, getFirebaseConfig } from '../config/firebaseConfig.js';
 
-export const FCM_VAPID_KEY = 'BH3NSvV9UTEukXeFDozs_p2Mu0P8L4kdzlJIbaOimL3dIw15-VK1BHCQ5FxBTFSrC2iGc15XqPEjLNEBjGhz7hE';
+export const FCM_VAPID_KEY = 'BOKxuEdNb0ce3qIHKKL3Q6gCZxa8hpn2Pd8SG1t8mEa-3dSYUKvTaPixxVRQqXRLtCv6CX4JkJ8yHYB1uvNV2FU';
+export const FCM_VAPID_PRIVATE_KEY = '_KHY8ezBSCEJ7GJgA9pawiiRD1oAWP75eb0a6WrtSdQ';
 const FCM_TOKEN_STORAGE_KEY = 'TNU_HGC_FCM_DEVICE_TOKEN';
+
+function urlB64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 class PushNotificationService {
   constructor() {
     this.messaging = null;
     this.currentToken = null;
+    this.currentSubscription = null;
     this.isSupported = false;
     this.isInitialized = false;
   }
@@ -114,19 +129,43 @@ class PushNotificationService {
       }
     }
 
+    // Subscribe to W3C Web Push Manager
+    let subscription = null;
+    try {
+      if (swReg && swReg.pushManager) {
+        subscription = await swReg.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await swReg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlB64ToUint8Array(FCM_VAPID_KEY)
+          });
+        }
+        this.currentSubscription = subscription;
+      }
+    } catch (subErr) {
+      console.warn('PushManager subscribe warning:', subErr);
+    }
+
     if (!this.messaging) {
       await this.init();
     }
 
-    if (!this.messaging) {
-      throw new Error('Không thể khởi tạo dịch vụ thông báo Firebase Messaging.');
+    // Get FCM registration token using VAPID key
+    let token = null;
+    if (this.messaging) {
+      try {
+        token = await getToken(this.messaging, {
+          vapidKey: FCM_VAPID_KEY,
+          serviceWorkerRegistration: swReg
+        });
+      } catch (tokErr) {
+        console.warn('getToken error, fallback to push subscription endpoint:', tokErr);
+      }
     }
 
-    // Get FCM registration token using user's VAPID key
-    const token = await getToken(this.messaging, {
-      vapidKey: FCM_VAPID_KEY,
-      serviceWorkerRegistration: swReg
-    });
+    if (!token && subscription) {
+      token = subscription.endpoint;
+    }
 
     if (!token) {
       throw new Error('Không thể lấy mã Token thông báo từ dịch vụ Push.');
@@ -135,10 +174,10 @@ class PushNotificationService {
     this.currentToken = token;
     localStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
 
-    // Save token to Firestore to receive future push broadcasts
-    await this.saveTokenToFirestore(token, memberInfo);
+    // Save token & subscription to Firestore
+    await this.saveTokenToFirestore(token, memberInfo, subscription);
 
-    // Send a welcome test notification to confirm it works
+    // Send a welcome test notification
     this.showNativeNotification(
       '🟢 Kích Hoạt Thông Báo Thành Công!',
       'CLB Cờ TNU - HGC sẽ tự động gửi thông báo đến thiết bị của bạn khi có sự kiện và giải đấu mới ngay cả khi đóng web.',
@@ -151,26 +190,41 @@ class PushNotificationService {
   async syncDeviceToken(memberInfo = null) {
     try {
       const savedToken = localStorage.getItem(FCM_TOKEN_STORAGE_KEY);
-      if (savedToken && this.messaging) {
+      if (savedToken) {
         this.currentToken = savedToken;
-        await this.saveTokenToFirestore(savedToken, memberInfo);
+        let sub = null;
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg.pushManager) {
+            sub = await reg.pushManager.getSubscription();
+          }
+        }
+        await this.saveTokenToFirestore(savedToken, memberInfo, sub);
       }
     } catch (e) {
       console.warn('syncDeviceToken error:', e);
     }
   }
 
-  async saveTokenToFirestore(token, memberInfo = null) {
+  async saveTokenToFirestore(token, memberInfo = null, subscription = null) {
     try {
       const apps = getApps();
       if (apps.length === 0) return;
       const db = getFirestore(apps[0]);
 
       const deviceInfo = this.getDeviceInfo();
-      const tokenDocRef = doc(db, 'push_subscribers', token.slice(0, 32));
+      const docId = token.slice(-32).replace(/[^a-zA-Z0-9_-]/g, '_');
+      const tokenDocRef = doc(db, 'push_subscribers', docId);
+
+      const subJson = subscription ? JSON.stringify(subscription.toJSON()) : null;
+      const subObj = subscription ? subscription.toJSON() : null;
 
       const payload = {
         token,
+        subscriptionJson: subJson,
+        endpoint: subObj?.endpoint || subscription?.endpoint || null,
+        p256dh: subObj?.keys?.p256dh || null,
+        auth: subObj?.keys?.auth || null,
         memberId: memberInfo?.id || 'guest',
         memberName: memberInfo?.name || 'Khách / Kỳ thủ',
         role: memberInfo?.role || 'guest',
@@ -180,7 +234,6 @@ class PushNotificationService {
 
       await setDoc(tokenDocRef, payload, { merge: true });
 
-      // Also append to main club document for quick summary
       const clubRef = doc(db, 'clubs', 'tnu_hgc');
       await setDoc(clubRef, {
         pushTokens: arrayUnion(token)
@@ -189,6 +242,55 @@ class PushNotificationService {
     } catch (err) {
       console.warn('Could not save FCM token to Firestore:', err);
     }
+  }
+
+  // Broadcast Web Push to all registered members (Even when website is closed!)
+  async broadcastPushNotification(title, body, url = '/') {
+    try {
+      let subscribers = [];
+      try {
+        const apps = getApps();
+        if (apps.length > 0) {
+          const db = getFirestore(apps[0]);
+          const snap = await getDocs(collection(db, 'push_subscribers'));
+          snap.forEach((d) => {
+            const data = d.data();
+            if (data.subscriptionJson) {
+              try {
+                subscribers.push(JSON.parse(data.subscriptionJson));
+              } catch (e) {}
+            } else if (data.endpoint && data.p256dh && data.auth) {
+              subscribers.push({
+                endpoint: data.endpoint,
+                keys: { p256dh: data.p256dh, auth: data.auth }
+              });
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Fetch subscribers directly warning:', err);
+      }
+
+      const res = await fetch('/api/send-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          body,
+          url,
+          subscriptions: subscribers
+        })
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        console.log('Web Push broadcast sent:', result);
+        return result;
+      }
+    } catch (broadcastErr) {
+      console.warn('broadcastPushNotification error:', broadcastErr);
+    }
+    return null;
   }
 
   getDeviceInfo() {
@@ -222,6 +324,8 @@ class PushNotificationService {
             icon: '/logo.png',
             badge: '/favicon.png',
             vibrate: [200, 100, 200],
+            tag: 'tnu_hgc_push_' + Date.now(),
+            renotify: true,
             data: { url }
           });
         }).catch(() => {

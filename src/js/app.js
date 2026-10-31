@@ -9,6 +9,7 @@ import { firebaseService } from './services/firebaseService.js';
 import { getFirebaseConfig, saveFirebaseConfig, clearFirebaseConfig } from './config/firebaseConfig.js';
 import { exportSwissStandingsCsv } from './utils/swissSystem.js';
 import { copyToClipboard } from './utils/qrHelper.js';
+import { pushNotificationService, FCM_VAPID_KEY } from './services/pushNotificationService.js';
 
 class App {
   constructor() {
@@ -58,6 +59,11 @@ class App {
           navigator.serviceWorker.ready.then((reg) => reg.update()).catch(() => {});
         }
       });
+    }
+
+    // Initialize Web Push FCM Service
+    if (typeof window !== 'undefined') {
+      pushNotificationService.init().catch((err) => console.warn('Push init error:', err));
     }
 
     // Capture PWA beforeinstallprompt on Android / Chromium
@@ -802,35 +808,40 @@ class App {
 
   async requestDeviceNotificationPermission() {
     if (typeof window === 'undefined' || !('Notification' in window)) {
-      modalManager.showAlert('Trình duyệt hiện tại của bạn chưa hỗ trợ thông báo đẩy trực tiếp. Hãy thêm website vào màn hình chính để sử dụng.');
-      return false;
-    }
-
-    if (Notification.permission === 'granted') {
-      sound.playSuccess();
-      modalManager.showAlert('🟢 Thông báo trên thiết bị đang hoạt động! Bạn sẽ nhận được thông báo giải đấu, sinh hoạt và tin mới từ CLB.');
-      this.sendDevicePushNotification('CLB Cờ TNU - HGC', 'Thông báo thiết bị đang hoạt động bình thường!');
-      return true;
-    }
-
-    if (Notification.permission === 'denied') {
-      modalManager.showAlert('⚠️ Quyền thông báo đã bị từ chối trước đó trên trình duyệt. Vui lòng bấm vào biểu tượng Ổ khóa / Cài đặt trang web trên thanh địa chỉ -> Chọn "Bật thông báo" rồi tải lại trang!');
+      modalManager.showAlert('Trình duyệt hiện tại của bạn chưa hỗ trợ thông báo đẩy trực tiếp. Hãy cài đặt website vào màn hình chính (PWA) để nhận thông báo.');
       return false;
     }
 
     try {
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
+      const state = store.getState();
+      const currentMember = state.currentSession?.memberId ? store.getMemberById(state.currentSession.memberId) : null;
+
+      const token = await pushNotificationService.requestPermissionAndGetToken(currentMember);
+      if (token) {
         sound.playSuccess();
-        modalManager.showAlert('🎉 Bật thông báo thành công! CLB Cờ TNU - HGC sẽ gửi thông báo các sự kiện và giải đấu đến thiết bị của bạn.');
-        this.sendDevicePushNotification('CLB Cờ TNU - HGC', 'Chào mừng bạn! Đã bật thông báo thiết bị thành công.');
+        modalManager.showAlert({
+          type: 'success',
+          title: '🎉 Kích Hoạt Thông Báo Đẩy Thành Công!',
+          message: 'Từ nay, bạn sẽ nhận được thông báo giải đấu, sự kiện và tin tức quan trọng từ CLB Cờ TNU - HGC ngay cả khi không mở website hoặc khi tắt/khóa màn hình!'
+        });
         return true;
       } else {
-        modalManager.showAlert('Bạn chưa cấp quyền thông báo. Bạn có thể bật lại bất cứ lúc nào bằng nút "Bật thông báo"!');
+        if (Notification.permission === 'denied') {
+          modalManager.showAlert({
+            type: 'warning',
+            title: 'Quyền thông báo bị chặn',
+            message: 'Quyền thông báo đã bị từ chối trên trình duyệt. Vui lòng bấm vào biểu tượng Ổ khóa / Cài đặt trang web trên thanh địa chỉ -> Chọn "Cho phép thông báo" rồi tải lại trang!'
+          });
+        }
         return false;
       }
-    } catch (e) {
-      console.warn('Notification permission error', e);
+    } catch (err) {
+      sound.playAlert();
+      modalManager.showAlert({
+        type: 'warning',
+        title: 'Chưa thể bật thông báo',
+        message: err.message || 'Vui lòng kiểm tra quyền thông báo trên trình duyệt của bạn.'
+      });
       return false;
     }
   }
@@ -839,26 +850,7 @@ class App {
     if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
       return;
     }
-
-    try {
-      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.ready.then((reg) => {
-          reg.showNotification(title, {
-            body,
-            icon: '/logo.png',
-            badge: '/favicon.png',
-            vibrate: [200, 100, 200],
-            data: { url }
-          });
-        }).catch(() => {
-          new Notification(title, { body, icon: '/logo.png' });
-        });
-      } else {
-        new Notification(title, { body, icon: '/logo.png' });
-      }
-    } catch (err) {
-      console.warn('Could not display device notification', err);
-    }
+    pushNotificationService.showNativeNotification(title, body, url);
   }
 
   showToastNotification(notif) {
@@ -5591,6 +5583,60 @@ class App {
           </div>
         </div>
 
+        <!-- Web Push Notifications (FCM) Card -->
+        <div class="card mb-4" style="background: radial-gradient(circle at 100% 0%, rgba(16,185,129,0.12) 0%, transparent 60%), linear-gradient(135deg, rgba(14,23,46,0.95) 0%, rgba(26,42,82,0.85) 100%); border: 1.5px solid rgba(16,185,129,0.4); padding: 22px;">
+          <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
+            <div>
+              <div class="d-flex align-center gap-2 mb-1 flex-wrap">
+                <span class="badge badge-emerald">WEB PUSH NOTIFICATIONS</span>
+                <span class="badge badge-cyan">FIREBASE CLOUD MESSAGING (FCM)</span>
+                <span class="badge badge-gold">VAPID KEY HOẠT ĐỘNG</span>
+              </div>
+              <h3 class="font-bold text-white text-base">Thông Báo Đẩy Thiết Bị (Không Cần Mở Website)</h3>
+              <p class="text-xs text-muted mb-0">Hệ thống gửi thông báo giải đấu, sự kiện đến màn hình điện thoại & máy tính thành viên qua Firebase Cloud Messaging (Web Push Service Worker).</p>
+            </div>
+            <div class="d-flex gap-2 align-center flex-wrap">
+              <button type="button" id="btnTestDevicePushAdmin" class="btn btn-gold btn-sm">
+                <span>🔔</span> <span>Bật & Thử Thông Báo</span>
+              </button>
+              <button type="button" id="btnTestBgPush5s" class="btn btn-outline btn-sm" title="Hẹn giờ 5s để bạn tắt web/khóa máy thử">
+                <span>⏱️</span> <span>Thử Nhận Sau 5s (Khi Đóng Web)</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-2 gap-3 mb-3">
+            <div class="p-3" style="background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+              <div class="d-flex justify-between align-center mb-1">
+                <span class="text-xs font-bold text-gold">VAPID Public Key (Khóa Công Khai FCM):</span>
+                <button type="button" id="btnCopyVapidKey" class="btn btn-outline btn-xs" style="font-size:11px; padding:2px 8px;">📋 Sao chép</button>
+              </div>
+              <div class="font-mono text-xs text-cyan" style="word-break: break-all;">${FCM_VAPID_KEY}</div>
+            </div>
+
+            <div class="p-3" style="background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+              <div class="d-flex justify-between align-center mb-1">
+                <span class="text-xs font-bold text-emerald">Trạng Thái Thiết Bị Này:</span>
+                <span class="badge ${typeof Notification !== 'undefined' && Notification.permission === 'granted' ? 'badge-emerald' : typeof Notification !== 'undefined' && Notification.permission === 'denied' ? 'badge-rose' : 'badge-gold'}">
+                  ${typeof Notification !== 'undefined' && Notification.permission === 'granted' ? '🟢 ĐÃ CẤP QUYỀN' : typeof Notification !== 'undefined' && Notification.permission === 'denied' ? '🔴 BỊ CHẶN' : '🟡 CHƯA KÍCH HOẠT'}
+                </span>
+              </div>
+              <div class="text-xs text-muted" style="word-break: break-all;">
+                ${pushNotificationService.getSavedToken() 
+                  ? `Mã Token FCM: <span class="font-mono text-white">${pushNotificationService.getSavedToken().slice(0, 30)}...</span>` 
+                  : 'Chưa lấy Token FCM trên trình duyệt này. Bấm <strong>"Bật & Thử Thông Báo"</strong> để kích hoạt.'}
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3" style="background: rgba(15,23,42,0.6); border-radius: 8px; border-left: 3px solid var(--gold-color);">
+            <div class="text-xs text-dim" style="line-height: 1.6;">
+              <strong class="text-white">💡 Cơ chế Web Push khi tắt website:</strong><br>
+              Khi thành viên bấm "Bật thông báo", thiết bị sẽ được cấp mã định danh Token và đăng ký chạy nền với Google FCM. Khi có giải đấu hoặc tin tức mới, máy chủ Google sẽ phát sóng trực tiếp tới hệ điều hành (Android / iOS qua Safari PWA / Windows / macOS) và làm rung chuông điện thoại mà không cần thành viên phải mở ứng dụng web.
+            </div>
+          </div>
+        </div>
+
         <!-- 3-Minute Quick Guide Card -->
         <div class="card" style="border: 1px dashed rgba(212,175,55,0.35);">
           <h3 class="font-bold text-white text-base mb-3 d-flex align-center gap-2">
@@ -6073,6 +6119,52 @@ service cloud.firestore {
           btnCopyRules.textContent = '📋 Sao chép Rules';
         }, 1500);
       });
+    });
+
+    // Web Push FCM Events
+    const btnTestPush = container.querySelector('#btnTestDevicePushAdmin');
+    btnTestPush?.addEventListener('click', async () => {
+      sound.playClick();
+      await this.requestDeviceNotificationPermission();
+      this.renderAdminFirebase(container);
+    });
+
+    const btnCopyVapid = container.querySelector('#btnCopyVapidKey');
+    btnCopyVapid?.addEventListener('click', () => {
+      copyToClipboard(FCM_VAPID_KEY);
+      sound.playSuccess();
+      modalManager.showAlert({
+        type: 'success',
+        title: 'Đã sao chép',
+        message: 'Đã sao chép VAPID Public Key vào bộ nhớ tạm!'
+      });
+    });
+
+    const btnTestBgPush5s = container.querySelector('#btnTestBgPush5s');
+    btnTestBgPush5s?.addEventListener('click', async () => {
+      sound.playClick();
+      if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
+        modalManager.showAlert({
+          type: 'warning',
+          title: 'Chưa cấp quyền',
+          message: 'Vui lòng bấm nút "Bật & Thử Thông Báo" trước để cho phép nhận thông báo trên máy này!'
+        });
+        return;
+      }
+
+      modalManager.showAlert({
+        type: 'info',
+        title: '⏱️ Đã kích hoạt hẹn giờ 5 giây!',
+        message: 'Bây giờ bạn hãy chuyển tab, thu nhỏ trình duyệt hoặc khóa màn hình. Sau 5 giây, thông báo sẽ tự động hiện lên!'
+      });
+
+      setTimeout(() => {
+        pushNotificationService.showNativeNotification(
+          '♟️ [Test Nền] CLB Cờ TNU - HGC',
+          'Thông báo nền ngầm khi đóng web đang hoạt động hoàn hảo trên thiết bị của bạn!',
+          '/'
+        );
+      }, 5000);
     });
   }
 

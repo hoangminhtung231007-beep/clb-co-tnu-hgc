@@ -54,8 +54,45 @@ class Store {
         if (Array.isArray(remoteApplications)) {
           this.applyRemoteApplications(remoteApplications);
         }
+      },
+      (remoteArticles) => {
+        if (Array.isArray(remoteArticles)) {
+          this.applyRemoteArticles(remoteArticles);
+        }
       }
     );
+  }
+
+  applyRemoteArticles(remoteArticles) {
+    if (!Array.isArray(remoteArticles) || remoteArticles.length === 0) return;
+    this.isRemoteUpdating = true;
+    try {
+      const artMap = new Map();
+      remoteArticles.forEach((a) => {
+        if (a && a.id) artMap.set(a.id, a);
+      });
+
+      // Retain any locally authored article not yet in remote collection
+      if (Array.isArray(this.state.articles)) {
+        this.state.articles.forEach((localArt) => {
+          if (localArt && localArt.id && !artMap.has(localArt.id)) {
+            artMap.set(localArt.id, localArt);
+          }
+        });
+      }
+
+      this.state.articles = Array.from(artMap.values());
+      this.saveState();
+      this.listeners.forEach((listener) => {
+        try {
+          listener(this.state);
+        } catch (e) {
+          console.error('Error in state listener for articles update:', e);
+        }
+      });
+    } finally {
+      this.isRemoteUpdating = false;
+    }
   }
 
   applyRemoteApplications(remoteApplications) {
@@ -120,7 +157,21 @@ class Store {
         this.state.events = remoteData.events;
       }
       if (Array.isArray(remoteData.attendanceLogs)) this.state.attendanceLogs = remoteData.attendanceLogs;
-      if (Array.isArray(remoteData.articles)) this.state.articles = remoteData.articles;
+      if (Array.isArray(remoteData.articles)) {
+        const artMap = new Map();
+        remoteData.articles.forEach((a) => {
+          if (a && a.id) artMap.set(a.id, a);
+        });
+        // Retain local articles so a newly posted 2nd article never disappears!
+        if (Array.isArray(this.state.articles)) {
+          this.state.articles.forEach((localArt) => {
+            if (localArt && localArt.id && !artMap.has(localArt.id)) {
+              artMap.set(localArt.id, localArt);
+            }
+          });
+        }
+        this.state.articles = Array.from(artMap.values());
+      }
       if (Array.isArray(remoteData.pendingApplications)) {
         // Single Source of Truth from Firestore
         this.state.pendingApplications = remoteData.pendingApplications.filter((app) => {
@@ -1291,9 +1342,13 @@ class Store {
 
   // --- CMS Articles ---
   addArticle(articleData) {
-    const nextNum = (this.state.articles.length + 1).toString().padStart(3, '0');
+    let nextNum = (this.state.articles.length + 1).toString().padStart(3, '0');
+    let newId = `ART-${nextNum}`;
+    if (this.state.articles.some((a) => a.id === newId)) {
+      newId = `ART-${Date.now().toString().slice(-4)}`;
+    }
     const newArticle = {
-      id: `ART-${nextNum}`,
+      id: newId,
       title: articleData.title,
       category: articleData.category || 'Tin hoạt động',
       author: articleData.author || 'CLB Cờ TNU - HGC',
@@ -1304,16 +1359,44 @@ class Store {
       content: articleData.content,
       gallery: Array.isArray(articleData.gallery) ? articleData.gallery : [],
       featured: articleData.featured || false,
-      status: 'published'
+      status: 'published',
+      createdAt: new Date().toISOString()
     };
     this.state.articles.unshift(newArticle);
-    this.notify();
+    this.saveState();
+    this.notify(true);
+    if (typeof firebaseService !== 'undefined' && firebaseService?.saveArticleDoc) {
+      firebaseService.saveArticleDoc(newArticle);
+    }
     return newArticle;
+  }
+
+  updateArticle(id, updatedData) {
+    const idx = this.state.articles.findIndex((a) => a.id === id);
+    if (idx !== -1) {
+      this.state.articles[idx] = {
+        ...this.state.articles[idx],
+        ...updatedData,
+        id, // preserve id
+        updatedAt: new Date().toISOString()
+      };
+      this.saveState();
+      this.notify(true);
+      if (typeof firebaseService !== 'undefined' && firebaseService?.saveArticleDoc) {
+        firebaseService.saveArticleDoc(this.state.articles[idx]);
+      }
+      return this.state.articles[idx];
+    }
+    return null;
   }
 
   deleteArticle(id) {
     this.state.articles = this.state.articles.filter((a) => a.id !== id);
-    this.notify();
+    this.saveState();
+    this.notify(true);
+    if (typeof firebaseService !== 'undefined' && firebaseService?.deleteArticleDoc) {
+      firebaseService.deleteArticleDoc(id);
+    }
   }
 
   // ==========================================

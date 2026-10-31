@@ -20,6 +20,20 @@ function sanitizeAvatarString(av) {
   return av;
 }
 
+// Helper to sanitize articles so payload never exceeds 1MB Firestore limit
+function sanitizeArticlesList(articles) {
+  if (!Array.isArray(articles)) return [];
+  return articles.map((art) => {
+    if (!art) return art;
+    const gallery = Array.isArray(art.gallery) ? art.gallery : [];
+    return {
+      ...art,
+      // Cap gallery array on the root document to 10 photos to keep doc well under 1MB
+      gallery: gallery.slice(0, 10)
+    };
+  });
+}
+
 function sanitizeStateForClubDoc(state) {
   const members = Array.isArray(state.members) ? state.members.map(m => {
     if (!m) return m;
@@ -41,7 +55,7 @@ function sanitizeStateForClubDoc(state) {
     members,
     events: state.events || [],
     attendanceLogs: state.attendanceLogs || [],
-    articles: state.articles || [],
+    articles: sanitizeArticlesList(state.articles),
     pendingApplications,
     alumniBoard: state.alumniBoard || [],
     alumniMembers: state.alumniMembers || [],
@@ -60,6 +74,7 @@ class FirebaseService {
     this.db = null;
     this.unsubscribeSnapshot = null;
     this.unsubscribeApps = null;
+    this.unsubscribeArticles = null;
     this.status = 'unconfigured'; // 'unconfigured' | 'connecting' | 'connected' | 'disconnected' | 'error'
     this.statusListeners = new Set();
     this.lastSyncTime = null;
@@ -89,7 +104,7 @@ class FirebaseService {
     return !!getFirebaseConfig();
   }
 
-  init(onRemoteDataCallback, onApplicationsCallback) {
+  init(onRemoteDataCallback, onApplicationsCallback, onArticlesCallback) {
     const config = getFirebaseConfig();
     if (!config) {
       this.notifyStatus('unconfigured');
@@ -167,6 +182,33 @@ class FirebaseService {
         }
       );
 
+      // 3. Start listening to dedicated collection: club_articles (Guarantees unlimited articles & photos without doc overflow)
+      if (this.unsubscribeArticles) {
+        this.unsubscribeArticles();
+        this.unsubscribeArticles = null;
+      }
+
+      const articlesColRef = collection(this.db, 'club_articles');
+      this.unsubscribeArticles = onSnapshot(
+        articlesColRef,
+        (snap) => {
+          const articlesList = [];
+          snap.forEach((d) => {
+            const data = d.data();
+            if (data && data.id) {
+              articlesList.push(data);
+            }
+          });
+
+          if (articlesList.length > 0 && typeof onArticlesCallback === 'function') {
+            onArticlesCallback(articlesList);
+          }
+        },
+        (artErr) => {
+          console.warn('Firestore club_articles collection listener notice:', artErr);
+        }
+      );
+
       return true;
     } catch (e) {
       console.error('Failed to initialize Firebase:', e);
@@ -198,6 +240,33 @@ class FirebaseService {
       return true;
     } catch (err) {
       console.warn('Error deleting application doc from club_applications:', err);
+      return false;
+    }
+  }
+
+  // Save an individual article directly into club_articles/{id}
+  async saveArticleDoc(article) {
+    if (!this.db || !article || !article.id) return false;
+    try {
+      const cleanArt = JSON.parse(JSON.stringify(article));
+      const artDocRef = doc(this.db, 'club_articles', article.id);
+      await setDoc(artDocRef, cleanArt, { merge: true });
+      return true;
+    } catch (err) {
+      console.error('Error saving article to club_articles collection:', err);
+      return false;
+    }
+  }
+
+  // Delete an individual article from club_articles/{id}
+  async deleteArticleDoc(articleId) {
+    if (!this.db || !articleId) return false;
+    try {
+      const artDocRef = doc(this.db, 'club_articles', articleId);
+      await deleteDoc(artDocRef);
+      return true;
+    } catch (err) {
+      console.warn('Error deleting article doc from club_articles:', err);
       return false;
     }
   }
@@ -284,6 +353,10 @@ class FirebaseService {
     if (this.unsubscribeApps) {
       this.unsubscribeApps();
       this.unsubscribeApps = null;
+    }
+    if (this.unsubscribeArticles) {
+      this.unsubscribeArticles();
+      this.unsubscribeArticles = null;
     }
     this.app = null;
     this.db = null;

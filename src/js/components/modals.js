@@ -4,6 +4,57 @@ import { qrHelper, buildFundTransferSyntax, copyToClipboard } from '../utils/qrH
 import { memberCardComponent } from './memberCard.js';
 import { firebaseService } from '../services/firebaseService.js';
 
+// High-performance client-side image compressor (keeps size <= 40KB for rock-solid sync)
+export async function compressImage(source, maxWidth = 800, maxHeight = 600, quality = 0.72) {
+  return new Promise((resolve) => {
+    let srcUrl = '';
+    let needRevoke = false;
+    if (source instanceof File || source instanceof Blob) {
+      srcUrl = URL.createObjectURL(source);
+      needRevoke = true;
+    } else if (typeof source === 'string') {
+      srcUrl = source;
+    } else {
+      resolve('');
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (needRevoke) {
+        try { URL.revokeObjectURL(srcUrl); } catch (e) {}
+      }
+      let { width, height } = img;
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.max(1, Math.round(width * ratio));
+        height = Math.max(1, Math.round(height * ratio));
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+      try {
+        const compressed = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressed);
+      } catch (err) {
+        resolve(typeof source === 'string' ? source : '');
+      }
+    };
+    img.onerror = () => {
+      if (needRevoke) {
+        try { URL.revokeObjectURL(srcUrl); } catch (e) {}
+      }
+      resolve(typeof source === 'string' ? source : '');
+    };
+    img.src = srcUrl;
+  });
+}
+
 export const modalManager = {
   // Generic modal opener
   open(title, contentHtml, onConfirm = null, confirmText = 'Lưu thay đổi') {
@@ -1465,7 +1516,7 @@ export const modalManager = {
 
             <!-- Rich WYSIWYG Toolbar -->
             <label class="form-label font-bold text-white mb-1">Nội dung chi tiết bài viết *</label>
-            <div class="wysiwyg-toolbar">
+            <div class="wysiwyg-toolbar" style="display:flex; flex-wrap:wrap; gap:4px; align-items:center;">
               <button type="button" class="toolbar-btn" data-cmd="bold" title="In đậm (Bold)"><b>B</b></button>
               <button type="button" class="toolbar-btn" data-cmd="italic" title="In nghiêng (Italic)"><i>I</i></button>
               <button type="button" class="toolbar-btn" data-cmd="underline" title="Gạch chân (Underline)"><u>U</u></button>
@@ -1476,6 +1527,11 @@ export const modalManager = {
               <button type="button" class="toolbar-btn" data-cmd="insertOrderedList" title="Danh sách số">1. List</button>
               <span class="toolbar-divider"></span>
               <button type="button" class="toolbar-btn" data-cmd="formatBlock" data-val="blockquote" title="Trích dẫn">" Quote</button>
+              <span class="toolbar-divider"></span>
+              <button type="button" class="toolbar-btn text-gold font-bold" id="btnWysiwygInsertImg" title="Chèn ảnh trực tiếp vào nội dung bài viết">
+                🖼️ Chèn ảnh vào bài
+              </button>
+              <input type="file" id="artInlineImgFile" accept="image/*" style="display:none;">
             </div>
 
             <!-- Editable content container -->
@@ -1519,7 +1575,7 @@ export const modalManager = {
             <button type="button" class="btn btn-outline btn-sm" id="btnBackToPart1">
               ⬅️ Quay lại Phần 1: Hiển thị bên ngoài
             </button>
-            <span class="text-xs text-muted">Nhấn "Xuất bản bài viết" ở góc dưới để hoàn tất!</span>
+            <span class="text-xs text-muted">Nhấn "${isEdit ? 'Lưu thay đổi bài viết' : 'Xuất bản bài viết'}" ở góc dưới để hoàn tất!</span>
           </div>
         </div>
       </div>
@@ -1561,10 +1617,15 @@ export const modalManager = {
         status: 'published'
       };
 
-      store.addArticle(data);
-      modalManager.showAlert('Đã lưu và xuất bản bài viết thành công!');
+      if (isEdit && a.id) {
+        store.updateArticle(a.id, data);
+        modalManager.showAlert('Đã cập nhật bài viết thành công!');
+      } else {
+        store.addArticle(data);
+        modalManager.showAlert('Đã lưu và xuất bản bài viết thành công!');
+      }
       return true;
-    }, 'Xuất bản bài viết');
+    }, isEdit ? 'Lưu thay đổi bài viết' : 'Xuất bản bài viết');
 
     // Setup interactive handlers inside modal
     setTimeout(() => {
@@ -1621,7 +1682,7 @@ export const modalManager = {
         if (inp) inp.addEventListener('input', updateCardPreview);
       });
 
-      // Thumbnail file selection
+      // Thumbnail file selection with high-performance compression
       const btnChoose = modalEl.querySelector('#btnChooseImage');
       const thumbFileInput = modalEl.querySelector('#artThumbnailFile');
       const thumbPreviewImg = modalEl.querySelector('#artThumbnailPreview');
@@ -1635,22 +1696,56 @@ export const modalManager = {
       }
 
       if (thumbFileInput) {
-        thumbFileInput.addEventListener('change', (e) => {
+        thumbFileInput.addEventListener('change', async (e) => {
           const file = e.target.files && e.target.files[0];
           if (file) {
-            const reader = new FileReader();
-            reader.onload = (loadEvt) => {
-              currentThumbnail = loadEvt.target.result;
+            if (fileNameDisplay) fileNameDisplay.textContent = '⏳ Đang tối ưu hóa ảnh...';
+            try {
+              const compressed = await compressImage(file, 800, 500, 0.75);
+              currentThumbnail = compressed;
               if (thumbPreviewImg) thumbPreviewImg.src = currentThumbnail;
               if (prevThumb) prevThumb.src = currentThumbnail;
               if (fileNameDisplay) fileNameDisplay.textContent = file.name;
-            };
-            reader.readAsDataURL(file);
+            } catch (err) {
+              console.error('Lỗi nén ảnh bìa:', err);
+              if (fileNameDisplay) fileNameDisplay.textContent = 'Lỗi xử lý ảnh';
+            }
           }
         });
       }
 
-      // Gallery Multi-Image Uploading
+      // Inline Image Insertion in Body Content
+      const btnInsertInline = modalEl.querySelector('#btnWysiwygInsertImg');
+      const inlineFileInput = modalEl.querySelector('#artInlineImgFile');
+      const editorArea = modalEl.querySelector('#wysiwygContentArea');
+
+      if (btnInsertInline && inlineFileInput) {
+        btnInsertInline.onclick = () => {
+          sound.playClick();
+          inlineFileInput.click();
+        };
+      }
+
+      if (inlineFileInput) {
+        inlineFileInput.addEventListener('change', async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (file && editorArea) {
+            try {
+              const compressed = await compressImage(file, 800, 600, 0.72);
+              if (compressed) {
+                editorArea.focus();
+                const imgHtml = `<p style="text-align:center;"><img src="${compressed}" alt="Ảnh bài viết" style="max-width:100%; border-radius:8px; margin:10px auto; display:block; box-shadow:0 6px 18px rgba(0,0,0,0.4);" /></p><p></p>`;
+                document.execCommand('insertHTML', false, imgHtml);
+              }
+            } catch (err) {
+              console.error('Lỗi chèn ảnh vào nội dung:', err);
+            }
+            inlineFileInput.value = '';
+          }
+        });
+      }
+
+      // Gallery Multi-Image Uploading with progressive compression
       const btnAddGallery = modalEl.querySelector('#btnAddGalleryImages');
       const galleryFileInput = modalEl.querySelector('#artGalleryFiles');
       const galleryGrid = modalEl.querySelector('#galleryUploadGrid');
@@ -1702,21 +1797,19 @@ export const modalManager = {
       }
 
       if (galleryFileInput) {
-        galleryFileInput.addEventListener('change', (e) => {
+        galleryFileInput.addEventListener('change', async (e) => {
           const files = Array.from(e.target.files || []);
           if (!files.length) return;
-          let loaded = 0;
-          files.forEach((file) => {
-            const reader = new FileReader();
-            reader.onload = (loadEvt) => {
-              galleryImages.push(loadEvt.target.result);
-              loaded++;
-              if (loaded === files.length) {
-                renderGalleryGrid();
-              }
-            };
-            reader.readAsDataURL(file);
-          });
+          if (galleryCountLabel) galleryCountLabel.textContent = `⏳ Đang xử lý ${files.length} ảnh...`;
+          for (const file of files) {
+            try {
+              const compressed = await compressImage(file, 800, 600, 0.72);
+              if (compressed) galleryImages.push(compressed);
+            } catch (err) {
+              console.error('Lỗi nén ảnh gallery:', err);
+            }
+          }
+          renderGalleryGrid();
           galleryFileInput.value = '';
         });
       }
@@ -1743,9 +1836,10 @@ export const modalManager = {
       const buttons = modalEl.querySelectorAll('.toolbar-btn');
       buttons.forEach((btn) => {
         btn.addEventListener('click', (e) => {
+          const cmd = btn.getAttribute('data-cmd');
+          if (!cmd) return;
           e.preventDefault();
           sound.playClick();
-          const cmd = btn.getAttribute('data-cmd');
           const val = btn.getAttribute('data-val') || null;
           document.execCommand(cmd, false, val);
         });
@@ -1755,6 +1849,8 @@ export const modalManager = {
 
   // 5. Article Detail Viewer Modal (Matching Image 2 + Photo Gallery & Lightbox)
   openArticleDetailModal(article) {
+    const state = store.getState();
+    const isAdmin = state.currentSession?.role === 'admin';
     const authorName = article.author || 'CLB Cờ TNU - HGC';
     const layout = article.imageLayout || 'center';
     const gallery = Array.isArray(article.gallery) ? article.gallery : [];
@@ -1774,8 +1870,15 @@ export const modalManager = {
     const contentHtml = `
       <div class="article-detail-modal">
         <div class="article-meta-row mb-3 d-flex justify-between align-center flex-wrap gap-2">
-          <span class="badge badge-gold">${article.category}</span>
-          <span class="text-muted text-xs">📅 ${article.publishDate} • ✍️ ${authorName}</span>
+          <div class="d-flex align-center gap-2">
+            <span class="badge badge-gold">${article.category}</span>
+            <span class="text-muted text-xs">📅 ${article.publishDate} • ✍️ ${authorName}</span>
+          </div>
+          ${isAdmin ? `
+            <button type="button" class="btn btn-gold btn-sm" id="btnDetailEditArt" style="padding:4px 12px; font-size:12px;">
+              ✏️ Chỉnh sửa bài viết
+            </button>
+          ` : ''}
         </div>
         <div class="article-modal-img-container" style="overflow:hidden; margin-bottom:16px;">
           <img src="${article.thumbnail}" alt="${article.title}" class="article-modal-hero-img article-zoomable-img" style="${imgStyle}" title="Nhấn để xem phóng to">
@@ -1810,15 +1913,29 @@ export const modalManager = {
 
     this.open(article.title, contentHtml, null);
 
-    // Bind image zoom / lightbox click handlers
+    // Bind image zoom / lightbox click handlers & edit button
     setTimeout(() => {
       const modalEl = document.getElementById('globalAppModal');
       if (!modalEl) return;
+
+      const editBtn = modalEl.querySelector('#btnDetailEditArt');
+      if (editBtn) {
+        editBtn.onclick = () => {
+          sound.playClick();
+          this.openCmsArticleModal(article);
+        };
+      }
 
       const heroImg = modalEl.querySelector('.article-modal-hero-img');
       if (heroImg) {
         heroImg.onclick = () => this.openLightbox(article.thumbnail, article.title);
       }
+
+      // Allow zoom on inline photos in the article content
+      modalEl.querySelectorAll('.article-modal-body img').forEach((img) => {
+        img.style.cursor = 'zoom-in';
+        img.onclick = () => this.openLightbox(img.src, article.title);
+      });
 
       const galleryCards = modalEl.querySelectorAll('.gallery-photo-card');
       galleryCards.forEach((card) => {

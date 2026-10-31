@@ -2705,7 +2705,12 @@ class App {
                 <p class="text-xs text-muted flex-1">${art.summary}</p>
                 <div class="d-flex justify-between align-center mt-3 pt-2" style="border-top:1px solid rgba(255,255,255,0.06);">
                   <span class="text-xs text-dim">✍️ ${art.author || 'CLB Cờ TNU - HGC'}</span>
-                  <span class="text-xs text-gold font-bold">Xem bài viết →</span>
+                  <div class="d-flex align-center gap-2">
+                    ${state.currentSession.role === 'admin' ? `
+                      <button type="button" class="btn btn-outline btn-sm btn-news-edit-card" data-article-id="${art.id}" title="Chỉnh sửa bài viết" style="padding:2px 8px; font-size:11px;">✏️ Sửa</button>
+                    ` : ''}
+                    <span class="text-xs text-gold font-bold">Xem bài viết →</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2717,6 +2722,16 @@ class App {
     container.querySelector('#btnNewsWriteArticle')?.addEventListener('click', () => {
       sound.playClick();
       modalManager.openCmsArticleModal();
+    });
+
+    container.querySelectorAll('.btn-news-edit-card').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sound.playClick();
+        const artId = btn.getAttribute('data-article-id');
+        const art = state.articles.find((a) => a.id === artId);
+        if (art) modalManager.openCmsArticleModal(art);
+      });
     });
 
     container.querySelectorAll('.article-card').forEach((card) => {
@@ -5363,8 +5378,9 @@ class App {
                     <td data-label="Trạng Thái"><span class="badge badge-emerald">Đã xuất bản</span></td>
                     <td data-label="Thao Tác">
                       <div class="d-flex gap-1">
-                        <button class="btn btn-outline btn-sm btn-view-art" data-id="${art.id}" title="Xem">👁️</button>
-                        <button class="btn btn-danger btn-sm btn-del-art" data-id="${art.id}" title="Xóa">🗑️</button>
+                        <button class="btn btn-outline btn-sm btn-view-art" data-id="${art.id}" title="Xem bài viết">👁️</button>
+                        <button class="btn btn-gold btn-sm btn-edit-art" data-id="${art.id}" title="Chỉnh sửa bài viết">✏️</button>
+                        <button class="btn btn-danger btn-sm btn-del-art" data-id="${art.id}" title="Xóa bài viết">🗑️</button>
                       </div>
                     </td>
                   </tr>
@@ -5387,6 +5403,15 @@ class App {
         const id = btn.getAttribute('data-id');
         const art = state.articles.find((a) => a.id === id);
         if (art) modalManager.openArticleDetailModal(art);
+      });
+    });
+
+    container.querySelectorAll('.btn-edit-art').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const id = btn.getAttribute('data-id');
+        const art = state.articles.find((a) => a.id === id);
+        if (art) modalManager.openCmsArticleModal(art);
       });
     });
 

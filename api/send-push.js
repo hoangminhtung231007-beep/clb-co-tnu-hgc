@@ -36,33 +36,36 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing title or body' });
     }
 
-    let targets = Array.isArray(subscriptions) ? subscriptions.filter((s) => s && s.endpoint) : [];
+    let targetItems = [];
 
-    // Fallback: Fetch directly from Firestore REST API if no subscriptions passed
-    if (targets.length === 0) {
+    if (Array.isArray(subscriptions) && subscriptions.length > 0) {
+      targetItems = subscriptions.map((s) => ({ sub: s, docName: null }));
+    } else {
+      // Fetch directly from Firestore REST API
       try {
         const firestoreUrl = 'https://firestore.googleapis.com/v1/projects/tnu-hgc-chess-club/databases/(default)/documents/push_subscribers';
         const fsRes = await fetch(firestoreUrl);
         if (fsRes.ok) {
           const fsData = await fsRes.json();
           if (fsData && Array.isArray(fsData.documents)) {
-            targets = fsData.documents.map((doc) => {
+            targetItems = fsData.documents.map((doc) => {
               const fields = doc.fields || {};
               const rawJson = fields.subscriptionJson?.stringValue;
+              let sub = null;
               if (rawJson) {
                 try {
-                  return JSON.parse(rawJson);
-                } catch (e) {
-                  return null;
+                  sub = JSON.parse(rawJson);
+                } catch (e) {}
+              }
+              if (!sub) {
+                const endpoint = fields.endpoint?.stringValue;
+                const p256dh = fields.p256dh?.stringValue;
+                const auth = fields.auth?.stringValue;
+                if (endpoint && p256dh && auth) {
+                  sub = { endpoint, keys: { p256dh, auth } };
                 }
               }
-              const endpoint = fields.endpoint?.stringValue;
-              const p256dh = fields.p256dh?.stringValue;
-              const auth = fields.auth?.stringValue;
-              if (endpoint && p256dh && auth) {
-                return { endpoint, keys: { p256dh, auth } };
-              }
-              return null;
+              return sub ? { sub, docName: doc.name } : null;
             }).filter(Boolean);
           }
         }
@@ -71,7 +74,7 @@ export default async function handler(req, res) {
       }
     }
 
-    if (targets.length === 0) {
+    if (targetItems.length === 0) {
       return res.status(200).json({
         success: true,
         sentCount: 0,
@@ -96,8 +99,18 @@ export default async function handler(req, res) {
     };
 
     const results = await Promise.allSettled(
-      targets.map((sub) => {
-        return webpush.sendNotification(sub, payload, pushOptions);
+      targetItems.map(async (item) => {
+        try {
+          return await webpush.sendNotification(item.sub, payload, pushOptions);
+        } catch (err) {
+          // If expired, rejected, or hash mismatch, delete stale entry
+          if (err.statusCode === 400 || err.statusCode === 403 || err.statusCode === 404 || err.statusCode === 410) {
+            if (item.docName) {
+              fetch('https://firestore.googleapis.com/v1/' + item.docName, { method: 'DELETE' }).catch(() => {});
+            }
+          }
+          throw err;
+        }
       })
     );
 
@@ -108,7 +121,7 @@ export default async function handler(req, res) {
       success: true,
       sentCount: successful,
       failedCount: failed,
-      totalTargets: targets.length
+      totalTargets: targetItems.length
     });
   } catch (error) {
     console.error('send-push handler error:', error);

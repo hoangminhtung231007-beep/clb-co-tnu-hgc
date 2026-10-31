@@ -2,13 +2,16 @@
 // CLB Cờ TNU - HGC
 
 import { getApps, initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, isSupported, deleteToken } from 'firebase/messaging';
 import { doc, getFirestore, setDoc, arrayUnion, collection, getDocs } from 'firebase/firestore';
 import { DEFAULT_FIREBASE_CONFIG, getFirebaseConfig } from '../config/firebaseConfig.js';
 
 export const FCM_VAPID_KEY = 'BOKxuEdNb0ce3qIHKKL3Q6gCZxa8hpn2Pd8SG1t8mEa-3dSYUKvTaPixxVRQqXRLtCv6CX4JkJ8yHYB1uvNV2FU';
 export const FCM_VAPID_PRIVATE_KEY = '_KHY8ezBSCEJ7GJgA9pawiiRD1oAWP75eb0a6WrtSdQ';
+export const VAPID_STAMP = 'v24_BOKxuEdNb0ce3q';
+
 const FCM_TOKEN_STORAGE_KEY = 'TNU_HGC_FCM_DEVICE_TOKEN';
+const VAPID_KEY_VERSION_STORAGE = 'TNU_HGC_VAPID_KEY_VERSION';
 
 function urlB64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -62,9 +65,15 @@ class PushNotificationService {
 
       this.isInitialized = true;
 
-      // Check if already granted and has token saved
+      // Check if permission already granted: sync or auto-renew if VAPID changed
       if (Notification.permission === 'granted') {
-        this.syncDeviceToken();
+        const savedStamp = localStorage.getItem(VAPID_KEY_VERSION_STORAGE);
+        if (savedStamp !== VAPID_STAMP) {
+          console.log('Detected new VAPID key stamp, auto renewing subscription silently...');
+          this.renewSubscriptionWithNewKey();
+        } else {
+          this.syncDeviceToken();
+        }
       }
 
       return true;
@@ -97,6 +106,86 @@ class PushNotificationService {
     }
   }
 
+  async renewSubscriptionWithNewKey(memberInfo = null) {
+    try {
+      if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
+        return null;
+      }
+
+      let swReg = null;
+      try {
+        if ('serviceWorker' in navigator) {
+          swReg = await navigator.serviceWorker.ready;
+        }
+      } catch (e) {}
+
+      if (!swReg && 'serviceWorker' in navigator) {
+        try {
+          swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+          await navigator.serviceWorker.ready;
+        } catch (e) {}
+      }
+
+      if (!swReg || !swReg.pushManager) return null;
+
+      // Unsubscribe any stale subscription to eliminate Apple APNs VapidPkHashMismatch & FCM 403
+      try {
+        const oldSub = await swReg.pushManager.getSubscription();
+        if (oldSub) {
+          await oldSub.unsubscribe();
+          console.log('Old push subscription unsubscribed successfully.');
+        }
+      } catch (unsubErr) {
+        console.warn('Unsubscribe old sub warning:', unsubErr);
+      }
+
+      // Purge cached FCM token in IndexedDB
+      if (this.messaging) {
+        try {
+          await deleteToken(this.messaging);
+        } catch (delErr) {
+          console.warn('deleteToken warning:', delErr);
+        }
+      }
+
+      localStorage.removeItem(FCM_TOKEN_STORAGE_KEY);
+
+      // Subscribe freshly with active VAPID key
+      const newSub = await swReg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlB64ToUint8Array(FCM_VAPID_KEY)
+      });
+
+      this.currentSubscription = newSub;
+
+      let token = null;
+      if (this.messaging) {
+        try {
+          token = await getToken(this.messaging, {
+            vapidKey: FCM_VAPID_KEY,
+            serviceWorkerRegistration: swReg
+          });
+        } catch (tokErr) {
+          token = newSub.endpoint;
+        }
+      } else {
+        token = newSub.endpoint;
+      }
+
+      this.currentToken = token;
+      localStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
+      localStorage.setItem(VAPID_KEY_VERSION_STORAGE, VAPID_STAMP);
+
+      // Save valid subscription to Firestore
+      await this.saveTokenToFirestore(token, memberInfo, newSub);
+      console.log('Renewed subscription successfully with active VAPID key!');
+      return token;
+    } catch (err) {
+      console.warn('renewSubscriptionWithNewKey error:', err);
+      return null;
+    }
+  }
+
   async requestPermissionAndGetToken(memberInfo = null) {
     if (typeof window === 'undefined' || !('Notification' in window)) {
       throw new Error('Trình duyệt của bạn chưa hỗ trợ thông báo đẩy trực tiếp.');
@@ -110,80 +199,16 @@ class PushNotificationService {
       return null;
     }
 
-    // Get active Service Worker registration
-    let swReg = null;
-    try {
-      if ('serviceWorker' in navigator) {
-        swReg = await navigator.serviceWorker.ready;
-      }
-    } catch (swErr) {
-      console.warn('serviceWorker.ready failed:', swErr);
-    }
-
-    if (!swReg && 'serviceWorker' in navigator) {
-      try {
-        swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
-        await navigator.serviceWorker.ready;
-      } catch (swRegErr) {
-        console.warn('SW registration fallback failed:', swRegErr);
-      }
-    }
-
-    // Subscribe to W3C Web Push Manager with current VAPID Key
-    let subscription = null;
-    try {
-      if (swReg && swReg.pushManager) {
-        const existingSub = await swReg.pushManager.getSubscription();
-        if (existingSub) {
-          // Unsubscribe old subscription created with prior deleted VAPID key
-          // This avoids Apple APNs VapidPkHashMismatch & FCM 403 errors!
-          try {
-            await existingSub.unsubscribe();
-          } catch (unsubErr) {
-            console.warn('Unsubscribe previous sub error:', unsubErr);
-          }
-        }
-
-        subscription = await swReg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlB64ToUint8Array(FCM_VAPID_KEY)
-        });
-        this.currentSubscription = subscription;
-      }
-    } catch (subErr) {
-      console.warn('PushManager subscribe warning:', subErr);
-    }
-
     if (!this.messaging) {
       await this.init();
     }
 
-    // Get FCM registration token using VAPID key
-    let token = null;
-    if (this.messaging) {
-      try {
-        token = await getToken(this.messaging, {
-          vapidKey: FCM_VAPID_KEY,
-          serviceWorkerRegistration: swReg
-        });
-      } catch (tokErr) {
-        console.warn('getToken error, fallback to push subscription endpoint:', tokErr);
-      }
-    }
-
-    if (!token && subscription) {
-      token = subscription.endpoint;
-    }
+    // Force renew subscription cleanly with new VAPID key
+    const token = await this.renewSubscriptionWithNewKey(memberInfo);
 
     if (!token) {
-      throw new Error('Không thể lấy mã Token thông báo từ dịch vụ Push.');
+      throw new Error('Không thể tạo mã đăng ký thông báo với máy chủ Push.');
     }
-
-    this.currentToken = token;
-    localStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
-
-    // Save token & subscription to Firestore
-    await this.saveTokenToFirestore(token, memberInfo, subscription);
 
     // Send a welcome test notification
     this.showNativeNotification(
@@ -197,6 +222,12 @@ class PushNotificationService {
 
   async syncDeviceToken(memberInfo = null) {
     try {
+      const savedStamp = localStorage.getItem(VAPID_KEY_VERSION_STORAGE);
+      if (savedStamp !== VAPID_STAMP) {
+        await this.renewSubscriptionWithNewKey(memberInfo);
+        return;
+      }
+
       const savedToken = localStorage.getItem(FCM_TOKEN_STORAGE_KEY);
       if (savedToken) {
         this.currentToken = savedToken;
@@ -233,6 +264,7 @@ class PushNotificationService {
         endpoint: subObj?.endpoint || subscription?.endpoint || null,
         p256dh: subObj?.keys?.p256dh || null,
         auth: subObj?.keys?.auth || null,
+        vapidStamp: VAPID_STAMP,
         memberId: memberInfo?.id || 'guest',
         memberName: memberInfo?.name || 'Khách / Kỳ thủ',
         role: memberInfo?.role || 'guest',

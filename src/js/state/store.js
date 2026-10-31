@@ -42,10 +42,28 @@ class Store {
 
   applyRemoteData(remoteData) {
     this.isRemoteUpdating = true;
+    const wasAlreadySynced = this.hasReceivedInitialSync;
     this.hasReceivedInitialSync = true;
     try {
       if (Array.isArray(remoteData.members)) this.state.members = remoteData.members;
-      if (Array.isArray(remoteData.events)) this.state.events = remoteData.events;
+
+      if (Array.isArray(remoteData.events)) {
+        // Detect newly added events from other devices in real-time
+        if (wasAlreadySynced && Array.isArray(this.state.events) && this.state.events.length > 0) {
+          const existingIds = new Set(this.state.events.map((e) => e.id));
+          const freshlyAddedEvents = remoteData.events.filter((e) => e && e.id && !existingIds.has(e.id));
+          if (freshlyAddedEvents.length > 0 && typeof window !== 'undefined' && window.app && typeof window.app.sendDevicePushNotification === 'function') {
+            const ev = freshlyAddedEvents[0];
+            const isTour = ev.type === 'tournament';
+            window.app.sendDevicePushNotification(
+              `${isTour ? '🏆 GIẢI ĐẤU MỚI' : '🎯 HOẠT ĐỘNG MỚI'}: ${ev.title}`,
+              `Thời gian: ${ev.dateTime || 'Sắp tới'} • Địa điểm: ${ev.location || 'CLB Cờ TNU'}. Bấm để xem chi tiết!`,
+              '/#events'
+            );
+          }
+        }
+        this.state.events = remoteData.events;
+      }
       if (Array.isArray(remoteData.attendanceLogs)) this.state.attendanceLogs = remoteData.attendanceLogs;
       if (Array.isArray(remoteData.articles)) this.state.articles = remoteData.articles;
       if (Array.isArray(remoteData.pendingApplications)) {

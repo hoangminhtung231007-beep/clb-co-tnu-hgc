@@ -2303,9 +2303,9 @@ class App {
       }
       const selectedType = modal.querySelector('input[name="evTypeSelect"]:checked')?.value || 'activity';
 
-      store.addEvent({
+      const newEv = store.addEvent({
         title,
-        type: selectedType, // 'session' | 'tournament'
+        type: selectedType, // 'activity' | 'tournament'
         dateTime: modal.querySelector('#evDateTime').value.trim(),
         maxParticipants: null,
         location: modal.querySelector('#evLocation').value.trim(),
@@ -2313,7 +2313,16 @@ class App {
         registrationOpen: false,
         status: 'upcoming'
       });
-      modalManager.showAlert(`Đã lên lịch ${selectedType === 'tournament' ? 'giải đấu' : 'hoạt động'} mới thành công!\n(Trạng thái: SẮP DIỄN RA ⏰ • Tham gia tự do & điểm danh qua máy quét QR)`);
+
+      // Kích hoạt ngay thông báo thiết bị (Đổ chuông & Banner màn hình)
+      const evLabel = selectedType === 'tournament' ? '🏆 GIẢI ĐẤU MỚI' : '🎯 HOẠT ĐỘNG MỚI';
+      this.sendDevicePushNotification(
+        `${evLabel}: ${title}`,
+        `Thời gian: ${modal.querySelector('#evDateTime').value.trim() || 'Sắp diễn ra'} • Địa điểm: ${modal.querySelector('#evLocation').value.trim() || 'CLB Cờ TNU'}. Bấm để xem chi tiết!`,
+        '/#events'
+      );
+
+      modalManager.showAlert(`Đã lên lịch ${selectedType === 'tournament' ? 'giải đấu' : 'hoạt động'} mới thành công!\n(Trạng thái: SẮP DIỄN RA ⏰ • Đã kích hoạt thông báo tới các thiết bị!)`);
       return true;
     }, 'Tạo sự kiện');
   }

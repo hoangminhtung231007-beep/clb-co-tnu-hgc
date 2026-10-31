@@ -1,4 +1,4 @@
-import { store } from './state/store.js';
+import { store, isProofEvent } from './state/store.js';
 import { CHESS_MOTTOS } from './state/chessMottos.js';
 import { sound } from './utils/audio.js';
 import { chartHelper } from './utils/charts.js';
@@ -456,8 +456,9 @@ class App {
       }
 
       // 2. QUẢN LÝ HOẠT ĐỘNG & GIẢI ĐẤU
-      if (events.length > 0) {
-        const latestEvent = events[0];
+      const realEvents = events.filter((ev) => !isProofEvent(ev));
+      if (realEvents.length > 0) {
+        const latestEvent = realEvents[0];
         notifications.push({
           id: `notif_admin_events_${latestEvent.id || 'overview'}`,
           icon: '🏆',
@@ -573,7 +574,7 @@ class App {
     // =========================================================================
     // 1. HOẠT ĐỘNG HOẶC GIẢI ĐẤU MỚI (Báo ngay khi thêm, không cần mở đăng ký)
     // =========================================================================
-    events.forEach((ev) => {
+    events.filter((ev) => !isProofEvent(ev)).forEach((ev) => {
       notifications.push({
         id: `notif_event_${ev.id}`,
         icon: ev.type === 'tournament' ? '🏆' : '🎯',
@@ -2322,6 +2323,7 @@ class App {
   renderEvents(container) {
     const state = store.getState();
     const activeMember = store.getActiveMember();
+    const publicEvents = (state.events || []).filter((ev) => !isProofEvent(ev));
 
     container.innerHTML = `
       <div class="events-page-view animate-fadeIn">
@@ -2335,13 +2337,13 @@ class App {
         </div>
 
         <div class="events-cards-grid">
-          ${state.events.length === 0 ? `
+          ${publicEvents.length === 0 ? `
             <div class="card p-5 text-center text-muted" style="grid-column: 1 / -1; border: 1px dashed var(--border-dim); border-radius: 12px;">
               <div style="font-size: 2.5rem; margin-bottom: 8px;">📅</div>
               <p class="mb-0 text-white font-medium">Chưa có giải đấu hoặc buổi sinh hoạt nào được lên lịch.</p>
               ${state.currentSession.role === 'admin' ? '<p class="text-xs text-muted mt-1">Bấm nút "+ Lên lịch sự kiện mới" ở trên để tạo giải đấu hoặc buổi sinh hoạt đầu tiên.</p>' : ''}
             </div>
-          ` : state.events.map((ev) => {
+          ` : publicEvents.map((ev) => {
             const isRegistered = activeMember ? (ev.registeredMembers || []).includes(activeMember.id) : false;
             return `
               <div class="event-card card-hover">
@@ -3289,6 +3291,7 @@ class App {
   renderAdminProofs(container) {
     const state = store.getState();
     const members = state.members || [];
+    const proofEvents = (state.events || []).filter((ev) => isProofEvent(ev));
 
     if (!this.simpleProofState) {
       this.simpleProofState = {
@@ -3327,7 +3330,7 @@ class App {
           <p class="text-muted text-xs mb-0">BĐH theo dõi minh chứng thành viên gửi trên Zalo ➔ Nhập tên bài ➔ Tích chọn người nộp ➔ Xác nhận cộng điểm hoạt động.</p>
         </div>
 
-        <div class="card p-3 mb-3">
+        <div class="card p-3 mb-4">
           <!-- 1. Tên bài viết -->
           <div class="form-group mb-3">
             <label class="form-label text-gold font-bold text-xs mb-1">
@@ -3349,7 +3352,7 @@ class App {
               </div>
             </div>
 
-            <div class="table-responsive" style="max-height: 420px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;">
+            <div class="table-responsive" style="max-height: 380px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;">
               <table class="data-table" style="font-size: 0.82rem; margin-bottom: 0;">
                 <thead style="position: sticky; top: 0; background: #161a23; z-index: 2;">
                   <tr>
@@ -3399,6 +3402,87 @@ class App {
               ⚡ Xác Nhận & Cộng +1 Hoạt Động
             </button>
           </div>
+        </div>
+
+        <!-- 4. Danh sách các đợt minh chứng đã xác nhận (Hiện tại trang minh chứng) -->
+        <div class="proof-history-section card p-3" style="background: rgba(11, 17, 32, 0.85); border: 1px solid rgba(212,175,55,0.3); border-radius: 12px;">
+          <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2 pb-2" style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+            <div>
+              <span class="badge badge-gold font-bold">📜 LỊCH SỬ MINH CHỨNG ĐÃ GHI NHẬN</span>
+              <h3 class="text-base font-bold text-white mt-1 mb-0">Danh Sách Hoạt Động Minh Chứng</h3>
+              <p class="text-muted text-xs mb-0">Lưu trữ các đợt duyệt Fanpage/Zalo. Dữ liệu hiển thị trực tiếp tại đây thay vì trang Lịch trình hoạt động.</p>
+            </div>
+            <span class="badge badge-cyan font-bold">${proofEvents.length} đợt minh chứng</span>
+          </div>
+
+          ${proofEvents.length === 0 ? `
+            <div class="p-4 text-center text-muted" style="border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">
+              <div style="font-size: 2.2rem; margin-bottom: 6px;">📱</div>
+              <p class="text-white font-medium mb-1">Chưa có đợt minh chứng nào được xác nhận.</p>
+              <p class="text-xs text-muted mb-0">Khi bạn xác nhận minh chứng ở trên, đợt duyệt sẽ hiển thị ngay tại bảng này.</p>
+            </div>
+          ` : `
+            <div class="d-flex flex-column gap-3">
+              ${proofEvents.map((pev, pIdx) => {
+                const approvedList = (pev.registeredMembers || []).map((mId) => members.find((m) => m.id === mId)).filter(Boolean);
+                return `
+                  <div class="card p-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(212,175,55,0.22); border-radius: 10px;">
+                    <div class="d-flex justify-between align-center flex-wrap gap-2 mb-2 pb-2" style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+                      <div class="d-flex align-center gap-2 flex-wrap">
+                        <span class="badge badge-gold font-bold text-xs">#${pIdx + 1}</span>
+                        <h4 class="text-white font-bold text-sm mb-0">${escapeHtml(pev.title)}</h4>
+                        <span class="badge badge-cyan text-xs">👥 ${approvedList.length} thành viên</span>
+                      </div>
+                      <div class="d-flex align-center gap-2">
+                        <span class="text-xs text-dim font-mono">🗓️ ${pev.date || pev.dateTime || 'Hôm nay'} ${pev.time ? `• ${pev.time}` : ''}</span>
+                        <button type="button" class="btn btn-danger btn-xs btn-del-proof-campaign" data-campaign-id="${pev.id}" title="Xóa đợt minh chứng này và trừ lại 1 điểm hoạt động">
+                          🗑️ Xóa đợt
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Bảng danh sách thành viên trong đợt minh chứng này -->
+                    <div class="table-responsive" style="max-height: 240px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;">
+                      <table class="data-table" style="font-size: 0.78rem; margin-bottom: 0;">
+                        <thead style="position: sticky; top: 0; background: #111827; z-index: 1;">
+                          <tr>
+                            <th style="width: 40px; text-align: center;">STT</th>
+                            <th>Họ và Tên</th>
+                            <th style="width: 120px;">MSSV / Mã</th>
+                            <th>Khoa / Lớp</th>
+                            <th style="width: 90px; text-align: center;">Tổng Hoạt Động</th>
+                            <th style="width: 75px; text-align: center;">Thao Tác</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${approvedList.length === 0 ? `
+                            <tr>
+                              <td colspan="6" class="text-center text-muted p-2">Không còn thành viên nào trong đợt này.</td>
+                            </tr>
+                          ` : approvedList.map((m, mIdx) => `
+                            <tr>
+                              <td style="text-align: center;" class="text-dim">${mIdx + 1}</td>
+                              <td><strong class="text-white">${escapeHtml(m.name || m.fullName)}</strong></td>
+                              <td class="font-mono text-gold text-xs">${escapeHtml(m.studentId || m.id || '-')}</td>
+                              <td class="text-muted text-xs">${escapeHtml(m.university || m.faculty || m.class || 'CLB Cờ')}</td>
+                              <td style="text-align: center;">
+                                <span class="badge badge-gold font-bold">${m.activitiesJoined || 0}</span>
+                              </td>
+                              <td style="text-align: center;">
+                                <button type="button" class="btn btn-outline btn-xs btn-revert-member-proof" data-campaign-id="${pev.id}" data-member-id="${m.id}" title="Hủy xác nhận cho thành viên này" style="color: #f87171; border-color: rgba(248,113,113,0.3); padding: 2px 7px;">
+                                  ❌ Hủy
+                                </button>
+                              </td>
+                            </tr>
+                          `).join('')}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
         </div>
       </div>
     `;
@@ -3481,13 +3565,63 @@ class App {
           note: 'Xác nhận minh chứng Zalo'
         });
         sound.playSuccess();
-        modalManager.showAlert(`✅ Đã cộng +1 hoạt động cho ${res.approvedCount} thành viên thành công!`);
+        modalManager.showAlert(`✅ Đã cộng +1 hoạt động cho ${res.approvedCount} thành viên thành công! Minh chứng đã được lưu vào danh sách bên dưới.`);
+        this.simpleProofState.title = '';
         this.simpleProofState.selectedIds.clear();
         this.renderAdminProofs(container);
         this.renderNotificationsList();
       } catch (err) {
         modalManager.showAlert('Lỗi: ' + err.message);
       }
+    });
+
+    // Xóa toàn bộ đợt minh chứng
+    container.querySelectorAll('.btn-del-proof-campaign').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const campaignId = btn.getAttribute('data-campaign-id');
+        const stateNow = store.getState();
+        const ev = stateNow.events.find((e) => e.id === campaignId);
+        if (!ev) return;
+
+        modalManager.showConfirm(
+          `Bạn có chắc chắn muốn xóa đợt minh chứng [${ev.title}]?\nHệ thống sẽ tự động trừ lại 1 lượt tham gia hoạt động của tất cả thành viên trong đợt này.`,
+          () => {
+            store.deleteFanpageProofCampaign(campaignId);
+            sound.playSuccess();
+            modalManager.showAlert(`Đã xóa đợt minh chứng [${ev.title}] thành công!`);
+            this.renderAdminProofs(container);
+            this.renderNotificationsList();
+          },
+          null,
+          { title: 'XÁC NHẬN XÓA ĐỢT MINH CHỨNG', confirmText: '🗑️ Xóa đợt minh chứng', danger: true }
+        );
+      });
+    });
+
+    // Hủy minh chứng cho 1 thành viên cụ thể
+    container.querySelectorAll('.btn-revert-member-proof').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        const campaignId = btn.getAttribute('data-campaign-id');
+        const memberId = btn.getAttribute('data-member-id');
+        const stateNow = store.getState();
+        const member = (stateNow.members || []).find((m) => m.id === memberId);
+        const mName = member?.name || member?.fullName || 'thành viên';
+
+        modalManager.showConfirm(
+          `Hủy xác nhận minh chứng và trừ lại 1 điểm hoạt động cho kỳ thủ [${mName}]?`,
+          () => {
+            store.revertFanpageProof(campaignId, memberId);
+            sound.playSuccess();
+            modalManager.showAlert(`Đã hủy minh chứng cho kỳ thủ [${mName}]!`);
+            this.renderAdminProofs(container);
+            this.renderNotificationsList();
+          },
+          null,
+          { title: 'HỦY MINH CHỨNG THÀNH VIÊN', confirmText: '❌ Xác nhận hủy', danger: true }
+        );
+      });
     });
   }
 
@@ -4084,6 +4218,7 @@ class App {
   // Admin Sub 4: Events Management
   renderAdminEvents(container) {
     const state = store.getState();
+    const events = (state.events || []).filter((ev) => !isProofEvent(ev));
 
     container.innerHTML = `
       <div class="admin-sub-events animate-fadeIn">
@@ -4112,11 +4247,11 @@ class App {
                 </tr>
               </thead>
               <tbody>
-                ${state.events.length === 0 ? `
+                ${events.length === 0 ? `
                   <tr>
                     <td colspan="8" class="text-center text-muted p-4">Hiện chưa có hoạt động nào. Hãy bấm "+ Lên Lịch Sự Kiện Mới" để tạo!</td>
                   </tr>
-                ` : state.events.map((ev) => `
+                ` : events.map((ev) => `
                   <tr>
                     <td data-label="Mã"><span class="font-mono text-xs text-gold">${ev.id}</span></td>
                     <td data-label="Tên"><strong class="text-white">${ev.title}</strong></td>

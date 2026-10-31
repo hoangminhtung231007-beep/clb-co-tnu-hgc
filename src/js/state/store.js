@@ -3,6 +3,17 @@ import { CHESS_MOTTOS, getMottoByIndex } from './chessMottos.js';
 import { firebaseService } from '../services/firebaseService.js';
 import { SwissTournament, exportSwissStandingsCsv } from '../utils/swissSystem.js';
 import { buildFundTransferSyntax } from '../utils/qrHelper.js';
+
+export function isProofEvent(ev) {
+  if (!ev) return false;
+  if (ev.isProof === true) return true;
+  if (ev.type === 'proof') return true;
+  if (typeof ev.id === 'string' && ev.id.startsWith('ACT-FP-')) return true;
+  if (typeof ev.location === 'string' && ev.location.toLowerCase().includes('zalo & fanpage')) return true;
+  if (typeof ev.description === 'string' && (ev.description.includes('minh chứng qua Zalo') || ev.description.includes('Ghi nhận minh chứng'))) return true;
+  return false;
+}
+
 export { CHESS_MOTTOS, getMottoByIndex, firebaseService, SwissTournament, exportSwissStandingsCsv, buildFundTransferSyntax };
 
 export const ALUMNI_MESSAGES = [
@@ -1650,7 +1661,7 @@ class Store {
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} - ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
 
-    // Tìm hoặc tạo sự kiện hoạt động
+    // Tìm hoặc tạo sự kiện minh chứng
     let event = this.state.events.find(
       (e) => (e.title || '').trim().toLowerCase() === cleanTitle.toLowerCase()
     );
@@ -1658,11 +1669,12 @@ class Store {
       event = {
         id: `ACT-FP-${Date.now().toString().slice(-5)}`,
         title: cleanTitle,
-        type: 'activity',
+        type: 'proof',
+        isProof: true,
         date: `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`,
-        time: 'Cả ngày',
+        time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`,
         location: 'Zalo & Fanpage CLB Cờ',
-        description: `Hoạt động: ${cleanTitle}. Ghi nhận minh chứng qua Zalo.`,
+        description: `Minh chứng hoạt động: ${cleanTitle}. Ghi nhận qua Zalo.`,
         maxParticipants: 500,
         currentRegistered: 0,
         registeredMembers: [],
@@ -1670,6 +1682,9 @@ class Store {
         status: 'ongoing'
       };
       this.state.events.unshift(event);
+    } else {
+      event.type = 'proof';
+      event.isProof = true;
     }
 
     const approvedMembers = [];
@@ -1692,8 +1707,8 @@ class Store {
         id: logId,
         eventId: event.id,
         eventTitle: event.title,
-        category: 'activity',
-        categoryLabel: 'Hoạt Động',
+        category: 'proof',
+        categoryLabel: 'Minh Chứng',
         memberId: member.id,
         memberName: member.name || member.fullName,
         studentId: member.studentId || '',
@@ -1721,7 +1736,7 @@ class Store {
 
   revertFanpageProof(eventId, memberId) {
     const member = this.state.members.find((m) => m.id === memberId);
-    if (!member) return;
+    if (!member) return false;
 
     const logIdx = (this.state.attendanceLogs || []).findIndex(
       (log) => log.eventId === eventId && log.memberId === memberId
@@ -1736,6 +1751,32 @@ class Store {
       event.registeredMembers = event.registeredMembers.filter((id) => id !== memberId);
       event.currentRegistered = event.registeredMembers.length;
     }
+
+    this.saveState();
+    this.notify();
+    return true;
+  }
+
+  deleteFanpageProofCampaign(eventId) {
+    const event = this.state.events.find((e) => e.id === eventId);
+    if (!event) return false;
+
+    // Giảm số lượt hoạt động của các thành viên đã được cộng trong đợt này
+    const memberIds = Array.isArray(event.registeredMembers) ? [...event.registeredMembers] : [];
+    memberIds.forEach((mId) => {
+      const member = this.state.members.find((m) => m.id === mId);
+      if (member) {
+        member.activitiesJoined = Math.max(0, (member.activitiesJoined || 0) - 1);
+      }
+    });
+
+    // Xóa attendanceLogs liên quan
+    this.state.attendanceLogs = (this.state.attendanceLogs || []).filter(
+      (log) => log.eventId !== eventId
+    );
+
+    // Xóa sự kiện minh chứng
+    this.state.events = (this.state.events || []).filter((e) => e.id !== eventId);
 
     this.saveState();
     this.notify();

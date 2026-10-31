@@ -1312,7 +1312,25 @@ class App {
   // 1. HOME VIEW
   // ==========================================
   renderHome(container) {
+    if (this._homeCdInterval) {
+      clearInterval(this._homeCdInterval);
+      this._homeCdInterval = null;
+    }
+
     const state = store.getState();
+    const featuredEvent = (state.events || []).find((e) => e.type === 'tournament' || e.status === 'upcoming') || (state.events || [])[0] || {
+      id: 'EVT-FEATURED',
+      title: 'Giải Cờ vua mở rộng gây quỹ "Áo ấm cho em"',
+      description: 'Giải đấu thiện nguyện quy mô toàn trường nhằm quyên góp gây quỹ mua áo ấm cho trẻ em khó khăn vùng cao Hà Giang. Kết nối ngọn lửa nhiệt huyết và tinh thần tương thân tương ái của các kỳ thủ sinh viên.',
+      dateTime: '2026-11-21',
+      location: 'Hội trường ĐH Thái Nguyên Phân hiệu Hà Giang',
+      currentRegistered: 0
+    };
+
+    const dateMatch = (featuredEvent.dateTime || '').match(/\d{4}-\d{2}-\d{2}/);
+    const targetDateStr = dateMatch ? `${dateMatch[0]}T08:00:00` : '2026-11-21T08:00:00';
+    const targetTs = new Date(targetDateStr).getTime();
+    const articles = state.articles || [];
 
     container.innerHTML = `
       <div class="home-page-view animate-fadeIn">
@@ -1363,8 +1381,249 @@ class App {
             </div>
           </div>
         </section>
+
+        <!-- Featured Spotlight & News Bulletin Grid -->
+        <section class="home-split-grid mb-4">
+          <!-- Left: Featured Event & Live Countdown -->
+          <div class="home-event-spotlight-card">
+            <div>
+              <div class="d-flex justify-between align-center mb-3 flex-wrap gap-2">
+                <span class="badge badge-gold" style="font-weight: 800; font-size: 0.78rem; padding: 4px 10px;">
+                  🏆 GIẢI ĐẤU TIÊU ĐIỂM
+                </span>
+                <span class="badge badge-emerald" style="font-weight: 700; font-size: 0.75rem; padding: 4px 10px;">
+                  🟢 Sắp Khởi Tranh
+                </span>
+              </div>
+
+              <h2 class="text-xl font-bold text-white mb-2" style="line-height: 1.35;">
+                ${featuredEvent.title}
+              </h2>
+
+              <p class="text-xs text-muted mb-3" style="line-height: 1.6;">
+                ${featuredEvent.description || 'Giải đấu quy mô cấp câu lạc bộ và mở rộng, nơi các kỳ thủ cọ xát bản lĩnh và lan tỏa phong trào cờ tại Hà Giang.'}
+              </p>
+
+              <!-- Live Countdown Widget -->
+              <div class="countdown-wrap mb-3">
+                <div class="text-xs font-bold text-dim mb-1.5" style="letter-spacing: 0.5px; text-transform: uppercase;">
+                  ⏳ Thời gian đếm ngược đến giờ khai mạc:
+                </div>
+                <div class="countdown-box" id="homeEventCountdown">
+                  <div class="countdown-item">
+                    <div class="countdown-num" id="cdDays">00</div>
+                    <div class="countdown-lbl">Ngày</div>
+                  </div>
+                  <div class="countdown-item">
+                    <div class="countdown-num" id="cdHours">00</div>
+                    <div class="countdown-lbl">Giờ</div>
+                  </div>
+                  <div class="countdown-item">
+                    <div class="countdown-num" id="cdMinutes">00</div>
+                    <div class="countdown-lbl">Phút</div>
+                  </div>
+                  <div class="countdown-item">
+                    <div class="countdown-num" id="cdSeconds">00</div>
+                    <div class="countdown-lbl">Giây</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Event Key Details -->
+              <div class="event-mini-info-grid mb-3" style="display: grid; grid-template-columns: 1fr; gap: 8px; font-size: 0.82rem;">
+                <div class="d-flex align-center gap-2">
+                  <span class="text-gold font-bold">📅 Thời gian:</span>
+                  <span class="text-white font-mono">${featuredEvent.dateTime || '21/11/2026'}</span>
+                </div>
+                <div class="d-flex align-center gap-2">
+                  <span class="text-cyan font-bold">📍 Địa điểm:</span>
+                  <span class="text-white">${featuredEvent.location || 'CLB Cờ TNU - HGC'}</span>
+                </div>
+                <div class="d-flex align-center gap-2">
+                  <span class="text-emerald font-bold">👥 Đã tham gia:</span>
+                  <span class="text-gold font-bold font-mono">${featuredEvent.currentRegistered || 0} kỳ thủ</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex gap-2 pt-3 flex-wrap align-center" style="border-top: 1px solid rgba(255,255,255,0.08);">
+              <button class="btn btn-gold btn-sm flex-1" id="btnHomeJoinEvent" style="font-weight: 700;">
+                ⚔️ Xem Chi Tiết & Đăng Ký
+              </button>
+              <button class="btn btn-outline btn-sm" id="btnHomeViewAllEvents">
+                📅 Lịch Trình CLB
+              </button>
+            </div>
+          </div>
+
+          <!-- Right: News & Internal Announcements Bulletin -->
+          <div class="home-news-bulletin-card">
+            <div>
+              <div class="d-flex justify-between align-center mb-3">
+                <div class="d-flex align-center gap-2">
+                  <span style="font-size: 1.3rem;">📰</span>
+                  <h2 class="text-base font-bold text-white mb-0">Bảng Tin & Thông Báo CLB</h2>
+                </div>
+                <a href="#news" class="text-xs text-gold font-bold hover-underline" style="text-decoration: none;">Xem tất cả →</a>
+              </div>
+
+              <div class="home-news-list">
+                ${articles.length > 0 ? articles.slice(0, 3).map((art) => `
+                  <div class="home-news-item" data-art-id="${art.id}">
+                    <span class="home-news-icon">♟️</span>
+                    <div class="flex-1 min-w-0">
+                      <div class="home-news-title text-truncate">${art.title}</div>
+                      <div class="home-news-meta">
+                        <span class="badge badge-gold" style="font-size:0.65rem; padding:1px 6px;">${art.category || 'Tin tức'}</span>
+                        <span>📅 ${art.publishDate || 'Gần đây'}</span>
+                        <span>•</span>
+                        <span class="text-gold font-bold">Đọc bài →</span>
+                      </div>
+                    </div>
+                  </div>
+                `).join('') : `
+                  <div class="home-news-item" data-action="zalo">
+                    <span class="home-news-icon">📢</span>
+                    <div class="flex-1">
+                      <div class="home-news-title">Lịch Sinh Hoạt & Tập Huấn Kỳ Thủ Định Kỳ</div>
+                      <div class="home-news-meta">
+                        <span class="badge badge-gold" style="font-size:0.65rem; padding:1px 6px;">Thông báo</span>
+                        <span>📅 Chiều Thứ Bảy & Chủ Nhật hàng tuần</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="home-news-item" data-action="register">
+                    <span class="home-news-icon">💳</span>
+                    <div class="flex-1">
+                      <div class="home-news-title">Quy Chế Cấp Thẻ Hội Viên PVC 2 Mặt Chuẩn TNU</div>
+                      <div class="home-news-meta">
+                        <span class="badge badge-cyan" style="font-size:0.65rem; padding:1px 6px;">Hội viên</span>
+                        <span>Định danh mã QR Smart Key trọn đời</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="home-news-item" data-action="zalo">
+                    <span class="home-news-icon">💬</span>
+                    <div class="flex-1">
+                      <div class="home-news-title">Kênh Kết Nối Zalo Chính Thức CLB Cờ TNU - HGC</div>
+                      <div class="home-news-meta">
+                        <span class="badge badge-emerald" style="font-size:0.65rem; padding:1px 6px;">Cộng đồng</span>
+                        <span>Giao lưu, ghép cặp đấu và cập nhật hoạt động</span>
+                      </div>
+                    </div>
+                  </div>
+                `}
+              </div>
+            </div>
+
+            <div class="pt-3" style="border-top: 1px solid rgba(255,255,255,0.06);">
+              <a href="#news" class="btn btn-outline btn-sm w-100 text-center" style="display:flex; align-items:center; justify-content:center; gap:6px; text-decoration: none;">
+                📖 Xem Toàn Bộ Bản Tin & Chuyên Đề →
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <!-- Quick Experience Hubs -->
+        <section class="home-quick-hubs-grid">
+          <div class="home-hub-card" id="btnHomeQuickRegister">
+            <div class="home-hub-icon-wrap text-gold">👑</div>
+            <div>
+              <div class="home-hub-title">Gia Nhập CLB Cờ</div>
+              <div class="home-hub-desc">Đăng ký kết nạp sinh viên, nhận ngay thẻ PVC 2 mặt chuẩn nhận diện</div>
+            </div>
+          </div>
+
+          <div class="home-hub-card" id="btnHomeQuickLeaderboard">
+            <div class="home-hub-icon-wrap text-cyan">🏆</div>
+            <div>
+              <div class="home-hub-title">Bảng Vàng Kỳ Thủ</div>
+              <div class="home-hub-desc">Theo dõi thứ hạng Elo Cờ Vua, Cờ Tướng và bảng phong thần thi đấu</div>
+            </div>
+          </div>
+
+          <div class="home-hub-card" id="btnHomeQuickZalo">
+            <div class="home-hub-icon-wrap text-emerald">💬</div>
+            <div>
+              <div class="home-hub-title">Cộng Đồng Zalo CLB</div>
+              <div class="home-hub-desc">Tham gia giao lưu, hỏi đáp và kết nối với hơn 45 kỳ thủ toàn trường</div>
+            </div>
+          </div>
+        </section>
       </div>
     `;
+
+    // Live countdown interval
+    const updateCountdown = () => {
+      const now = Date.now();
+      const diff = Math.max(0, targetTs - now);
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      const dEl = container.querySelector('#cdDays');
+      const hEl = container.querySelector('#cdHours');
+      const mEl = container.querySelector('#cdMinutes');
+      const sEl = container.querySelector('#cdSeconds');
+      if (dEl) dEl.textContent = String(days).padStart(2, '0');
+      if (hEl) hEl.textContent = String(hours).padStart(2, '0');
+      if (mEl) mEl.textContent = String(minutes).padStart(2, '0');
+      if (sEl) sEl.textContent = String(seconds).padStart(2, '0');
+    };
+    updateCountdown();
+    this._homeCdInterval = setInterval(updateCountdown, 1000);
+
+    // Event actions
+    container.querySelector('#btnHomeJoinEvent')?.addEventListener('click', () => {
+      sound.playClick();
+      window.location.hash = '#events';
+    });
+    container.querySelector('#btnHomeViewAllEvents')?.addEventListener('click', () => {
+      sound.playClick();
+      window.location.hash = '#events';
+    });
+
+    // News item clicks
+    container.querySelectorAll('.home-news-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        sound.playClick();
+        const artId = item.getAttribute('data-art-id');
+        if (artId) {
+          const art = (state.articles || []).find((a) => a.id === artId);
+          if (art) modalManager.openArticleDetailModal(art);
+          return;
+        }
+        const action = item.getAttribute('data-action');
+        if (action === 'register') {
+          modalManager.openRegisterModal();
+        } else if (action === 'zalo') {
+          window.open(state.clubInfo.zaloGroupLink || 'https://zalo.me/g/ugejmj655', '_blank');
+        } else {
+          window.location.hash = '#news';
+        }
+      });
+    });
+
+    // Quick Hub actions
+    container.querySelector('#btnHomeQuickRegister')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      sound.playClick();
+      modalManager.openRegisterModal();
+    });
+    container.querySelector('#btnHomeQuickLeaderboard')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      sound.playClick();
+      window.location.hash = '#leaderboard';
+    });
+    container.querySelector('#btnHomeQuickZalo')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      sound.playClick();
+      window.open(state.clubInfo.zaloGroupLink || 'https://zalo.me/g/ugejmj655', '_blank');
+    });
   }
 
   // ==========================================

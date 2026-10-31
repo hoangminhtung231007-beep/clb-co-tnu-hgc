@@ -5389,23 +5389,29 @@ class App {
           </div>
         </div>
 
-        <!-- 2 Visual Charts Row -->
-        <div class="charts-grid-row mb-4">
-          <div class="chart-box">
-            <div class="d-flex justify-between align-center mb-2">
-              <h3 class="font-bold text-white text-base">Tần Suất Tham Gia Sinh Hoạt Theo Các Tháng Trong Giai Đoạn</h3>
-              <span class="badge badge-cyan text-xs">${data.barLabels[0]} ➜ ${data.barLabels[data.barLabels.length - 1]}</span>
+        <!-- 2 Visual Charts: Separated full-width boxes so no content is obscured -->
+        <div class="chart-box mb-4">
+          <div class="d-flex justify-between align-center flex-wrap gap-2 mb-2">
+            <div>
+              <h3 class="font-bold text-white text-base mb-1">Tần Suất Tham Gia Sinh Hoạt Theo Các Tháng Trong Giai Đoạn</h3>
+              <p class="text-xs text-muted mb-0">Số lượt kỳ thủ tham gia sinh hoạt và tập huấn trong khoảng thời gian đã chọn</p>
             </div>
-            <p class="text-xs text-muted mb-3">Số lượt kỳ thủ tham gia sinh hoạt và tập huấn trong khoảng thời gian đã chọn</p>
+            <span class="badge badge-cyan text-xs font-mono">${data.barLabels[0]} ➜ ${data.barLabels[data.barLabels.length - 1]}</span>
+          </div>
+          <div class="chart-canvas-wrap mt-3">
             <canvas id="analyticsBarChart"></canvas>
           </div>
+        </div>
 
-          <div class="chart-box">
-            <div class="d-flex justify-between align-center mb-2">
-              <h3 class="font-bold text-white text-base">Cơ Cấu Kỳ Thủ Tham Gia Tích Cực Theo Lớp</h3>
-              <span class="badge badge-gold text-xs">Phân bố %</span>
+        <div class="chart-box mb-4">
+          <div class="d-flex justify-between align-center flex-wrap gap-2 mb-2">
+            <div>
+              <h3 class="font-bold text-white text-base mb-1">Cơ Cấu Kỳ Thủ Tham Gia Tích Cực Theo Lớp</h3>
+              <p class="text-xs text-muted mb-0">Tỷ lệ phần trăm và cơ cấu hội viên theo từng lớp học sinh hoạt năng nổ trong giai đoạn</p>
             </div>
-            <p class="text-xs text-muted mb-3">Tỷ lệ phần trăm các lớp có hội viên sinh hoạt năng nổ nhất trong giai đoạn</p>
+            <span class="badge badge-gold text-xs font-mono">${data.classSegments.length} Lớp • Phân bố %</span>
+          </div>
+          <div class="chart-canvas-wrap mt-3">
             <canvas id="analyticsDonutChart"></canvas>
           </div>
         </div>
@@ -5475,6 +5481,12 @@ class App {
     const bar = container.querySelector('#analyticsBarChart');
     if (bar) {
       chartHelper.renderBarChart(bar, data.barLabels, data.barValues);
+      if (window.ResizeObserver && bar.parentElement) {
+        const roBar = new ResizeObserver(() => {
+          chartHelper.renderBarChart(bar, data.barLabels, data.barValues);
+        });
+        roBar.observe(bar.parentElement);
+      }
     }
 
     const donut = container.querySelector('#analyticsDonutChart');

@@ -704,7 +704,7 @@
 /* --- ANALYTICS CHARTS --- */
 .charts-grid-row {
   display: grid;
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: 1fr;
   gap: 24px;
   margin-bottom: 28px;
 }
@@ -723,4 +723,10 @@
   width: 100%;
   position: relative;
   overflow: hidden;
+}
+.chart-canvas-wrap canvas,
+.chart-box canvas {
+  display: block;
+  width: 100%;
+  height: auto;
 }

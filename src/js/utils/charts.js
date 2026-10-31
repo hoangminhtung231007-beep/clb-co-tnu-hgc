@@ -219,9 +219,9 @@ export const chartHelper = {
       legendStartX = centerX + radius + 32;
 
       const availWidth = Math.max(200, width - legendStartX - 20);
-      if (availWidth >= 660 && dataSegments.length >= 10) {
+      if (availWidth >= 520 && dataSegments.length >= 8) {
         cols = 3;
-      } else if (availWidth >= 380 && dataSegments.length >= 6) {
+      } else if (availWidth >= 280 && dataSegments.length >= 5) {
         cols = 2;
       } else {
         cols = 1;

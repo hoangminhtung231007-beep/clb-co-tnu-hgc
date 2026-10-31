@@ -2,6 +2,7 @@ import { store } from '../state/store.js';
 import { sound } from '../utils/audio.js';
 import { qrHelper, buildFundTransferSyntax, copyToClipboard } from '../utils/qrHelper.js';
 import { memberCardComponent } from './memberCard.js';
+import { firebaseService } from '../services/firebaseService.js';
 
 export const modalManager = {
   // Generic modal opener
@@ -5574,16 +5575,39 @@ export const modalManager = {
       </div>
     `;
 
+    let exportAvatarFn = () => finalAvatarExport || currentRawSrc;
+
     this.open(`📸 Đổi Ảnh Thẻ Thành Viên: ${latestMember.name}`, contentHtml, () => {
-      const avatarToSave = finalAvatarExport || currentRawSrc;
-      if (avatarToSave) {
-        const updated = store.updateMember(latestMember.id, { avatar: avatarToSave });
-        firebaseService.syncToFirestore(store.getState(), true);
-        sound.playSuccess?.();
-        modalManager.showAlert(`Đã cập nhật ảnh đại diện thẻ thành công cho kỳ thủ [${latestMember.name}]!`);
-        if (typeof onComplete === 'function') {
-          onComplete(updated || { ...latestMember, avatar: avatarToSave });
+      try {
+        const avatarToSave = (typeof exportAvatarFn === 'function' ? exportAvatarFn() : null) || finalAvatarExport || currentRawSrc;
+        const targetMemberId = latestMember?.id || member?.id;
+        if (targetMemberId && avatarToSave) {
+          const updated = store.updateMember(targetMemberId, { avatar: avatarToSave });
+          try {
+            if (typeof firebaseService !== 'undefined' && firebaseService?.syncToFirestore) {
+              firebaseService.syncToFirestore(store.getState(), true);
+            }
+          } catch (syncErr) {
+            console.warn('Sync error on avatar save:', syncErr);
+          }
+          try {
+            sound.playSuccess?.();
+          } catch (_) {}
+
+          if (typeof onComplete === 'function') {
+            try {
+              onComplete(updated || { ...latestMember, avatar: avatarToSave });
+            } catch (cbErr) {
+              console.error('onComplete callback error in openChangeAvatarModal:', cbErr);
+            }
+          }
+
+          setTimeout(() => {
+            modalManager.showAlert(`Đã cập nhật ảnh đại diện thẻ thành công cho kỳ thủ [${latestMember.name || 'thành viên'}]!`);
+          }, 80);
         }
+      } catch (err) {
+        console.error('Avatar save onConfirm error:', err);
       }
       return true;
     }, '💾 Lưu Ảnh Thẻ Mới');
@@ -5614,7 +5638,7 @@ export const modalManager = {
       let startDragX = 0;
       let startDragY = 0;
 
-      const updateFinalExport = () => {
+      const getProcessedAvatar = () => {
         try {
           if (img && img.complete && img.naturalWidth) {
             const expCanvas = document.createElement('canvas');
@@ -5647,12 +5671,15 @@ export const modalManager = {
               exported = expCanvas.toDataURL('image/jpeg', quality);
             }
             finalAvatarExport = exported;
+            return exported;
           }
         } catch (e) {
-          console.warn('updateFinalExport notice:', e);
-          finalAvatarExport = currentRawSrc;
+          console.warn('getProcessedAvatar notice:', e);
         }
+        return finalAvatarExport || currentRawSrc;
       };
+
+      exportAvatarFn = getProcessedAvatar;
 
       const draw = () => {
         if (!ctx || !img.complete || !img.naturalWidth) return;
@@ -5685,7 +5712,7 @@ export const modalManager = {
         const drawY = (ch - drawH) / 2 + (offsetY * scaleDpi);
 
         ctx.drawImage(img, drawX, drawY, drawW, drawH);
-        updateFinalExport();
+        getProcessedAvatar();
       };
 
       const updateControls = () => {
@@ -5817,12 +5844,14 @@ export const modalManager = {
         }
       });
 
-      urlInput?.addEventListener('change', (e) => {
+      const handleUrlInput = (e) => {
         const val = e.target.value.trim();
-        if (val) {
+        if (val && val !== currentRawSrc) {
           loadSource(val);
         }
-      });
+      };
+      urlInput?.addEventListener('input', handleUrlInput);
+      urlInput?.addEventListener('change', handleUrlInput);
 
       // Initial load
       loadSource(currentRawSrc);

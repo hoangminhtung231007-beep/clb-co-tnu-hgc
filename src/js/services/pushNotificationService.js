@@ -129,17 +129,25 @@ class PushNotificationService {
       }
     }
 
-    // Subscribe to W3C Web Push Manager
+    // Subscribe to W3C Web Push Manager with current VAPID Key
     let subscription = null;
     try {
       if (swReg && swReg.pushManager) {
-        subscription = await swReg.pushManager.getSubscription();
-        if (!subscription) {
-          subscription = await swReg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlB64ToUint8Array(FCM_VAPID_KEY)
-          });
+        const existingSub = await swReg.pushManager.getSubscription();
+        if (existingSub) {
+          // Unsubscribe old subscription created with prior deleted VAPID key
+          // This avoids Apple APNs VapidPkHashMismatch & FCM 403 errors!
+          try {
+            await existingSub.unsubscribe();
+          } catch (unsubErr) {
+            console.warn('Unsubscribe previous sub error:', unsubErr);
+          }
         }
+
+        subscription = await swReg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlB64ToUint8Array(FCM_VAPID_KEY)
+        });
         this.currentSubscription = subscription;
       }
     } catch (subErr) {

@@ -90,9 +90,14 @@ export default async function handler(req, res) {
       timestamp: Date.now()
     });
 
+    const pushOptions = {
+      TTL: 86400, // 24 hours
+      urgency: 'high'
+    };
+
     const results = await Promise.allSettled(
       targets.map((sub) => {
-        return webpush.sendNotification(sub, payload);
+        return webpush.sendNotification(sub, payload, pushOptions);
       })
     );
 

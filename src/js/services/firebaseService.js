@@ -23,16 +23,10 @@ function sanitizeArticlesList(articles) {
   if (!Array.isArray(articles)) return [];
   return articles.map((art) => {
     if (!art) return art;
-    let gallery = Array.isArray(art.gallery) ? art.gallery : [];
-    // Prevent duplicate base64 image strings between thumbnail and gallery on root doc
-    if (gallery.length > 0 && art.thumbnail && gallery[0] === art.thumbnail) {
-      gallery = [art.thumbnail];
-    } else if (gallery.length > 1) {
-      gallery = gallery.slice(0, 1);
-    }
     return {
       ...art,
-      gallery
+      // Full gallery is stored in dedicated club_articles collection to keep root doc lean
+      gallery: []
     };
   });
 }

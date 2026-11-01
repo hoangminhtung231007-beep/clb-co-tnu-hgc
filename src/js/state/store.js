@@ -469,11 +469,13 @@ class Store {
   // --- Members CRUD ---
   addMember(memberData) {
     const cleanStudentId = (memberData.studentId || '').trim().toLowerCase();
+    const cleanName = (memberData.name || '').trim().toLowerCase();
 
-    // If a member with this studentId already exists in club, update their info without creating duplicate card!
-    if (cleanStudentId) {
+    // If a member with the EXACT same studentId AND name already exists in club, update their info without creating duplicate card!
+    if (cleanStudentId && cleanName) {
       const existingIdx = (this.state.members || []).findIndex(
-        (m) => (m.studentId || '').trim().toLowerCase() === cleanStudentId
+        (m) => (m.studentId || '').trim().toLowerCase() === cleanStudentId &&
+               (m.name || '').trim().toLowerCase() === cleanName
       );
       if (existingIdx !== -1) {
         this.state.members[existingIdx] = {

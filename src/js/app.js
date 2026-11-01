@@ -1498,8 +1498,8 @@ class App {
 
           <!-- Right: News & Internal Announcements Bulletin -->
           <div class="home-news-bulletin-card">
-            <div>
-              <div class="d-flex justify-between align-center mb-3">
+            <div class="home-news-bulletin-main">
+              <div class="d-flex justify-between align-center mb-2.5">
                 <div class="d-flex align-center gap-2">
                   <span style="font-size: 1.3rem;">📰</span>
                   <h2 class="text-base font-bold text-white mb-0">Bảng Tin & Thông Báo CLB</h2>
@@ -1525,31 +1525,34 @@ class App {
                         </div>
 
                         <div class="home-news-featured-body">
-                          <div class="d-flex align-center gap-2 mb-1 flex-wrap">
-                            ${idx === 0 ? `
-                              <span class="badge badge-gold" style="font-size: 0.68rem; font-weight: 800; padding: 2px 8px;">
-                                🔥 MỚI NHẤT
+                          <div>
+                            <div class="d-flex align-center gap-2 mb-2 flex-wrap">
+                              ${idx === 0 ? `
+                                <span class="badge badge-gold" style="font-size: 0.72rem; font-weight: 800; padding: 2.5px 9px;">
+                                  🔥 MỚI NHẤT
+                                </span>
+                              ` : ''}
+                              <span class="badge badge-cyan" style="font-size: 0.72rem; font-weight: 700; padding: 2.5px 9px;">
+                                ${art.category || 'Tin hoạt động'}
                               </span>
-                            ` : ''}
-                            <span class="badge badge-cyan" style="font-size: 0.68rem; font-weight: 700; padding: 2px 8px;">
-                              ${art.category || 'Tin hoạt động'}
-                            </span>
+                            </div>
+
+                            <h3 class="home-news-featured-title">
+                              ${art.title}
+                            </h3>
+                            <p class="home-news-featured-excerpt">
+                              ${getArticleSummary(art)}
+                            </p>
                           </div>
 
-                          <h3 class="home-news-featured-title">
-                            ${art.title}
-                          </h3>
-                          <p class="home-news-featured-excerpt">
-                            ${getArticleSummary(art)}
-                          </p>
                           <div class="home-news-featured-footer">
                             <div class="d-flex align-center gap-2">
                               <span>📅 ${art.publishDate || 'Gần đây'}</span>
                               <span style="opacity: 0.4;">•</span>
                               <span>✍️ ${art.author || 'Ban Điều Hành'}</span>
                             </div>
-                            <span class="text-gold font-bold" style="font-size: 0.78rem; display: flex; align-items: center; gap: 4px;">
-                              Đọc toàn văn <span style="font-size: 0.9rem;">➔</span>
+                            <span class="text-gold font-bold" style="font-size: 0.82rem; display: flex; align-items: center; gap: 4px;">
+                              Đọc toàn văn <span style="font-size: 0.95rem;">➔</span>
                             </span>
                           </div>
                         </div>
@@ -1569,7 +1572,7 @@ class App {
               ` : ''}
             </div>
 
-            <div class="pt-3 mt-3" style="border-top: 1px solid rgba(255,255,255,0.06);">
+            <div class="pt-2.5 mt-2" style="border-top: 1px solid rgba(255,255,255,0.06);">
               <a href="#news" class="btn btn-outline btn-sm w-100 text-center" style="display:flex; align-items:center; justify-content:center; gap:6px; text-decoration: none;">
                 📖 Xem Toàn Bộ Bản Tin & Chuyên Đề →
               </a>

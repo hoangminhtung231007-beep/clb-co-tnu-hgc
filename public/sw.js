@@ -1,5 +1,5 @@
 // Service Worker for CLB Cờ TNU - HGC Progressive Web App & Firebase Web Push
-const CACHE_NAME = 'tnu-hgc-pwa-v40';
+const CACHE_NAME = 'tnu-hgc-pwa-v41';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

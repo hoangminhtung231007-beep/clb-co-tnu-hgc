@@ -1333,6 +1333,34 @@ class App {
     const targetTs = new Date(targetDateStr).getTime();
     const articles = state.articles || [];
 
+    const getArticleImage = (art) => {
+      if (art && art.coverImage && typeof art.coverImage === 'string' && art.coverImage.trim()) {
+        return art.coverImage;
+      }
+      if (art && Array.isArray(art.gallery) && art.gallery.length > 0 && typeof art.gallery[0] === 'string' && art.gallery[0].trim()) {
+        return art.gallery[0];
+      }
+      return 'https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&w=800&q=80';
+    };
+
+    const getArticleSummary = (art) => {
+      if (!art) return '';
+      if (art.summary && art.summary.trim()) {
+        return art.summary.replace(/^[🌿✨📌\s]+/, '').trim();
+      }
+      if (art.content) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = art.content;
+        const txt = (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+        return txt.slice(0, 140) + (txt.length > 140 ? '...' : '');
+      }
+      return 'Thông tin và chương trình hoạt động mới nhất từ Ban Điều Hành CLB Cờ TNU - HGC.';
+    };
+
+    const publishedArticles = (articles || []).filter(a => a.status !== 'draft');
+    const featuredArt = publishedArticles[0];
+    const otherArts = publishedArticles.slice(1, 3);
+
     container.innerHTML = `
       <div class="home-page-view animate-fadeIn">
         <!-- Hero Section -->
@@ -1451,62 +1479,74 @@ class App {
                 <div class="d-flex align-center gap-2">
                   <span style="font-size: 1.3rem;">📰</span>
                   <h2 class="text-base font-bold text-white mb-0">Bảng Tin & Thông Báo CLB</h2>
+                  ${publishedArticles.length > 0 ? `<span class="badge badge-gold" style="font-size:0.68rem; padding: 2px 7px; font-weight:700;">${publishedArticles.length} bài viết</span>` : ''}
                 </div>
                 <a href="#news" class="text-xs text-gold font-bold hover-underline" style="text-decoration: none;">Xem tất cả →</a>
               </div>
 
-              <div class="home-news-list">
-                ${articles.length > 0 ? articles.slice(0, 3).map((art) => `
-                  <div class="home-news-item" data-art-id="${art.id}">
-                    <span class="home-news-icon">♟️</span>
-                    <div class="flex-1 min-w-0">
-                      <div class="home-news-title text-truncate">${art.title}</div>
-                      <div class="home-news-meta">
-                        <span class="badge badge-gold" style="font-size:0.65rem; padding:1px 6px;">${art.category || 'Tin tức'}</span>
-                        <span>📅 ${art.publishDate || 'Gần đây'}</span>
-                        <span>•</span>
-                        <span class="text-gold font-bold">Đọc bài →</span>
-                      </div>
-                    </div>
-                  </div>
-                `).join('') : `
-                  <div class="home-news-item" data-action="zalo">
-                    <span class="home-news-icon">📢</span>
-                    <div class="flex-1">
-                      <div class="home-news-title">Lịch Sinh Hoạt & Tập Huấn Kỳ Thủ Định Kỳ</div>
-                      <div class="home-news-meta">
-                        <span class="badge badge-gold" style="font-size:0.65rem; padding:1px 6px;">Thông báo</span>
-                        <span>📅 Chiều Thứ Bảy & Chủ Nhật hàng tuần</span>
-                      </div>
+              ${featuredArt ? `
+                <!-- Featured Magazine Article -->
+                <div class="home-news-featured-card" data-art-id="${featuredArt.id}">
+                  <div class="home-news-featured-cover-wrap">
+                    <img src="${getArticleImage(featuredArt)}" alt="${featuredArt.title}" class="home-news-featured-cover" loading="lazy">
+                    <div class="home-news-cover-gradient"></div>
+                    <div class="home-news-cover-badges">
+                      <span class="badge badge-gold" style="font-size: 0.68rem; font-weight: 800; padding: 2px 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
+                        🔥 MỚI NHẤT
+                      </span>
+                      <span class="badge" style="background: rgba(15,23,42,0.8); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.25); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 2px 8px;">
+                        ${featuredArt.category || 'Tin hoạt động'}
+                      </span>
                     </div>
                   </div>
 
-                  <div class="home-news-item" data-action="register">
-                    <span class="home-news-icon">💳</span>
-                    <div class="flex-1">
-                      <div class="home-news-title">Quy Chế Cấp Thẻ Hội Viên PVC 2 Mặt Chuẩn TNU</div>
-                      <div class="home-news-meta">
-                        <span class="badge badge-cyan" style="font-size:0.65rem; padding:1px 6px;">Hội viên</span>
-                        <span>Định danh mã QR Smart Key trọn đời</span>
+                  <div class="home-news-featured-body">
+                    <h3 class="home-news-featured-title">
+                      ${featuredArt.title}
+                    </h3>
+                    <p class="home-news-featured-excerpt">
+                      ${getArticleSummary(featuredArt)}
+                    </p>
+                    <div class="home-news-featured-footer">
+                      <div class="d-flex align-center gap-2">
+                        <span>📅 ${featuredArt.publishDate || 'Gần đây'}</span>
+                        <span style="opacity: 0.4;">•</span>
+                        <span>✍️ ${featuredArt.author || 'Ban Điều Hành'}</span>
                       </div>
+                      <span class="text-gold font-bold" style="font-size: 0.78rem; display: flex; align-items: center; gap: 4px;">
+                        Đọc toàn văn <span style="font-size: 0.9rem;">➔</span>
+                      </span>
                     </div>
                   </div>
+                </div>
 
-                  <div class="home-news-item" data-action="zalo">
-                    <span class="home-news-icon">💬</span>
-                    <div class="flex-1">
-                      <div class="home-news-title">Kênh Kết Nối Zalo Chính Thức CLB Cờ TNU - HGC</div>
-                      <div class="home-news-meta">
-                        <span class="badge badge-emerald" style="font-size:0.65rem; padding:1px 6px;">Cộng đồng</span>
-                        <span>Giao lưu, ghép cặp đấu và cập nhật hoạt động</span>
+                ${otherArts.length > 0 ? `
+                  <div class="home-news-compact-list">
+                    ${otherArts.map(art => `
+                      <div class="home-news-compact-item" data-art-id="${art.id}">
+                        <img src="${getArticleImage(art)}" alt="${art.title}" class="home-news-compact-thumb" loading="lazy">
+                        <div class="home-news-compact-info">
+                          <div class="home-news-compact-title">${art.title}</div>
+                          <div class="home-news-compact-meta">
+                            <span class="badge badge-gold" style="font-size: 0.62rem; padding: 1px 5px;">${art.category || 'Tin tức'}</span>
+                            <span>📅 ${art.publishDate || 'Gần đây'}</span>
+                          </div>
+                        </div>
+                        <span class="text-gold" style="font-size: 0.85rem; font-weight: bold; flex-shrink: 0;">→</span>
                       </div>
-                    </div>
+                    `).join('')}
                   </div>
-                `}
-              </div>
+                ` : ''}
+              ` : `
+                <div class="home-news-featured-card" style="padding: 24px; text-align: center; background: rgba(15, 23, 42, 0.5);">
+                  <div style="font-size: 2.5rem; margin-bottom: 8px;">📢</div>
+                  <h3 class="text-white font-bold text-sm mb-1">Chưa Có Bản Tin Mới</h3>
+                  <p class="text-xs text-muted mb-0">Các hoạt động và giải đấu tiếp theo sẽ sớm được cập nhật tại đây.</p>
+                </div>
+              `}
             </div>
 
-            <div class="pt-3" style="border-top: 1px solid rgba(255,255,255,0.06);">
+            <div class="pt-3 mt-3" style="border-top: 1px solid rgba(255,255,255,0.06);">
               <a href="#news" class="btn btn-outline btn-sm w-100 text-center" style="display:flex; align-items:center; justify-content:center; gap:6px; text-decoration: none;">
                 📖 Xem Toàn Bộ Bản Tin & Chuyên Đề →
               </a>
@@ -1537,8 +1577,8 @@ class App {
     updateCountdown();
     this._homeCdInterval = setInterval(updateCountdown, 1000);
 
-    // News item clicks
-    container.querySelectorAll('.home-news-item').forEach((item) => {
+    // News item clicks (Featured Card, Compact Items, and legacy news items)
+    container.querySelectorAll('.home-news-featured-card, .home-news-compact-item, .home-news-item').forEach((item) => {
       item.addEventListener('click', () => {
         sound.playClick();
         const artId = item.getAttribute('data-art-id');

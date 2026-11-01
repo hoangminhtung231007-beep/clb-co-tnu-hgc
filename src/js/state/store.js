@@ -72,11 +72,22 @@ class Store {
         if (a && a.id) artMap.set(a.id, a);
       });
 
-      // Retain only very newly created local articles (less than 2 minutes old) not yet in remote collection
+      // Retain full galleries and preserve newly created local articles
       if (Array.isArray(this.state.articles)) {
         const now = Date.now();
         this.state.articles.forEach((localArt) => {
-          if (localArt && localArt.id && !artMap.has(localArt.id)) {
+          if (!localArt || !localArt.id) return;
+          const remoteArt = artMap.get(localArt.id);
+          if (remoteArt) {
+            const localGal = Array.isArray(localArt.gallery) ? localArt.gallery : [];
+            const remoteGal = Array.isArray(remoteArt.gallery) ? remoteArt.gallery : [];
+            const definitiveGal = remoteGal.length > 0 ? remoteGal : localGal;
+            artMap.set(localArt.id, {
+              ...localArt,
+              ...remoteArt,
+              gallery: definitiveGal
+            });
+          } else {
             const age = now - new Date(localArt.publishDate || localArt.createdAt || 0).getTime();
             if (age < 120000) {
               artMap.set(localArt.id, localArt);
@@ -171,11 +182,19 @@ class Store {
         remoteData.articles.forEach((a) => {
           if (a && a.id) artMap.set(a.id, a);
         });
-        // If state already has articles loaded from club_articles collection, preserve them
+        // If state already has articles loaded from club_articles collection, preserve their galleries!
         if (Array.isArray(this.state.articles) && this.state.articles.length > 0) {
           this.state.articles = this.state.articles.map((localArt) => {
             const remoteArt = artMap.get(localArt.id);
-            return remoteArt ? { ...localArt, ...remoteArt } : localArt;
+            if (!remoteArt) return localArt;
+            const localGal = Array.isArray(localArt.gallery) ? localArt.gallery : [];
+            const remoteGal = Array.isArray(remoteArt.gallery) ? remoteArt.gallery : [];
+            const definitiveGal = localGal.length > 0 ? localGal : remoteGal;
+            return {
+              ...localArt,
+              ...remoteArt,
+              gallery: definitiveGal
+            };
           });
         } else {
           this.state.articles = Array.from(artMap.values());

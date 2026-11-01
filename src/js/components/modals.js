@@ -1800,14 +1800,27 @@ export const modalManager = {
         galleryFileInput.addEventListener('change', async (e) => {
           const files = Array.from(e.target.files || []);
           if (!files.length) return;
+          if (btnAddGallery) {
+            btnAddGallery.disabled = true;
+            btnAddGallery.innerHTML = `⏳ Đang xử lý 0/${files.length} ảnh...`;
+          }
           if (galleryCountLabel) galleryCountLabel.textContent = `⏳ Đang xử lý ${files.length} ảnh...`;
+          let processed = 0;
           for (const file of files) {
             try {
-              const compressed = await compressImage(file, 800, 600, 0.72);
-              if (compressed) galleryImages.push(compressed);
+              const compressed = await compressImage(file, 720, 540, 0.68);
+              if (compressed) {
+                galleryImages.push(compressed);
+                processed++;
+                if (btnAddGallery) btnAddGallery.innerHTML = `⏳ Đã nạp ${processed}/${files.length} ảnh...`;
+              }
             } catch (err) {
               console.error('Lỗi nén ảnh gallery:', err);
             }
+          }
+          if (btnAddGallery) {
+            btnAddGallery.disabled = false;
+            btnAddGallery.innerHTML = `➕ Thêm nhiều ảnh vào thư viện`;
           }
           renderGalleryGrid();
           galleryFileInput.value = '';

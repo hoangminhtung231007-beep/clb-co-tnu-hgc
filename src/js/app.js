@@ -1334,10 +1334,16 @@ class App {
     const articles = state.articles || [];
 
     const getArticleImage = (art) => {
-      if (art && art.coverImage && typeof art.coverImage === 'string' && art.coverImage.trim()) {
+      if (!art) return 'https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&w=800&q=80';
+      // Priority 1: Official outside card cover / thumbnail (hình nền bên ngoài của thẻ bài viết)
+      if (art.thumbnail && typeof art.thumbnail === 'string' && art.thumbnail.trim()) {
+        return art.thumbnail;
+      }
+      if (art.coverImage && typeof art.coverImage === 'string' && art.coverImage.trim()) {
         return art.coverImage;
       }
-      if (art && Array.isArray(art.gallery) && art.gallery.length > 0 && typeof art.gallery[0] === 'string' && art.gallery[0].trim()) {
+      // Priority 2: Fallback to gallery only if no thumbnail exists
+      if (Array.isArray(art.gallery) && art.gallery.length > 0 && typeof art.gallery[0] === 'string' && art.gallery[0].trim()) {
         return art.gallery[0];
       }
       return 'https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&w=800&q=80';

@@ -1522,23 +1522,20 @@ class App {
                         <div class="home-news-featured-cover-wrap">
                           <img src="${getArticleImage(art)}" alt="${art.title}" class="home-news-featured-cover" loading="lazy">
                           <div class="home-news-cover-gradient"></div>
-                          <div class="home-news-cover-badges">
-                            ${idx === 0 ? `
-                              <span class="badge badge-gold" style="font-size: 0.68rem; font-weight: 800; padding: 2px 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
-                                🔥 MỚI NHẤT
-                              </span>
-                            ` : `
-                              <span class="badge badge-gold" style="font-size: 0.68rem; font-weight: 700; padding: 2px 8px; opacity: 0.95;">
-                                📌 BẢN TIN SỐ ${idx + 1}
-                              </span>
-                            `}
-                            <span class="badge" style="background: rgba(15,23,42,0.8); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.25); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 2px 8px;">
-                              ${art.category || 'Tin hoạt động'}
-                            </span>
-                          </div>
                         </div>
 
                         <div class="home-news-featured-body">
+                          <div class="d-flex align-center gap-2 mb-1 flex-wrap">
+                            ${idx === 0 ? `
+                              <span class="badge badge-gold" style="font-size: 0.68rem; font-weight: 800; padding: 2px 8px;">
+                                🔥 MỚI NHẤT
+                              </span>
+                            ` : ''}
+                            <span class="badge badge-cyan" style="font-size: 0.68rem; font-weight: 700; padding: 2px 8px;">
+                              ${art.category || 'Tin hoạt động'}
+                            </span>
+                          </div>
+
                           <h3 class="home-news-featured-title">
                             ${art.title}
                           </h3>

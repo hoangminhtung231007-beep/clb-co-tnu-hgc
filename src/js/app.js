@@ -1358,8 +1358,32 @@ class App {
     };
 
     const publishedArticles = (articles || []).filter(a => a.status !== 'draft');
-    const featuredArt = publishedArticles[0];
-    const otherArts = publishedArticles.slice(1, 3);
+    const defaultAnnouncements = [
+      {
+        id: 'SYS-ART-002',
+        title: '[THÔNG BÁO] Lịch Sinh Hoạt & Tập Huấn Kỳ Thủ Định Kỳ CLB Cờ',
+        category: 'Thông báo',
+        author: 'Ban Điều Hành',
+        publishDate: '2026-11-01',
+        summary: 'Lịch sinh hoạt chuyên môn, cọ xát chiến thuật và giao lưu cờ nhanh diễn ra đều đặn vào chiều Thứ Bảy & Chủ Nhật hàng tuần tại sảnh CLB.',
+        coverImage: 'https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&w=800&q=80',
+        content: '<div><p>Kính gửi toàn thể hội viên và các bạn sinh viên yêu cờ,</p><p>CLB Cờ TNU - HGC duy trì lịch sinh hoạt và tập huấn kỳ thủ định kỳ:</p><ul><li><strong>⏰ Thời gian:</strong> 14h00 - 17h30 Chiều Thứ Bảy & Chủ Nhật hàng tuần.</li><li><strong>📍 Địa điểm:</strong> Phòng Sinh hoạt CLB Cờ, Giảng đường A.</li><li><strong>🎯 Nội dung:</strong> Đấu tập cờ nhanh/cờ chớp, phân tích khai cuộc và thế trận mẫu cùng Ban Chuyên Môn.</li></ul></div>'
+      },
+      {
+        id: 'SYS-ART-003',
+        title: '[HỘI VIÊN] Quy Chế Cấp Thẻ Thành Viên PVC 2 Mặt & Smart Key QR',
+        category: 'Hội viên',
+        author: 'Ban Điều Hành',
+        publishDate: '2026-10-30',
+        summary: 'Thẻ thành viên điện tử và thẻ PVC 2 mặt chuẩn nhận diện Đại học Thái Nguyên, tích hợp mã QR Smart Key định danh cá nhân trọn đời.',
+        coverImage: 'https://images.unsplash.com/photo-1586165368502-1bad197a6461?auto=format&fit=crop&w=800&q=80',
+        content: '<div><p>Nhằm chuẩn hóa công tác quản lý hội viên và xây dựng hình ảnh chuyên nghiệp, CLB Cờ TNU - HGC triển khai cấp Thẻ Thành Viên chuẩn nhận diện mới với công nghệ Smart Key QR tra cứu hồ sơ và điểm danh di động 1 chạm.</p></div>'
+      }
+    ];
+
+    const slideArticles = publishedArticles.length >= 2
+      ? publishedArticles
+      : [...publishedArticles, ...defaultAnnouncements.slice(0, 3 - publishedArticles.length)];
 
     container.innerHTML = `
       <div class="home-page-view animate-fadeIn">
@@ -1479,71 +1503,73 @@ class App {
                 <div class="d-flex align-center gap-2">
                   <span style="font-size: 1.3rem;">📰</span>
                   <h2 class="text-base font-bold text-white mb-0">Bảng Tin & Thông Báo CLB</h2>
-                  ${publishedArticles.length > 0 ? `<span class="badge badge-gold" style="font-size:0.68rem; padding: 2px 7px; font-weight:700;">${publishedArticles.length} bài viết</span>` : ''}
                 </div>
-                <a href="#news" class="text-xs text-gold font-bold hover-underline" style="text-decoration: none;">Xem tất cả →</a>
-              </div>
-
-              ${featuredArt ? `
-                <!-- Featured Magazine Article -->
-                <div class="home-news-featured-card" data-art-id="${featuredArt.id}">
-                  <div class="home-news-featured-cover-wrap">
-                    <img src="${getArticleImage(featuredArt)}" alt="${featuredArt.title}" class="home-news-featured-cover" loading="lazy">
-                    <div class="home-news-cover-gradient"></div>
-                    <div class="home-news-cover-badges">
-                      <span class="badge badge-gold" style="font-size: 0.68rem; font-weight: 800; padding: 2px 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
-                        🔥 MỚI NHẤT
-                      </span>
-                      <span class="badge" style="background: rgba(15,23,42,0.8); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.25); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 2px 8px;">
-                        ${featuredArt.category || 'Tin hoạt động'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="home-news-featured-body">
-                    <h3 class="home-news-featured-title">
-                      ${featuredArt.title}
-                    </h3>
-                    <p class="home-news-featured-excerpt">
-                      ${getArticleSummary(featuredArt)}
-                    </p>
-                    <div class="home-news-featured-footer">
-                      <div class="d-flex align-center gap-2">
-                        <span>📅 ${featuredArt.publishDate || 'Gần đây'}</span>
-                        <span style="opacity: 0.4;">•</span>
-                        <span>✍️ ${featuredArt.author || 'Ban Điều Hành'}</span>
-                      </div>
-                      <span class="text-gold font-bold" style="font-size: 0.78rem; display: flex; align-items: center; gap: 4px;">
-                        Đọc toàn văn <span style="font-size: 0.9rem;">➔</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                ${otherArts.length > 0 ? `
-                  <div class="home-news-compact-list">
-                    ${otherArts.map(art => `
-                      <div class="home-news-compact-item" data-art-id="${art.id}">
-                        <img src="${getArticleImage(art)}" alt="${art.title}" class="home-news-compact-thumb" loading="lazy">
-                        <div class="home-news-compact-info">
-                          <div class="home-news-compact-title">${art.title}</div>
-                          <div class="home-news-compact-meta">
-                            <span class="badge badge-gold" style="font-size: 0.62rem; padding: 1px 5px;">${art.category || 'Tin tức'}</span>
-                            <span>📅 ${art.publishDate || 'Gần đây'}</span>
-                          </div>
-                        </div>
-                        <span class="text-gold" style="font-size: 0.85rem; font-weight: bold; flex-shrink: 0;">→</span>
-                      </div>
-                    `).join('')}
+                ${slideArticles.length > 1 ? `
+                  <div class="home-news-slider-arrows">
+                    <button type="button" class="btn-slider-arrow" id="btnNewsPrev" title="Bài trước" aria-label="Bài trước">‹</button>
+                    <span class="home-news-counter font-mono" id="newsSlideCounter">1/${slideArticles.length}</span>
+                    <button type="button" class="btn-slider-arrow" id="btnNewsNext" title="Bài tiếp theo" aria-label="Bài tiếp theo">›</button>
                   </div>
                 ` : ''}
-              ` : `
-                <div class="home-news-featured-card" style="padding: 24px; text-align: center; background: rgba(15, 23, 42, 0.5);">
-                  <div style="font-size: 2.5rem; margin-bottom: 8px;">📢</div>
-                  <h3 class="text-white font-bold text-sm mb-1">Chưa Có Bản Tin Mới</h3>
-                  <p class="text-xs text-muted mb-0">Các hoạt động và giải đấu tiếp theo sẽ sớm được cập nhật tại đây.</p>
+              </div>
+
+              <!-- Carousel Viewport & Slides -->
+              <div class="home-news-carousel-viewport" id="homeNewsViewport">
+                <div class="home-news-carousel-track" id="homeNewsTrack">
+                  ${slideArticles.map((art, idx) => `
+                    <div class="home-news-slide" data-slide-index="${idx}">
+                      <div class="home-news-featured-card" data-art-id="${art.id}">
+                        <div class="home-news-featured-cover-wrap">
+                          <img src="${getArticleImage(art)}" alt="${art.title}" class="home-news-featured-cover" loading="lazy">
+                          <div class="home-news-cover-gradient"></div>
+                          <div class="home-news-cover-badges">
+                            ${idx === 0 ? `
+                              <span class="badge badge-gold" style="font-size: 0.68rem; font-weight: 800; padding: 2px 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
+                                🔥 MỚI NHẤT
+                              </span>
+                            ` : `
+                              <span class="badge badge-gold" style="font-size: 0.68rem; font-weight: 700; padding: 2px 8px; opacity: 0.95;">
+                                📌 BẢN TIN SỐ ${idx + 1}
+                              </span>
+                            `}
+                            <span class="badge" style="background: rgba(15,23,42,0.8); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.25); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 2px 8px;">
+                              ${art.category || 'Tin hoạt động'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div class="home-news-featured-body">
+                          <h3 class="home-news-featured-title">
+                            ${art.title}
+                          </h3>
+                          <p class="home-news-featured-excerpt">
+                            ${getArticleSummary(art)}
+                          </p>
+                          <div class="home-news-featured-footer">
+                            <div class="d-flex align-center gap-2">
+                              <span>📅 ${art.publishDate || 'Gần đây'}</span>
+                              <span style="opacity: 0.4;">•</span>
+                              <span>✍️ ${art.author || 'Ban Điều Hành'}</span>
+                            </div>
+                            <span class="text-gold font-bold" style="font-size: 0.78rem; display: flex; align-items: center; gap: 4px;">
+                              Đọc toàn văn <span style="font-size: 0.9rem;">➔</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  `).join('')}
                 </div>
-              `}
+              </div>
+
+              ${slideArticles.length > 1 ? `
+                <!-- Pagination Dots -->
+                <div class="home-news-dots" id="homeNewsDots">
+                  ${slideArticles.map((_, idx) => `
+                    <button type="button" class="home-news-dot ${idx === 0 ? 'active' : ''}" data-goto-slide="${idx}" title="Chuyển đến bài ${idx + 1}" aria-label="Chuyển đến bài ${idx + 1}"></button>
+                  `).join('')}
+                </div>
+              ` : ''}
             </div>
 
             <div class="pt-3 mt-3" style="border-top: 1px solid rgba(255,255,255,0.06);">
@@ -1583,7 +1609,7 @@ class App {
         sound.playClick();
         const artId = item.getAttribute('data-art-id');
         if (artId) {
-          const art = (state.articles || []).find((a) => a.id === artId);
+          const art = slideArticles.find((a) => a.id === artId) || (state.articles || []).find((a) => a.id === artId);
           if (art) modalManager.openArticleDetailModal(art);
           return;
         }
@@ -1597,6 +1623,86 @@ class App {
         }
       });
     });
+
+    // News Carousel Slider Logic
+    const track = container.querySelector('#homeNewsTrack');
+    const prevBtn = container.querySelector('#btnNewsPrev');
+    const nextBtn = container.querySelector('#btnNewsNext');
+    const counterEl = container.querySelector('#newsSlideCounter');
+    const dots = container.querySelectorAll('.home-news-dot');
+    const totalSlides = slideArticles.length;
+    let currentSlide = 0;
+
+    const goToSlide = (index) => {
+      if (totalSlides <= 1 || !track) return;
+      currentSlide = (index + totalSlides) % totalSlides;
+      track.style.transform = `translateX(-${currentSlide * 100}%)`;
+      if (counterEl) {
+        counterEl.textContent = `${currentSlide + 1}/${totalSlides}`;
+      }
+      dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === currentSlide);
+      });
+    };
+
+    if (totalSlides > 1) {
+      if (prevBtn) {
+        prevBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          sound.playClick();
+          goToSlide(currentSlide - 1);
+        });
+      }
+      if (nextBtn) {
+        nextBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          sound.playClick();
+          goToSlide(currentSlide + 1);
+        });
+      }
+      dots.forEach((dot) => {
+        dot.addEventListener('click', (e) => {
+          e.stopPropagation();
+          sound.playClick();
+          const target = parseInt(dot.getAttribute('data-goto-slide'), 10);
+          if (!isNaN(target)) goToSlide(target);
+        });
+      });
+
+      // Touch / Swipe support for mobile
+      let touchStartX = 0;
+      let touchEndX = 0;
+      const viewport = container.querySelector('#homeNewsViewport');
+      if (viewport) {
+        viewport.addEventListener('touchstart', (e) => {
+          touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        viewport.addEventListener('touchend', (e) => {
+          touchEndX = e.changedTouches[0].screenX;
+          const diff = touchStartX - touchEndX;
+          if (Math.abs(diff) > 40) {
+            sound.playClick();
+            if (diff > 0) {
+              goToSlide(currentSlide + 1); // Swipe left -> Next
+            } else {
+              goToSlide(currentSlide - 1); // Swipe right -> Prev
+            }
+          }
+        }, { passive: true });
+
+        // Auto slide every 6 seconds, pause on hover
+        let autoSlideTimer = setInterval(() => {
+          goToSlide(currentSlide + 1);
+        }, 6000);
+
+        viewport.addEventListener('mouseenter', () => clearInterval(autoSlideTimer));
+        viewport.addEventListener('mouseleave', () => {
+          clearInterval(autoSlideTimer);
+          autoSlideTimer = setInterval(() => goToSlide(currentSlide + 1), 6000);
+        });
+      }
+    }
   }
 
   // ==========================================

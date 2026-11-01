@@ -64,7 +64,7 @@ class Store {
   }
 
   applyRemoteArticles(remoteArticles) {
-    if (!Array.isArray(remoteArticles) || remoteArticles.length === 0) return;
+    if (!Array.isArray(remoteArticles)) return;
     this.isRemoteUpdating = true;
     try {
       const artMap = new Map();
@@ -72,11 +72,15 @@ class Store {
         if (a && a.id) artMap.set(a.id, a);
       });
 
-      // Retain any locally authored article not yet in remote collection
+      // Retain only very newly created local articles (less than 2 minutes old) not yet in remote collection
       if (Array.isArray(this.state.articles)) {
+        const now = Date.now();
         this.state.articles.forEach((localArt) => {
           if (localArt && localArt.id && !artMap.has(localArt.id)) {
-            artMap.set(localArt.id, localArt);
+            const age = now - new Date(localArt.publishDate || localArt.createdAt || 0).getTime();
+            if (age < 120000) {
+              artMap.set(localArt.id, localArt);
+            }
           }
         });
       }
@@ -167,15 +171,15 @@ class Store {
         remoteData.articles.forEach((a) => {
           if (a && a.id) artMap.set(a.id, a);
         });
-        // Retain local articles so a newly posted 2nd article never disappears!
-        if (Array.isArray(this.state.articles)) {
-          this.state.articles.forEach((localArt) => {
-            if (localArt && localArt.id && !artMap.has(localArt.id)) {
-              artMap.set(localArt.id, localArt);
-            }
+        // If state already has articles loaded from club_articles collection, preserve them
+        if (Array.isArray(this.state.articles) && this.state.articles.length > 0) {
+          this.state.articles = this.state.articles.map((localArt) => {
+            const remoteArt = artMap.get(localArt.id);
+            return remoteArt ? { ...localArt, ...remoteArt } : localArt;
           });
+        } else {
+          this.state.articles = Array.from(artMap.values());
         }
-        this.state.articles = Array.from(artMap.values());
       }
       if (Array.isArray(remoteData.pendingApplications)) {
         const appMap = new Map();
@@ -375,7 +379,7 @@ class Store {
   notify(forceSync = false) {
     this.saveState();
     if (!this.isRemoteUpdating && (this.hasReceivedInitialSync || forceSync)) {
-      firebaseService.syncToFirestore(this.state);
+      firebaseService.syncToFirestore(this.state, forceSync);
     }
     this.listeners.forEach((listener) => {
       try {
@@ -1414,12 +1418,15 @@ class Store {
   }
 
   deleteArticle(id) {
-    this.state.articles = this.state.articles.filter((a) => a.id !== id);
+    this.state.articles = (this.state.articles || []).filter((a) => a.id !== id);
     this.saveState();
-    this.notify(true);
-    if (typeof firebaseService !== 'undefined' && firebaseService?.deleteArticleDoc) {
-      firebaseService.deleteArticleDoc(id);
+    if (typeof firebaseService !== 'undefined') {
+      if (firebaseService.deleteArticleDoc) {
+        firebaseService.deleteArticleDoc(id);
+      }
+      firebaseService.syncToFirestore(this.state, true);
     }
+    this.notify(true);
   }
 
   // ==========================================

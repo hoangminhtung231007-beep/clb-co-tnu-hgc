@@ -1358,32 +1358,7 @@ class App {
     };
 
     const publishedArticles = (articles || []).filter(a => a.status !== 'draft');
-    const defaultAnnouncements = [
-      {
-        id: 'SYS-ART-002',
-        title: '[THÔNG BÁO] Lịch Sinh Hoạt & Tập Huấn Kỳ Thủ Định Kỳ CLB Cờ',
-        category: 'Thông báo',
-        author: 'Ban Điều Hành',
-        publishDate: '2026-11-01',
-        summary: 'Lịch sinh hoạt chuyên môn, cọ xát chiến thuật và giao lưu cờ nhanh diễn ra đều đặn vào chiều Thứ Bảy & Chủ Nhật hàng tuần tại sảnh CLB.',
-        coverImage: 'https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&w=800&q=80',
-        content: '<div><p>Kính gửi toàn thể hội viên và các bạn sinh viên yêu cờ,</p><p>CLB Cờ TNU - HGC duy trì lịch sinh hoạt và tập huấn kỳ thủ định kỳ:</p><ul><li><strong>⏰ Thời gian:</strong> 14h00 - 17h30 Chiều Thứ Bảy & Chủ Nhật hàng tuần.</li><li><strong>📍 Địa điểm:</strong> Phòng Sinh hoạt CLB Cờ, Giảng đường A.</li><li><strong>🎯 Nội dung:</strong> Đấu tập cờ nhanh/cờ chớp, phân tích khai cuộc và thế trận mẫu cùng Ban Chuyên Môn.</li></ul></div>'
-      },
-      {
-        id: 'SYS-ART-003',
-        title: '[HỘI VIÊN] Quy Chế Cấp Thẻ Thành Viên PVC 2 Mặt & Smart Key QR',
-        category: 'Hội viên',
-        author: 'Ban Điều Hành',
-        publishDate: '2026-10-30',
-        summary: 'Thẻ thành viên điện tử và thẻ PVC 2 mặt chuẩn nhận diện Đại học Thái Nguyên, tích hợp mã QR Smart Key định danh cá nhân trọn đời.',
-        coverImage: 'https://images.unsplash.com/photo-1586165368502-1bad197a6461?auto=format&fit=crop&w=800&q=80',
-        content: '<div><p>Nhằm chuẩn hóa công tác quản lý hội viên và xây dựng hình ảnh chuyên nghiệp, CLB Cờ TNU - HGC triển khai cấp Thẻ Thành Viên chuẩn nhận diện mới với công nghệ Smart Key QR tra cứu hồ sơ và điểm danh di động 1 chạm.</p></div>'
-      }
-    ];
-
-    const slideArticles = publishedArticles.length >= 2
-      ? publishedArticles
-      : [...publishedArticles, ...defaultAnnouncements.slice(0, 3 - publishedArticles.length)];
+    const slideArticles = publishedArticles;
 
     container.innerHTML = `
       <div class="home-page-view animate-fadeIn">
@@ -1516,7 +1491,15 @@ class App {
               <!-- Carousel Viewport & Slides -->
               <div class="home-news-carousel-viewport" id="homeNewsViewport">
                 <div class="home-news-carousel-track" id="homeNewsTrack">
-                  ${slideArticles.map((art, idx) => `
+                  ${slideArticles.length === 0 ? `
+                    <div class="home-news-slide" style="flex: 0 0 100%; width: 100%;">
+                      <div class="p-4 text-center text-muted" style="min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                        <span style="font-size: 2rem;">📰</span>
+                        <p class="mb-0 text-white font-medium">Chưa có bài viết nào được xuất bản</p>
+                        <span class="text-xs text-muted">Các thông báo và bài viết mới từ Ban Điều Hành sẽ xuất hiện tại đây.</span>
+                      </div>
+                    </div>
+                  ` : slideArticles.map((art, idx) => `
                     <div class="home-news-slide" data-slide-index="${idx}">
                       <div class="home-news-featured-card" data-art-id="${art.id}">
                         <div class="home-news-featured-cover-wrap">

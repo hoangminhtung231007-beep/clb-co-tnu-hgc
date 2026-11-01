@@ -3869,6 +3869,7 @@ class App {
             <p class="text-muted text-xs">Gồm Ban Điều Hành đương nhiệm và tất cả kỳ thủ đang học tập, sinh hoạt thường niên</p>
           </div>
           <div class="d-flex gap-2">
+            <button class="btn btn-gold btn-sm" id="btnAddActiveMemberAdmin">+ Thêm Kỳ Thủ Mới</button>
             <button class="btn btn-outline btn-sm" id="btnExportUsersCsv">📥 Xuất Báo Cáo CSV</button>
           </div>
         </div>
@@ -4127,6 +4128,12 @@ class App {
         });
       });
     } else if (this.adminUserSubTab === 'active') {
+      // Bind Add Member Modal
+      pane.querySelector('#btnAddActiveMemberAdmin')?.addEventListener('click', () => {
+        sound.playClick();
+        modalManager.openMemberModal(null, () => this.renderAdminUsers(pane));
+      });
+
       // Bind CSV Export
       pane.querySelector('#btnExportUsersCsv')?.addEventListener('click', () => {
         sound.playClick();

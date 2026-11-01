@@ -23,11 +23,16 @@ function sanitizeArticlesList(articles) {
   if (!Array.isArray(articles)) return [];
   return articles.map((art) => {
     if (!art) return art;
-    const gallery = Array.isArray(art.gallery) ? art.gallery : [];
+    let gallery = Array.isArray(art.gallery) ? art.gallery : [];
+    // Prevent duplicate base64 image strings between thumbnail and gallery on root doc
+    if (gallery.length > 0 && art.thumbnail && gallery[0] === art.thumbnail) {
+      gallery = [art.thumbnail];
+    } else if (gallery.length > 1) {
+      gallery = gallery.slice(0, 1);
+    }
     return {
       ...art,
-      // Cap gallery array on the root document to 10 photos to keep doc well under 1MB
-      gallery: gallery.slice(0, 10)
+      gallery
     };
   });
 }

@@ -115,9 +115,14 @@ class Store {
         });
       }
 
-      this.state.pendingApplications = Array.from(map.values()).sort((a, b) => {
-        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-      });
+      // Filter out any applications whose studentId already exists in official members
+      const approvedStudentIds = new Set((this.state.members || []).map(m => (m.studentId || '').trim().toLowerCase()));
+
+      this.state.pendingApplications = Array.from(map.values())
+        .filter(a => !approvedStudentIds.has((a.studentId || '').trim().toLowerCase()))
+        .sort((a, b) => {
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        });
 
       this.saveState();
       this.listeners.forEach((listener) => {
@@ -173,10 +178,26 @@ class Store {
         this.state.articles = Array.from(artMap.values());
       }
       if (Array.isArray(remoteData.pendingApplications)) {
-        // Single Source of Truth from Firestore
-        this.state.pendingApplications = remoteData.pendingApplications.filter((app) => {
-          return app && app.id && (!app.status || app.status === 'pending');
+        const appMap = new Map();
+        // Retain pending applications from dedicated collection club_applications or local state
+        if (Array.isArray(this.state.pendingApplications)) {
+          this.state.pendingApplications.forEach((a) => {
+            if (a && a.id && (!a.status || a.status === 'pending')) {
+              appMap.set(a.id, a);
+            }
+          });
+        }
+        // Merge applications from root document
+        remoteData.pendingApplications.forEach((app) => {
+          if (app && app.id && (!app.status || app.status === 'pending')) {
+            appMap.set(app.id, app);
+          }
         });
+
+        const approvedStudentIds = new Set((this.state.members || []).map(m => (m.studentId || '').trim().toLowerCase()));
+        this.state.pendingApplications = Array.from(appMap.values())
+          .filter(a => !approvedStudentIds.has((a.studentId || '').trim().toLowerCase()))
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       }
       if (Array.isArray(remoteData.alumniBoard)) this.state.alumniBoard = remoteData.alumniBoard;
       if (Array.isArray(remoteData.alumniMembers)) this.state.alumniMembers = remoteData.alumniMembers;

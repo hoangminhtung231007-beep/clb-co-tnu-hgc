@@ -27,6 +27,24 @@ export const ALUMNI_MESSAGES = [
 ];
 
 const STORAGE_KEY = 'TNU_HGC_CHESS_CLUB_DATA_ZERO_V3';
+const PROCESSED_APPS_KEY = 'TNU_HGC_PROCESSED_APPS_V2';
+
+function getProcessedAppIds() {
+  try {
+    const raw = localStorage.getItem(PROCESSED_APPS_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch (e) {}
+  return new Set();
+}
+
+function saveProcessedAppIds(set) {
+  try {
+    localStorage.setItem(PROCESSED_APPS_KEY, JSON.stringify(Array.from(set)));
+  } catch (e) {}
+}
 
 function syncAlumniCardId(id, idx = 0) {
   if (id && /^TNU-HGC-\d{3}$/.test(id)) return id;
@@ -39,8 +57,20 @@ class Store {
     this.listeners = new Set();
     this.isRemoteUpdating = false;
     this.hasReceivedInitialSync = false;
+    this.processedAppIds = getProcessedAppIds();
     this.state = this.loadState();
     this.initFirebaseSync();
+  }
+
+  markApplicationProcessed(appId) {
+    if (!appId) return;
+    this.processedAppIds.add(appId);
+    saveProcessedAppIds(this.processedAppIds);
+  }
+
+  isApplicationProcessed(appId) {
+    if (!appId) return false;
+    return this.processedAppIds.has(appId);
   }
 
   initFirebaseSync() {
@@ -114,30 +144,33 @@ class Store {
     if (!Array.isArray(remoteApplications)) return;
     this.isRemoteUpdating = true;
     try {
+      const approvedStudentIds = new Set((this.state.members || []).map(m => (m.studentId || '').trim().toLowerCase()));
       const map = new Map();
+
       remoteApplications.forEach((app) => {
         if (app && app.id && (!app.status || app.status === 'pending')) {
-          map.set(app.id, app);
+          if (!this.isApplicationProcessed(app.id)) {
+            const cleanSid = (app.studentId || '').trim().toLowerCase();
+            if (!cleanSid || !approvedStudentIds.has(cleanSid)) {
+              map.set(app.id, app);
+            }
+          }
         }
       });
 
-      // Also preserve any newly added local pending application
+      // Retain only local drafts that have not yet been synced
       if (Array.isArray(this.state.pendingApplications)) {
         this.state.pendingApplications.forEach((app) => {
-          if (app && app.id && !map.has(app.id) && (!app.status || app.status === 'pending')) {
-            map.set(app.id, app);
+          if (app && app.id && app._isLocalDraft === true && !map.has(app.id) && (!app.status || app.status === 'pending')) {
+            if (!this.isApplicationProcessed(app.id)) {
+              map.set(app.id, app);
+            }
           }
         });
       }
 
-      // Filter out any applications whose studentId already exists in official members
-      const approvedStudentIds = new Set((this.state.members || []).map(m => (m.studentId || '').trim().toLowerCase()));
-
       this.state.pendingApplications = Array.from(map.values())
-        .filter(a => !approvedStudentIds.has((a.studentId || '').trim().toLowerCase()))
-        .sort((a, b) => {
-          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-        });
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
       this.saveState();
       this.listeners.forEach((listener) => {
@@ -201,25 +234,32 @@ class Store {
         }
       }
       if (Array.isArray(remoteData.pendingApplications)) {
+        const approvedStudentIds = new Set((this.state.members || []).map(m => (m.studentId || '').trim().toLowerCase()));
         const appMap = new Map();
-        // Retain pending applications from dedicated collection club_applications or local state
-        if (Array.isArray(this.state.pendingApplications)) {
-          this.state.pendingApplications.forEach((a) => {
-            if (a && a.id && (!a.status || a.status === 'pending')) {
-              appMap.set(a.id, a);
-            }
-          });
-        }
-        // Merge applications from root document
+
         remoteData.pendingApplications.forEach((app) => {
           if (app && app.id && (!app.status || app.status === 'pending')) {
-            appMap.set(app.id, app);
+            if (!this.isApplicationProcessed(app.id)) {
+              const cleanSid = (app.studentId || '').trim().toLowerCase();
+              if (!cleanSid || !approvedStudentIds.has(cleanSid)) {
+                appMap.set(app.id, app);
+              }
+            }
           }
         });
 
-        const approvedStudentIds = new Set((this.state.members || []).map(m => (m.studentId || '').trim().toLowerCase()));
+        // Retain only local drafts that have not yet been synced
+        if (Array.isArray(this.state.pendingApplications)) {
+          this.state.pendingApplications.forEach((app) => {
+            if (app && app.id && app._isLocalDraft === true && !appMap.has(app.id) && (!app.status || app.status === 'pending')) {
+              if (!this.isApplicationProcessed(app.id)) {
+                appMap.set(app.id, app);
+              }
+            }
+          });
+        }
+
         this.state.pendingApplications = Array.from(appMap.values())
-          .filter(a => !approvedStudentIds.has((a.studentId || '').trim().toLowerCase()))
           .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       }
       if (Array.isArray(remoteData.alumniBoard)) this.state.alumniBoard = remoteData.alumniBoard;
@@ -287,8 +327,16 @@ class Store {
         const rawArticles = Array.isArray(parsed.articles) ? parsed.articles : (INITIAL_DATA.articles || []);
 
         const rawPending = Array.isArray(parsed.pendingApplications) ? parsed.pendingApplications : (INITIAL_DATA.pendingApplications || []);
+        const approvedStudentIds = new Set(rawClubMembers.map(m => (m.studentId || '').trim().toLowerCase()));
+        const processedSet = getProcessedAppIds();
+
         const cleanedPending = rawPending.filter((app) => {
-          return app && app.id && (!app.status || app.status === 'pending');
+          if (!app || !app.id) return false;
+          if (app.status && app.status !== 'pending') return false;
+          if (processedSet.has(app.id)) return false;
+          const sId = (app.studentId || '').trim().toLowerCase();
+          if (sId && approvedStudentIds.has(sId)) return false;
+          return true;
         });
 
         const rawEvents = Array.isArray(parsed.events) ? parsed.events : (INITIAL_DATA.events || []);
@@ -691,7 +739,9 @@ class Store {
     const appIndex = this.state.pendingApplications.findIndex((a) => a.id === appId);
     if (appIndex === -1) return null;
 
-    const app = this.state.pendingApplications[appIndex];
+    const app = this.state.pendingApplications.splice(appIndex, 1)[0];
+    this.markApplicationProcessed(appId);
+
     const newMember = this.addMember({
       name: app.name,
       studentId: app.studentId,
@@ -708,7 +758,6 @@ class Store {
       status: 'active'
     });
 
-    this.state.pendingApplications.splice(appIndex, 1);
     this.saveState();
     firebaseService.deleteApplication(appId);
     firebaseService.syncToFirestore(this.state, true);
@@ -720,6 +769,7 @@ class Store {
     if (!this.state.pendingApplications) return false;
     const appIndex = this.state.pendingApplications.findIndex((a) => a.id === appId);
     if (appIndex === -1) return false;
+    this.markApplicationProcessed(appId);
     this.state.pendingApplications.splice(appIndex, 1);
     this.saveState();
     firebaseService.deleteApplication(appId);

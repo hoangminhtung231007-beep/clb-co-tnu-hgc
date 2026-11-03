@@ -933,11 +933,25 @@ class App {
       }
     }
 
-    // Auto-pop Toast for new unread notifications in this session
-    if (!this.toastedIds) this.toastedIds = new Set();
+    // Auto-pop Toast for new unread notifications only once per session
+    const getSessionToasted = () => {
+      try {
+        const raw = sessionStorage.getItem('TNU_HGC_TOASTED_NOTIFS');
+        if (raw) return new Set(JSON.parse(raw));
+      } catch (e) {}
+      return new Set();
+    };
+    const saveSessionToasted = (set) => {
+      try {
+        sessionStorage.setItem('TNU_HGC_TOASTED_NOTIFS', JSON.stringify(Array.from(set)));
+      } catch (e) {}
+    };
+
+    if (!this.toastedIds) this.toastedIds = getSessionToasted();
     const firstUnread = notifs.find((n) => !readIds.includes(n.id) && !this.toastedIds.has(n.id));
     if (firstUnread) {
       this.toastedIds.add(firstUnread.id);
+      saveSessionToasted(this.toastedIds);
       this.showToastNotification(firstUnread);
     }
 
@@ -3764,11 +3778,8 @@ class App {
     if (!pane) return;
     const state = store.getState();
     const pendingCount = (state.pendingApplications || []).length;
-    if (!this._userSelectedUserSubTab && pendingCount > 0) {
-      this.adminUserSubTab = 'pending';
-    } else {
-      this.adminUserSubTab = this.adminUserSubTab || (pendingCount > 0 ? 'pending' : 'active');
-    }
+    // Keep default tab as 'active' (Kỳ Thủ Đang Sinh Hoạt) so admin view doesn't abruptly jump to pending
+    this.adminUserSubTab = this.adminUserSubTab || 'active';
 
     const activeCount = (state.members || []).length;
     const alumniBoardCount = (state.alumniBoard || []).length;

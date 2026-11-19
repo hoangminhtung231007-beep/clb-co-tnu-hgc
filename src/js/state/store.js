@@ -34,7 +34,9 @@ function getProcessedAppIds() {
     const raw = localStorage.getItem(PROCESSED_APPS_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return new Set(arr);
+      if (Array.isArray(arr)) {
+        return new Set(arr.filter((id) => id !== 'DK-2026-001'));
+      }
     }
   } catch (e) {}
   return new Set();
@@ -68,8 +70,15 @@ class Store {
     saveProcessedAppIds(this.processedAppIds);
   }
 
-  isApplicationProcessed(appId) {
+  isApplicationProcessed(appId, studentId) {
     if (!appId) return false;
+    if (studentId) {
+      const cleanSid = (studentId || '').trim().toLowerCase();
+      const approvedStudentIds = new Set((this.state?.members || []).map(m => (m.studentId || '').trim().toLowerCase()));
+      if (cleanSid && !approvedStudentIds.has(cleanSid)) {
+        return false;
+      }
+    }
     return this.processedAppIds.has(appId);
   }
 
@@ -149,7 +158,7 @@ class Store {
 
       remoteApplications.forEach((app) => {
         if (app && app.id && (!app.status || app.status === 'pending')) {
-          if (!this.isApplicationProcessed(app.id)) {
+          if (!this.isApplicationProcessed(app.id, app.studentId)) {
             const cleanSid = (app.studentId || '').trim().toLowerCase();
             if (!cleanSid || !approvedStudentIds.has(cleanSid)) {
               map.set(app.id, app);
@@ -162,7 +171,7 @@ class Store {
       if (Array.isArray(this.state.pendingApplications)) {
         this.state.pendingApplications.forEach((app) => {
           if (app && app.id && app._isLocalDraft === true && !map.has(app.id) && (!app.status || app.status === 'pending')) {
-            if (!this.isApplicationProcessed(app.id)) {
+            if (!this.isApplicationProcessed(app.id, app.studentId)) {
               map.set(app.id, app);
             }
           }
@@ -239,7 +248,7 @@ class Store {
 
         remoteData.pendingApplications.forEach((app) => {
           if (app && app.id && (!app.status || app.status === 'pending')) {
-            if (!this.isApplicationProcessed(app.id)) {
+            if (!this.isApplicationProcessed(app.id, app.studentId)) {
               const cleanSid = (app.studentId || '').trim().toLowerCase();
               if (!cleanSid || !approvedStudentIds.has(cleanSid)) {
                 appMap.set(app.id, app);
@@ -252,7 +261,7 @@ class Store {
         if (Array.isArray(this.state.pendingApplications)) {
           this.state.pendingApplications.forEach((app) => {
             if (app && app.id && app._isLocalDraft === true && !appMap.has(app.id) && (!app.status || app.status === 'pending')) {
-              if (!this.isApplicationProcessed(app.id)) {
+              if (!this.isApplicationProcessed(app.id, app.studentId)) {
                 appMap.set(app.id, app);
               }
             }
@@ -272,30 +281,6 @@ class Store {
       }
       if (remoteData.clubInfo && typeof remoteData.clubInfo === 'object') {
         this.state.clubInfo = { ...this.state.clubInfo, ...remoteData.clubInfo };
-      }
-
-      // One-time auto-reset: reset all activitiesJoined to 0 & delete old proof activities per user request
-      const SYNC_RESET_KEY = 'TNU_PROOF_ZERO_RESET_V2_SYNC';
-      if (!localStorage.getItem(SYNC_RESET_KEY)) {
-        localStorage.setItem(SYNC_RESET_KEY, 'done');
-        if (Array.isArray(this.state.members)) {
-          this.state.members.forEach((m) => { m.activitiesJoined = 0; });
-        }
-        if (Array.isArray(this.state.events)) {
-          this.state.events = this.state.events.filter((e) => !isProofEvent(e));
-        }
-        if (Array.isArray(this.state.attendanceLogs)) {
-          this.state.attendanceLogs = this.state.attendanceLogs.filter((log) => {
-            if (!log) return false;
-            if (log.id && log.id.startsWith('ATT-FP-')) return false;
-            if (log.category === 'proof') return false;
-            if (log.method === 'BĐH Duyệt Zalo') return false;
-            return true;
-          });
-        }
-        setTimeout(() => {
-          firebaseService.syncToFirestore(this.state, true);
-        }, 120);
       }
 
       this.saveState();
@@ -333,7 +318,6 @@ class Store {
         const cleanedPending = rawPending.filter((app) => {
           if (!app || !app.id) return false;
           if (app.status && app.status !== 'pending') return false;
-          if (processedSet.has(app.id)) return false;
           const sId = (app.studentId || '').trim().toLowerCase();
           if (sId && approvedStudentIds.has(sId)) return false;
           return true;
@@ -342,23 +326,12 @@ class Store {
         const rawEvents = Array.isArray(parsed.events) ? parsed.events : (INITIAL_DATA.events || []);
         const rawLogs = Array.isArray(parsed.attendanceLogs) ? parsed.attendanceLogs : (INITIAL_DATA.attendanceLogs || []);
 
-        const RESET_KEY = 'TNU_PROOF_ZERO_RESET_V2';
-        const needsZeroReset = !localStorage.getItem(RESET_KEY);
-        if (needsZeroReset) {
-          localStorage.setItem(RESET_KEY, 'done');
-        }
-
-        const filteredEvents = needsZeroReset ? rawEvents.filter((e) => !isProofEvent(e)) : rawEvents;
-
         const validEventMap = new Map();
-        filteredEvents.forEach((e) => validEventMap.set(e.id, e));
+        rawEvents.forEach((e) => validEventMap.set(e.id, e));
 
         const cleanedLogs = rawLogs.filter((log) => {
           if (!log) return false;
-          if (needsZeroReset && (log.id?.startsWith('ATT-FP-') || log.category === 'proof' || log.method === 'BĐH Duyệt Zalo')) {
-            return false;
-          }
-          if (log.category === 'session') return true;
+          if (log.category === 'session' || log.category === 'proof') return true;
           const ev = validEventMap.get(log.eventId);
           // Nếu sự kiện đã bị xóa -> xóa bỏ log mồ côi
           if (!ev) return false;
@@ -372,7 +345,7 @@ class Store {
         return {
           ...INITIAL_DATA,
           ...parsed,
-          events: filteredEvents,
+          events: rawEvents,
           attendanceLogs: cleanedLogs,
           clubInfo: {
             ...INITIAL_DATA.clubInfo,
@@ -396,7 +369,7 @@ class Store {
               ? CHESS_MOTTOS[idx % CHESS_MOTTOS.length]
               : m.bio,
             tournamentsJoined: m.tournamentsJoined !== undefined ? m.tournamentsJoined : 0,
-            activitiesJoined: needsZeroReset ? 0 : (m.activitiesJoined !== undefined ? m.activitiesJoined : 0),
+            activitiesJoined: m.activitiesJoined !== undefined ? m.activitiesJoined : 0,
             attendanceCount: m.attendanceCount !== undefined ? m.attendanceCount : 0,
             attendanceRate: m.attendanceRate !== undefined ? m.attendanceRate : 0,
             goldMedals: m.goldMedals !== undefined ? m.goldMedals : 0,
@@ -459,6 +432,18 @@ class Store {
 
   getState() {
     return this.state;
+  }
+
+  restoreState(importedState) {
+    if (!importedState || typeof importedState !== 'object') {
+      throw new Error('Dữ liệu nhập không hợp lệ');
+    }
+    this.state = {
+      ...this.state,
+      ...importedState
+    };
+    this.saveState();
+    this.notify(true);
   }
 
   resetToDefault() {
@@ -699,16 +684,9 @@ class Store {
       return updatedApp;
     }
 
-    let maxNum = 0;
-    this.state.pendingApplications.forEach((app) => {
-      const match = app.id && app.id.match(/^DK-2026-(\d+)$/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        if (num > maxNum) maxNum = num;
-      }
-    });
-    const nextNum = (maxNum + 1).toString().padStart(3, '0');
-    const newId = `DK-2026-${nextNum}`;
+    const timeSlice = Date.now().toString().slice(-5);
+    const randSuffix = Math.random().toString(36).substr(2, 3).toUpperCase();
+    const newId = `DK-2026-${timeSlice}-${randSuffix}`;
 
     const newApp = {
       id: newId,

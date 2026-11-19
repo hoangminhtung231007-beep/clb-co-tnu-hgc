@@ -73,6 +73,7 @@ class FirebaseService {
     this.unsubscribeApps = null;
     this.unsubscribeArticles = null;
     this.status = 'unconfigured'; // 'unconfigured' | 'connecting' | 'connected' | 'disconnected' | 'error'
+    this.lastError = null;
     this.statusListeners = new Set();
     this.lastSyncTime = null;
     this.isSyncing = false;
@@ -130,6 +131,7 @@ class FirebaseService {
         (snapshot) => {
           if (snapshot.exists()) {
             this.lastSyncTime = new Date();
+            this.lastError = null;
             this.notifyStatus('connected');
 
             // If snapshot comes from remote server, notify store
@@ -139,11 +141,13 @@ class FirebaseService {
             }
           } else {
             // Document doesn't exist yet in Firestore
+            this.lastError = null;
             this.notifyStatus('connected');
           }
         },
         (error) => {
           console.error('Firestore snapshot listener error:', error);
+          this.lastError = error;
           this.notifyStatus('error');
         }
       );
@@ -283,10 +287,12 @@ class FirebaseService {
         await setDoc(docRef, cleanPayload, { merge: true });
 
         this.lastSyncTime = new Date();
+        this.lastError = null;
         this.notifyStatus('connected');
         return true;
       } catch (e) {
         console.error('Error syncing to Firestore:', e);
+        this.lastError = e;
         this.notifyStatus('error');
         return false;
       }
@@ -338,6 +344,7 @@ class FirebaseService {
     await setDoc(docRef, cleanPayload, { merge: true });
 
     this.lastSyncTime = new Date();
+    this.lastError = null;
     this.notifyStatus('connected');
     return true;
   }

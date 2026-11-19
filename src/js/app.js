@@ -3778,8 +3778,12 @@ class App {
     if (!pane) return;
     const state = store.getState();
     const pendingCount = (state.pendingApplications || []).length;
-    // Keep default tab as 'active' (Kỳ Thủ Đang Sinh Hoạt) so admin view doesn't abruptly jump to pending
-    this.adminUserSubTab = this.adminUserSubTab || 'active';
+    // If there are pending applications and user hasn't explicitly clicked a subtab, open 'pending' first
+    if (pendingCount > 0 && !this._userSelectedUserSubTab) {
+      this.adminUserSubTab = 'pending';
+    } else {
+      this.adminUserSubTab = this.adminUserSubTab || 'active';
+    }
 
     const activeCount = (state.members || []).length;
     const alumniBoardCount = (state.alumniBoard || []).length;
@@ -6025,14 +6029,15 @@ class App {
 
     const state = store.getState();
     const isConnected = status === 'connected';
+    const isError = status === 'error';
 
     container.innerHTML = `
       <div class="admin-sub-firebase animate-fadeIn">
         <div class="d-flex justify-between align-center mb-4 flex-wrap gap-2">
           <div>
             <div class="d-flex align-center gap-2">
-              <span class="badge ${isConnected ? 'badge-emerald' : status === 'connecting' ? 'badge-gold' : 'badge-outline'}">
-                ${isConnected ? '🟢 CLOUD ONLINE' : status === 'connecting' ? '🟡 ĐANG KẾT NỐI' : '🟠 CHẾ ĐỘ CỤC BỘ (LOCAL)'}
+              <span class="badge ${isConnected ? 'badge-emerald' : status === 'connecting' ? 'badge-gold' : isError ? 'badge-rose' : 'badge-outline'}">
+                ${isConnected ? '🟢 CLOUD ONLINE' : status === 'connecting' ? '🟡 ĐANG KẾT NỐI' : isError ? '🔴 LỖI KẾT NỐI (ERROR)' : '🟠 CHẾ ĐỘ CỤC BỘ (LOCAL)'}
               </span>
               <span class="badge badge-cyan">GOOGLE FIREBASE FIRESTORE</span>
             </div>
@@ -6046,27 +6051,74 @@ class App {
             <button id="btnManualPullCloud" class="btn btn-outline btn-sm" ${!isConnected ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} title="Tải dữ liệu mới nhất từ Cloud về máy tính này">
               <span>📥</span> <span>Kéo Dữ Liệu Về Máy</span>
             </button>
+            <button id="btnExportJsonBackup" class="btn btn-outline btn-sm" title="Tải toàn bộ dữ liệu hiện tại về máy tính dưới dạng file .json để lưu trữ an toàn">
+              <span>💾</span> <span>Xuất File Dự Phòng (.json)</span>
+            </button>
+            <button id="btnImportJsonBackup" class="btn btn-outline btn-sm" title="Nạp dữ liệu từ file .json vào máy tính này">
+              <span>📂</span> <span>Nhập File (.json)</span>
+            </button>
+            <input type="file" id="inputImportJsonFile" accept=".json" style="display:none;">
             <button id="btnLockFirebase" class="btn btn-outline-rose btn-sm" title="Khóa bảo vệ lại mục Firebase Cloud">
               <span>🔒</span> <span>Khóa Lại</span>
             </button>
           </div>
         </div>
 
+        ${isError ? `
+        <!-- High-priority Error Alert for Security Rules / Permissions -->
+        <div class="card mb-4" style="background: radial-gradient(circle at 100% 0%, rgba(225,29,72,0.18) 0%, transparent 70%), linear-gradient(135deg, rgba(30,15,25,0.95) 0%, rgba(45,15,30,0.9) 100%); border: 1.5px solid rgba(244,63,94,0.6); padding: 20px;">
+          <div class="d-flex align-start gap-3">
+            <span style="font-size: 2rem; line-height: 1;">⚠️</span>
+            <div style="flex: 1;">
+              <div class="d-flex align-center gap-2 mb-1 flex-wrap">
+                <span class="badge badge-rose font-bold">LỖI PHÂN QUYỀN FIREBASE (PERMISSION-DENIED)</span>
+                <span class="text-xs text-rose font-mono">Missing or insufficient permissions</span>
+              </div>
+              <h3 class="text-base font-bold text-white mb-2">Kho Đám Mây Đang Chặn Truy Cập (Security Rules Đã Hết Hạn)</h3>
+              <p class="text-xs text-white mb-2" style="line-height: 1.6;">
+                Dữ liệu của bạn hiện tại <strong>chỉ mới lưu ở trình duyệt trên máy này</strong> và <strong>chưa thể tải lên đám mây</strong>, dẫn đến việc khi mở ở máy khác sẽ không thấy dữ liệu gì. Điều này là do <strong>Quy tắc bảo mật (Security Rules)</strong> trên Google Firebase Console của bạn đã hết hạn (chế độ Test Mode 30 ngày mặc định) hoặc đang chặn quyền đọc/ghi.
+              </p>
+              <div class="p-3 mb-3" style="background: rgba(0,0,0,0.4); border-radius: 8px; border-left: 3px solid #f43f5e;">
+                <div class="text-xs font-bold text-gold mb-1">🛠️ CÁCH XỬ LÝ NHANH TRONG 1 PHÚT:</div>
+                <ol class="text-xs text-muted mb-0" style="padding-left: 18px; line-height: 1.7;">
+                  <li>Truy cập <a href="https://console.firebase.google.com" target="_blank" class="text-cyan font-bold" style="text-decoration:underline;">console.firebase.google.com</a> &gt; Mở dự án <code class="text-white">${config?.projectId || 'tnu-hgc-chess-club'}</code></li>
+                  <li>Vào <strong>Firestore Database</strong> (menu bên trái) &gt; Bấm vào tab <strong>Rules (Quy tắc)</strong> ở phía trên.</li>
+                  <li>Dán đoạn mã sau vào ô Rules:
+                    <pre class="font-mono text-emerald mt-1 p-2" style="background:rgba(0,0,0,0.5); border-radius:4px; font-size:11px; margin-bottom:4px;">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+                  </li>
+                  <li>Bấm nút <strong>Publish (Xuất bản)</strong> ở góc trên bên phải.</li>
+                  <li>Quay lại trang này và bấm nút <strong>⚡ Đẩy Dữ Liệu Lên Cloud</strong> ở trên!</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
         <!-- Status Overview Card -->
-        <div class="card mb-4" style="background: radial-gradient(circle at 100% 0%, rgba(56,189,248,0.12) 0%, transparent 60%), linear-gradient(135deg, rgba(14,23,46,0.95) 0%, rgba(26,42,82,0.85) 100%); border: 1.5px solid ${isConnected ? 'rgba(16,185,129,0.4)' : 'rgba(245,158,11,0.4)'}; padding: 20px;">
+        <div class="card mb-4" style="background: radial-gradient(circle at 100% 0%, rgba(56,189,248,0.12) 0%, transparent 60%), linear-gradient(135deg, rgba(14,23,46,0.95) 0%, rgba(26,42,82,0.85) 100%); border: 1.5px solid ${isConnected ? 'rgba(16,185,129,0.4)' : isError ? 'rgba(244,63,94,0.5)' : 'rgba(245,158,11,0.4)'}; padding: 20px;">
           <div class="d-flex justify-between align-center flex-wrap gap-3">
             <div>
               <div class="text-xs text-muted mb-1">Trạng thái kết nối hiện tại:</div>
               <div class="d-flex align-center gap-2">
-                <span style="font-size: 1.5rem;">${isConnected ? '🟢' : status === 'connecting' ? '🟡' : '🟠'}</span>
+                <span style="font-size: 1.5rem;">${isConnected ? '🟢' : status === 'connecting' ? '🟡' : isError ? '🔴' : '🟠'}</span>
                 <div>
                   <h3 class="text-base font-bold text-white mb-0">
-                    ${isConnected ? 'Đã kết nối cơ sở dữ liệu đám mây Google Firestore' : status === 'connecting' ? 'Đang thiết lập kết nối tới Google Firebase...' : 'Chưa kết nối Firebase (Đang chạy chế độ lưu trữ cục bộ)'}
+                    ${isConnected ? 'Đã kết nối cơ sở dữ liệu đám mây Google Firestore' : status === 'connecting' ? 'Đang thiết lập kết nối tới Google Firebase...' : isError ? 'Lỗi kết nối tới cơ sở dữ liệu Firebase (Bị chặn quyền truy cập)' : 'Chưa kết nối Firebase (Đang chạy chế độ lưu trữ cục bộ)'}
                   </h3>
                   <p class="text-xs text-muted mb-0">
                     ${isConnected 
                       ? `Project ID: <span class="font-mono text-cyan font-bold">${config?.projectId}</span> • Lần đồng bộ gần nhất: <span class="text-gold font-mono">${lastSyncStr}</span>`
-                      : 'Hệ thống đang lưu dữ liệu trên trình duyệt này. Hãy dán cấu hình Firebase bên dưới để kết nối máy chủ online.'}
+                      : isError
+                        ? `Project ID: <span class="font-mono text-rose font-bold">${config?.projectId}</span> • Hãy cập nhật Rules trên Firebase Console theo hướng dẫn ở khung đỏ bên trên.`
+                        : 'Hệ thống đang lưu dữ liệu trên trình duyệt này. Hãy dán cấu hình Firebase bên dưới để kết nối máy chủ online.'}
                   </p>
                 </div>
               </div>
@@ -6439,6 +6491,87 @@ service cloud.firestore {
           }
         }
       });
+    });
+
+    // Export JSON Backup
+    const btnExportJson = container.querySelector('#btnExportJsonBackup');
+    btnExportJson?.addEventListener('click', () => {
+      sound.playClick();
+      try {
+        const fullState = store.getState();
+        const jsonStr = JSON.stringify(fullState, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const dateStr = new Date().toISOString().slice(0, 10);
+        a.href = url;
+        a.download = `CLB_CO_TNU_HGC_BACKUP_${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        sound.playSuccess();
+        modalManager.showAlert({
+          type: 'success',
+          title: 'Xuất file thành công',
+          message: `Đã tải xuống file sao lưu dự phòng: CLB_CO_TNU_HGC_BACKUP_${dateStr}.json (${fullState.members?.length || 0} hội viên, ${fullState.events?.length || 0} sự kiện)`
+        });
+      } catch (err) {
+        sound.playAlert();
+        modalManager.showAlert({
+          type: 'error',
+          title: 'Lỗi xuất file',
+          message: 'Không thể tạo file sao lưu: ' + (err.message || err.toString())
+        });
+      }
+    });
+
+    // Import JSON Backup
+    const btnImportJson = container.querySelector('#btnImportJsonBackup');
+    const inputImportFile = container.querySelector('#inputImportJsonFile');
+    btnImportJson?.addEventListener('click', () => {
+      sound.playClick();
+      inputImportFile?.click();
+    });
+
+    inputImportFile?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          if (!parsed || typeof parsed !== 'object') {
+            throw new Error('Nội dung file không đúng định dạng JSON.');
+          }
+          modalManager.showConfirm({
+            title: 'Xác nhận nạp dữ liệu từ file?',
+            message: `File sao lưu chứa: ${parsed.members?.length || 0} hội viên, ${parsed.events?.length || 0} sự kiện.\n\nBạn có chắc chắn muốn nạp dữ liệu này vào máy tính?`,
+            confirmText: 'Đồng ý nạp dữ liệu',
+            cancelText: 'Hủy bỏ',
+            onConfirm: () => {
+              store.restoreState(parsed);
+              sound.playSuccess();
+              modalManager.showAlert({
+                type: 'success',
+                title: 'Nạp dữ liệu thành công',
+                message: 'Đã khôi phục dữ liệu từ file sao lưu thành công!'
+              });
+              this.renderAdminFirebase(container);
+            }
+          });
+        } catch (err) {
+          sound.playAlert();
+          modalManager.showAlert({
+            type: 'error',
+            title: 'Lỗi đọc file JSON',
+            message: 'File không hợp lệ hoặc bị lỗi: ' + (err.message || err.toString())
+          });
+        } finally {
+          inputImportFile.value = '';
+        }
+      };
+      reader.readAsText(file);
     });
 
     // Lock button

@@ -98,8 +98,53 @@ class Store {
         if (Array.isArray(remoteArticles)) {
           this.applyRemoteArticles(remoteArticles);
         }
+      },
+      (remoteMembers) => {
+        if (Array.isArray(remoteMembers)) {
+          this.applyRemoteMembers(remoteMembers);
+        }
       }
     );
+  }
+
+  applyRemoteMembers(remoteMembers) {
+    if (!Array.isArray(remoteMembers) || remoteMembers.length === 0) return;
+    this.isRemoteUpdating = true;
+    try {
+      const memberMap = new Map();
+      remoteMembers.forEach((m) => {
+        if (m && m.id) memberMap.set(m.id, m);
+      });
+
+      if (Array.isArray(this.state.members)) {
+        this.state.members.forEach((localM) => {
+          if (!localM || !localM.id) return;
+          const remoteM = memberMap.get(localM.id);
+          if (remoteM) {
+            memberMap.set(localM.id, {
+              ...localM,
+              ...remoteM,
+              avatar: remoteM.avatar || localM.avatar
+            });
+          } else {
+            memberMap.set(localM.id, localM);
+          }
+        });
+      }
+
+      this.state.members = Array.from(memberMap.values());
+      this.state.clubInfo.totalMembers = this.state.members.length;
+      this.saveState();
+      this.listeners.forEach((listener) => {
+        try {
+          listener(this.state);
+        } catch (e) {
+          console.error('Error in state listener for members update:', e);
+        }
+      });
+    } finally {
+      this.isRemoteUpdating = false;
+    }
   }
 
   applyRemoteArticles(remoteArticles) {
@@ -199,7 +244,29 @@ class Store {
     const wasAlreadySynced = this.hasReceivedInitialSync;
     this.hasReceivedInitialSync = true;
     try {
-      if (Array.isArray(remoteData.members)) this.state.members = remoteData.members;
+      if (Array.isArray(remoteData.members)) {
+        const remoteMap = new Map();
+        remoteData.members.forEach((rm) => {
+          if (rm && rm.id) remoteMap.set(rm.id, rm);
+        });
+
+        const mergedMembers = (this.state.members || []).map((localM) => {
+          const rm = remoteMap.get(localM.id);
+          if (!rm) return localM;
+          remoteMap.delete(localM.id);
+          return {
+            ...localM,
+            ...rm,
+            avatar: rm.avatar || localM.avatar
+          };
+        });
+
+        remoteMap.forEach((newRm) => {
+          mergedMembers.push(newRm);
+        });
+
+        this.state.members = mergedMembers;
+      }
 
       if (Array.isArray(remoteData.events)) {
         // Detect newly added events from other devices in real-time
@@ -407,7 +474,26 @@ class Store {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave || this.state));
     } catch (e) {
-      console.error('Error saving state', e);
+      console.warn('LocalStorage save notice, activating quota recovery:', e);
+      try {
+        // Clear obsolete keys
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && key !== STORAGE_KEY && key !== 'firebase_config_v1' && !key.startsWith('TNU_HGC_ADMIN')) {
+            try { localStorage.removeItem(key); } catch (err) {}
+          }
+        }
+        // Save lean state
+        const target = stateToSave || this.state;
+        const lean = {
+          ...target,
+          articles: Array.isArray(target.articles) ? target.articles.map(a => ({ ...a, gallery: [] })) : []
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(lean));
+        console.log('✅ LocalStorage quota recovery successful.');
+      } catch (err2) {
+        console.error('Critical: LocalStorage save failed after recovery attempt:', err2);
+      }
     }
   }
 
@@ -539,6 +625,7 @@ class Store {
           ...memberData,
           id: this.state.members[existingIdx].id // Keep their official card ID
         };
+        firebaseService.saveMemberDoc(this.state.members[existingIdx]);
         this.notify(true);
         return this.state.members[existingIdx];
       }
@@ -603,6 +690,7 @@ class Store {
     if (!this.state.currentSession.activeMemberId || !this.getMemberById(this.state.currentSession.activeMemberId)) {
       this.state.currentSession.activeMemberId = newMember.id;
     }
+    firebaseService.saveMemberDoc(newMember);
     this.notify();
     return newMember;
   }
@@ -620,6 +708,7 @@ class Store {
     const idx = this.state.members.findIndex((m) => m.id === id);
     if (idx !== -1) {
       this.state.members[idx] = { ...this.state.members[idx], ...updatedFields };
+      firebaseService.saveMemberDoc(this.state.members[idx]);
       this.saveState();
       this.notify();
       return this.state.members[idx];
@@ -633,6 +722,7 @@ class Store {
     if (this.state.currentSession.activeMemberId === id) {
       this.state.currentSession.activeMemberId = this.state.members[0]?.id || null;
     }
+    firebaseService.deleteMemberDoc(id);
     this.notify();
   }
 

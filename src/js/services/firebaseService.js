@@ -13,8 +13,10 @@ import { getFirebaseConfig, saveFirebaseConfig, clearFirebaseConfig } from '../c
 // Helper to sanitize avatar payloads so Firestore document clubs/tnu_hgc never exceeds 1MB limit
 function sanitizeAvatarString(av) {
   if (typeof av !== 'string') return av;
-  // All uploaded avatars are automatically compressed to <= 22KB by the avatar studio.
-  // Never destroy or replace user avatars with placeholder links.
+  // If avatar is excessively long (> 4KB), keep it lean in root doc because full avatar lives in club_members collection
+  if (av.startsWith('data:image') && av.length > 4096) {
+    return '';
+  }
   return av;
 }
 
@@ -44,14 +46,21 @@ function sanitizeStateForClubDoc(state) {
     if (!a) return a;
     return {
       ...a,
-      avatar: sanitizeAvatarString(a.avatar)
+      // Applications full avatar lives in club_applications collection
+      avatar: (typeof a.avatar === 'string' && a.avatar.length > 2048) ? '' : a.avatar
     };
   }) : [];
 
-  return {
+  // Protect against log overflow in the root doc (keep latest 500 logs in root doc)
+  let logs = state.attendanceLogs || [];
+  if (logs.length > 500) {
+    logs = logs.slice(0, 500);
+  }
+
+  const payload = {
     members,
     events: state.events || [],
-    attendanceLogs: state.attendanceLogs || [],
+    attendanceLogs: logs,
     articles: sanitizeArticlesList(state.articles),
     pendingApplications,
     alumniBoard: state.alumniBoard || [],
@@ -63,6 +72,20 @@ function sanitizeStateForClubDoc(state) {
     fundSettings: state.fundSettings || {},
     updatedAt: new Date().toISOString()
   };
+
+  // Pre-serialization size check: If approaching 700KB, prune non-critical fields
+  try {
+    const rawLen = JSON.stringify(payload).length;
+    if (rawLen > 700000) {
+      console.warn(`[FirebaseService] Root doc size is ${rawLen} bytes. Applying space optimization.`);
+      payload.attendanceLogs = payload.attendanceLogs.slice(0, 250);
+      payload.eventFeedback = (payload.eventFeedback || []).slice(0, 100);
+    }
+  } catch (err) {
+    console.warn('[FirebaseService] Size check notice:', err);
+  }
+
+  return payload;
 }
 
 class FirebaseService {
@@ -72,6 +95,7 @@ class FirebaseService {
     this.unsubscribeSnapshot = null;
     this.unsubscribeApps = null;
     this.unsubscribeArticles = null;
+    this.unsubscribeMembers = null;
     this.status = 'unconfigured'; // 'unconfigured' | 'connecting' | 'connected' | 'disconnected' | 'error'
     this.lastError = null;
     this.statusListeners = new Set();
@@ -79,6 +103,71 @@ class FirebaseService {
     this.isSyncing = false;
     this.pendingSyncTimer = null;
     this.ignoreNextRemoteSnapshot = false;
+    this.reconnectTimer = null;
+    this.reconnectAttempts = 0;
+    this.heartbeatTimer = null;
+
+    this.callbacks = {
+      onRemoteData: null,
+      onApplications: null,
+      onArticles: null,
+      onMembers: null
+    };
+
+    this.setupNetworkWatchers();
+  }
+
+  setupNetworkWatchers() {
+    if (typeof window === 'undefined') return;
+
+    window.addEventListener('online', () => {
+      console.log('🌐 [Firebase] Trình duyệt đã kết nối mạng trở lại. Khôi phục đồng bộ...');
+      this.reconnectAttempts = 0;
+      if (this.isConfigured() && this.status !== 'connected') {
+        this.reconnect();
+      }
+    });
+
+    window.addEventListener('offline', () => {
+      console.warn('🌐 [Firebase] Trình duyệt đã mất kết nối mạng.');
+      this.notifyStatus('disconnected');
+    });
+
+    // Heartbeat check every 40s: Ensures active Firestore connection
+    if (!this.heartbeatTimer) {
+      this.heartbeatTimer = setInterval(() => {
+        if (typeof navigator !== 'undefined' && navigator.onLine && this.isConfigured()) {
+          if (this.status === 'error' || this.status === 'disconnected') {
+            console.log('💓 [Firebase Heartbeat] Đang tự động kết nối lại cơ sở dữ liệu...');
+            this.reconnect();
+          }
+        }
+      }, 40000);
+    }
+  }
+
+  scheduleAutoReconnect() {
+    if (this.reconnectTimer) return;
+    this.reconnectAttempts++;
+    // Exponential backoff: 3s, 6s, 12s, max 30s
+    const delay = Math.min(3000 * Math.pow(1.8, this.reconnectAttempts - 1), 30000);
+    console.log(`🔄 [Firebase] Sẽ tự động thử kết nối lại sau ${Math.round(delay / 1000)}s (Lần thử ${this.reconnectAttempts})...`);
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      this.reconnect();
+    }, delay);
+  }
+
+  reconnect() {
+    if (!this.isConfigured()) return;
+    this.init(
+      this.callbacks.onRemoteData,
+      this.callbacks.onApplications,
+      this.callbacks.onArticles,
+      this.callbacks.onMembers
+    );
   }
 
   onStatusChange(listener) {
@@ -102,7 +191,12 @@ class FirebaseService {
     return !!getFirebaseConfig();
   }
 
-  init(onRemoteDataCallback, onApplicationsCallback, onArticlesCallback) {
+  init(onRemoteDataCallback, onApplicationsCallback, onArticlesCallback, onMembersCallback) {
+    if (onRemoteDataCallback) this.callbacks.onRemoteData = onRemoteDataCallback;
+    if (onApplicationsCallback) this.callbacks.onApplications = onApplicationsCallback;
+    if (onArticlesCallback) this.callbacks.onArticles = onArticlesCallback;
+    if (onMembersCallback) this.callbacks.onMembers = onMembersCallback;
+
     const config = getFirebaseConfig();
     if (!config) {
       this.notifyStatus('unconfigured');
@@ -118,29 +212,41 @@ class FirebaseService {
       }
       this.db = getFirestore(this.app);
 
-      // 1. Start listening to the shared club document: clubs/tnu_hgc
-      const docRef = doc(this.db, 'clubs', 'tnu_hgc');
-
+      // Clean existing listeners before rebinding
       if (this.unsubscribeSnapshot) {
         this.unsubscribeSnapshot();
+        this.unsubscribeSnapshot = null;
+      }
+      if (this.unsubscribeApps) {
+        this.unsubscribeApps();
+        this.unsubscribeApps = null;
+      }
+      if (this.unsubscribeArticles) {
+        this.unsubscribeArticles();
+        this.unsubscribeArticles = null;
+      }
+      if (this.unsubscribeMembers) {
+        this.unsubscribeMembers();
+        this.unsubscribeMembers = null;
       }
 
+      // 1. Start listening to shared club document: clubs/tnu_hgc
+      const docRef = doc(this.db, 'clubs', 'tnu_hgc');
       this.unsubscribeSnapshot = onSnapshot(
         docRef,
         { includeMetadataChanges: true },
         (snapshot) => {
+          this.reconnectAttempts = 0; // Reset backoff counter on success
           if (snapshot.exists()) {
             this.lastSyncTime = new Date();
             this.lastError = null;
             this.notifyStatus('connected');
 
-            // If snapshot comes from remote server, notify store
-            if (typeof onRemoteDataCallback === 'function') {
+            if (typeof this.callbacks.onRemoteData === 'function') {
               const remoteData = snapshot.data();
-              onRemoteDataCallback(remoteData, snapshot.metadata);
+              this.callbacks.onRemoteData(remoteData, snapshot.metadata);
             }
           } else {
-            // Document doesn't exist yet in Firestore
             this.lastError = null;
             this.notifyStatus('connected');
           }
@@ -149,15 +255,11 @@ class FirebaseService {
           console.error('Firestore snapshot listener error:', error);
           this.lastError = error;
           this.notifyStatus('error');
+          this.scheduleAutoReconnect();
         }
       );
 
       // 2. Start listening to dedicated collection: club_applications (Guarantees zero overflow!)
-      if (this.unsubscribeApps) {
-        this.unsubscribeApps();
-        this.unsubscribeApps = null;
-      }
-
       const appsColRef = collection(this.db, 'club_applications');
       this.unsubscribeApps = onSnapshot(
         appsColRef,
@@ -174,8 +276,8 @@ class FirebaseService {
           // Sort descending by creation date
           appsList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-          if (typeof onApplicationsCallback === 'function') {
-            onApplicationsCallback(appsList);
+          if (typeof this.callbacks.onApplications === 'function') {
+            this.callbacks.onApplications(appsList);
           }
         },
         (appErr) => {
@@ -184,11 +286,6 @@ class FirebaseService {
       );
 
       // 3. Start listening to dedicated collection: club_articles (Guarantees unlimited articles & photos without doc overflow)
-      if (this.unsubscribeArticles) {
-        this.unsubscribeArticles();
-        this.unsubscribeArticles = null;
-      }
-
       const articlesColRef = collection(this.db, 'club_articles');
       this.unsubscribeArticles = onSnapshot(
         articlesColRef,
@@ -201,8 +298,8 @@ class FirebaseService {
             }
           });
 
-          if (articlesList.length > 0 && typeof onArticlesCallback === 'function') {
-            onArticlesCallback(articlesList);
+          if (articlesList.length > 0 && typeof this.callbacks.onArticles === 'function') {
+            this.callbacks.onArticles(articlesList);
           }
         },
         (artErr) => {
@@ -210,10 +307,60 @@ class FirebaseService {
         }
       );
 
+      // 4. Start listening to dedicated collection: club_members (Guarantees unlimited members & full avatars without 1MB limit)
+      const membersColRef = collection(this.db, 'club_members');
+      this.unsubscribeMembers = onSnapshot(
+        membersColRef,
+        (snap) => {
+          const membersList = [];
+          snap.forEach((d) => {
+            const data = d.data();
+            if (data && data.id) {
+              membersList.push(data);
+            }
+          });
+
+          if (membersList.length > 0 && typeof this.callbacks.onMembers === 'function') {
+            this.callbacks.onMembers(membersList);
+          }
+        },
+        (memErr) => {
+          console.warn('Firestore club_members collection listener notice:', memErr);
+        }
+      );
+
       return true;
     } catch (e) {
       console.error('Failed to initialize Firebase:', e);
       this.notifyStatus('error');
+      this.scheduleAutoReconnect();
+      return false;
+    }
+  }
+
+  // Save an individual member directly into club_members/{id}
+  async saveMemberDoc(member) {
+    if (!this.db || !member || !member.id) return false;
+    try {
+      const cleanMember = JSON.parse(JSON.stringify(member));
+      const memberDocRef = doc(this.db, 'club_members', member.id);
+      await setDoc(memberDocRef, cleanMember, { merge: true });
+      return true;
+    } catch (err) {
+      console.error('Error saving member to club_members collection:', err);
+      return false;
+    }
+  }
+
+  // Delete an individual member from club_members/{id}
+  async deleteMemberDoc(memberId) {
+    if (!this.db || !memberId) return false;
+    try {
+      const memberDocRef = doc(this.db, 'club_members', memberId);
+      await deleteDoc(memberDocRef);
+      return true;
+    } catch (err) {
+      console.warn('Error deleting member doc from club_members:', err);
       return false;
     }
   }
@@ -294,6 +441,7 @@ class FirebaseService {
         console.error('Error syncing to Firestore:', e);
         this.lastError = e;
         this.notifyStatus('error');
+        this.scheduleAutoReconnect();
         return false;
       }
     };
@@ -361,6 +509,14 @@ class FirebaseService {
     if (this.unsubscribeArticles) {
       this.unsubscribeArticles();
       this.unsubscribeArticles = null;
+    }
+    if (this.unsubscribeMembers) {
+      this.unsubscribeMembers();
+      this.unsubscribeMembers = null;
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
     this.app = null;
     this.db = null;

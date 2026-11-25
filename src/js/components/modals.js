@@ -2578,6 +2578,10 @@ export const modalManager = {
   },
 
   // 10. Club Registration Modal (Đăng Ký Tham Gia CLB Cờ TNU - HGC)
+  openRegisterModal() {
+    return this.openClubRegistrationModal();
+  },
+
   openClubRegistrationModal() {
     const defaultAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1080&q=95';
     let currentRawSrc = defaultAvatar;

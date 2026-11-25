@@ -1618,7 +1618,7 @@ class App {
         }
         const action = item.getAttribute('data-action');
         if (action === 'register') {
-          modalManager.openRegisterModal();
+          modalManager.openClubRegistrationModal();
         } else if (action === 'zalo') {
           window.open(state.clubInfo.zaloGroupLink || 'https://zalo.me/g/ugejmj655', '_blank');
         } else {
